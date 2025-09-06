@@ -1,6 +1,6 @@
 import express from "express";
 import { body } from "express-validator";
-import { register,getAllUsers,getProfileById, updateProfileById} from "../controllers/User_controller.js";
+import { register,getAllUsers,getProfileById, updateProfileById,deleteUserById} from "../controllers/User_controller.js";
 
 const router = express.Router();
 // Route đăng ký user mới
@@ -43,5 +43,6 @@ const router = express.Router();
  router.get('/getAllUsers',getAllUsers);
  router.put('/profile/:id',updateProfileValidation,updateProfileById);
  router.get('/profile/:id',getProfileById);
+ router.delete('/:id',deleteUserById);
 
 export default router;

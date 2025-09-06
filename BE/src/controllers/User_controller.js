@@ -2,7 +2,7 @@ import User from '../models/User.js';
 
 import { validationResult } from 'express-validator';
 
-// Đăng ký user mới (bỏ tạo token)
+// Đăng ký user mới 
 const register = async (req, res) => {
   try {
     // Kiểm tra validation errors
@@ -10,7 +10,7 @@ const register = async (req, res) => {
     if (!errors.isEmpty()) {
       return res.status(400).json({
         success: false,
-        message: 'Dữ liệu không hợp lệ',
+        message: 'Data is not valid',
         errors: errors.array()
       });
     }
@@ -20,14 +20,14 @@ const register = async (req, res) => {
     if (existingUser) {
       return res.status(400).json({
         success: false,
-        message: 'Email đã được sử dụng, vui lòng chọn email khác'
+        message: 'Email already in use, please choose another email!!!'
       });
     }
     const existingPhone = await User.findOne({ phone });
     if (existingPhone) {
       return res.status(400).json({
         success: false,
-        message: 'Số điện thoại đã được sử dụng, vui lòng chọn số khác'
+        message: 'Phone number already in use , please choose another phone number!!!'
       });
     }
     // Tạo user mới
@@ -42,7 +42,7 @@ const register = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: 'Đăng ký thành công',
+      message: 'Register successfully',
       data: {
         user: {
           id: user._id,
@@ -59,7 +59,7 @@ const register = async (req, res) => {
     console.error('Register error:', error);
     res.status(500).json({
       success: false,
-      message: 'Lỗi server, vui lòng thử lại'
+      message: 'Error server, please try again'
     });
   }
 };
@@ -73,10 +73,10 @@ const getAllUsers = async (_req, res) => {
       data: users
     });
   } catch (error) {
-    console.error('Lấy danh sách thất bại:', error);
+    console.error('Failed to get user list:', error);
     res.status(500).json({
       success: false,
-      message: 'Lỗi server, vui lòng thử lại'
+      message: 'Error server, please try again'
     });
   }
 };
@@ -88,7 +88,7 @@ const getProfileById = async (req, res) => {
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: "Không tìm thấy user",
+        message: "User is not exist",
       });
     }
     res.status(200).json({
@@ -99,7 +99,7 @@ const getProfileById = async (req, res) => {
     console.error("Get profile by ID error:", error.message);
     res.status(500).json({
       success: false,
-      message: "Lỗi server",
+      message: "Error server",
     });
   }
 };
@@ -111,7 +111,7 @@ const updateProfileById = async (req, res) => {
     if (!errors.isEmpty()) {
       return res.status(400).json({
         success: false,
-        message: "Dữ liệu không hợp lệ",
+        message: "Data is not valid",
         errors: errors.array(),
       });
     }
@@ -181,4 +181,27 @@ const updateProfileById = async (req, res) => {
     });
   }
 };
-export { register, getAllUsers, getProfileById, updateProfileById };
+
+const deleteUserById = async (req, res) => {
+  const userId = req.params.id; 
+  try {
+    const user = await User.findByIdAndDelete(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Not found user",
+      });
+    }
+    res.status(200).json({
+      success: true,
+      message: "Delete user successfully",
+    });
+  } catch (error) {
+    console.error("Delete user by ID error:", error.message);
+    res.status(500).json({  
+      success: false,
+      message: "Lỗi server",
+    });
+  }
+};
+export { register, getAllUsers, getProfileById, updateProfileById, deleteUserById };
