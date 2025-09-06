@@ -1,13 +1,8 @@
 import User from '../models/User.js';
-import jwt from 'jsonwebtoken';
+
 import { validationResult } from 'express-validator';
-// Tạo JWT token
-const signToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRE
-  });
-};
-//  Đăng ký user mới
+
+// Đăng ký user mới (bỏ tạo token)
 const register = async (req, res) => {
   try {
     // Kiểm tra validation errors
@@ -19,7 +14,7 @@ const register = async (req, res) => {
         errors: errors.array()
       });
     }
-    const { name, phone, email, password,confirmPassword } = req.body;
+    const { name, phone, email, password, confirmPassword } = req.body;
     // Kiểm tra email đã tồn tại
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -45,13 +40,10 @@ const register = async (req, res) => {
       isActive: true
     });
 
-    // Tạo JWT token
-    const token = signToken(user._id);
     res.status(201).json({
       success: true,
       message: 'Đăng ký thành công',
       data: {
-        token,
         user: {
           id: user._id,
           name: user.name,
@@ -59,7 +51,8 @@ const register = async (req, res) => {
           phone: user.phone,
           isActive: user.isActive,
           createdAt: user.createdAt,
-          updatedAt: user.updatedAt}
+          updatedAt: user.updatedAt
+        }
       }
     });
   } catch (error) {
@@ -70,21 +63,22 @@ const register = async (req, res) => {
     });
   }
 };
+
 // lấy danh sách user
 const getAllUsers = async (_req, res) => {
-    try {
-        const users = await User.find().select('-password'); // Ẩn trường password
-        res.status(200).json({
-            success: true,
-            data: users
-        });
-    } catch (error) {
-        console.error('Lấy danh sách thất bại:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Lỗi server, vui lòng thử lại'
-        });
-    }
+  try {
+    const users = await User.find().select('-password'); // Ẩn trường password
+    res.status(200).json({
+      success: true,
+      data: users
+    });
+  } catch (error) {
+    console.error('Lấy danh sách thất bại:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi server, vui lòng thử lại'
+    });
+  }
 };
 
 const getProfileById = async (req, res) => {
@@ -109,6 +103,7 @@ const getProfileById = async (req, res) => {
     });
   }
 };
+
 const updateProfileById = async (req, res) => {
   try {
     // Kiểm tra validation errors 
@@ -133,8 +128,6 @@ const updateProfileById = async (req, res) => {
       });
     }
 
-
- 
     if (name) user.name = name;
     if (email && email !== user.email) {
       const existingEmail = await User.findOne({ email });
@@ -188,8 +181,4 @@ const updateProfileById = async (req, res) => {
     });
   }
 };
-
-
-
-
 export { register, getAllUsers, getProfileById, updateProfileById };
