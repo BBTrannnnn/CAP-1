@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Google Login Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+        button { padding: 15px 30px; font-size: 16px; background: #4285f4; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #3367d6; }
+    </style>
+</head>
+<body>
+    <h1>Test Google Login</h1>
+    <button onclick="loginWithGoogle()">🔐 Login with Google</button>
+    
+    <script>
+    function loginWithGoogle() {
+        const clientId = '803477306737-pvvd5qe1dkj602h4lkr3f5ed11tksgb4.apps.googleusercontent.com';
+        const redirectUri = 'http://localhost:5000/test-callback';
+        const scope = 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile';
+
+        // URL OAuth2 chuẩn
+        const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+                        `client_id=${clientId}&` +
+                        `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+                        `response_type=token&` +
+                        `scope=${encodeURIComponent(scope)}&` +
+                        `state=state_parameter_passthrough_value`;
+
+        window.location.href = authUrl;
+    }
+</script>
+</body>
+</html>

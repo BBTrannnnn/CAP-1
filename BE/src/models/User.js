@@ -29,7 +29,10 @@ const userSchema = new mongoose.Schema({
     },
     confirmPassword:{
         type:String,
-        required:[true,'Vui lòng xác nhận mật khẩu của bạn'],
+        required: function() {
+    // Chỉ require khi không phải Google login
+    return this.loginProvider !== 'google' && this.isNew;
+  },
         minLength:[6,'Mật khẩu của bạn phải có ít nhất 6 ký tự'],
         validate:{
             validator:function(value){
