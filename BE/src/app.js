@@ -1,8 +1,10 @@
 import dotenv from 'dotenv';
 import express from 'express';
 import cors from 'cors';
+import { errorHandler } from '../middlewares/errorHandler.js';
 import connectDB from './config/database.js';
 import userRoutes from './routes/User-Routes.js';
+import cropRoutes from './routes/Crop-routes.js';
 
 
 dotenv.config();
@@ -13,6 +15,8 @@ app.use(express.json());
 
 
 app.use('/api/users', userRoutes);
+app.use('/api/crops', cropRoutes);
+app.use(errorHandler);
 
 
 
