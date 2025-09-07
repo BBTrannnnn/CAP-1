@@ -5,15 +5,7 @@ import { validationResult } from 'express-validator';
 // Đăng ký user mới 
 const register = async (req, res) => {
   try {
-    // Kiểm tra validation errors
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Data is not valid',
-        errors: errors.array()
-      });
-    }
+
     const { name, phone, email, password, confirmPassword } = req.body;
     // Kiểm tra email đã tồn tại
     const existingUser = await User.findOne({ email });
@@ -182,7 +174,7 @@ const updateProfileById = async (req, res) => {
   }
 };
 
-const deleteUserById = async (req, res) => {
+const deleteProfileById = async (req, res) => {
   const userId = req.params.id; 
   try {
     const user = await User.findByIdAndDelete(userId);
@@ -204,4 +196,4 @@ const deleteUserById = async (req, res) => {
     });
   }
 };
-export { register, getAllUsers, getProfileById, updateProfileById, deleteUserById };
+export  { register, getAllUsers, getProfileById, updateProfileById, deleteProfileById };

@@ -1,9 +1,11 @@
 import express from "express";
-import { body } from "express-validator";
-import { register,getAllUsers,getProfileById, updateProfileById,deleteUserById} from "../controllers/User_controller.js";
+import { body, } from "express-validator";
+import { register,getAllUsers,getProfileById, updateProfileById,deleteProfileById} from "../controllers/User_controller.js";
+import { validateRequest } from "../../middlewares/validateReuqest.js";
 
 const router = express.Router();
 // Route đăng ký user mới
+// Validation dữ liệu ở lúc request vào trước khi vào controller
  const registerValidation = [
   body('name')
     .trim()
@@ -32,17 +34,17 @@ const router = express.Router();
     .optional()
     .matches(/^[0-9]{10,11}$/)
     .withMessage("Số điện thoại không hợp lệ"),
-  body("province")
+  body("mail")
     .optional()
-    .trim()
-    .isLength({ min: 2, max: 50 })
-    .withMessage("Tên tỉnh/thành phố phải có từ 2-50 ký tự"),
+    .isEmail()
+    .matches(/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/)
+    .withMessage("Vui lòng nhập đúng định dạng email")
 ];
  // Routes
- router.post('/register', registerValidation, register);
+ router.post('/register', registerValidation,validateRequest, register);
  router.get('/getAllUsers',getAllUsers);
  router.put('/profile/:id',updateProfileValidation,updateProfileById);
  router.get('/profile/:id',getProfileById);
- router.delete('/:id',deleteUserById);
+ router.delete('/:id',deleteProfileById);
 
 export default router;
