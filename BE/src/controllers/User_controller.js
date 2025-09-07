@@ -1,5 +1,5 @@
 import User from '../models/User.js';
-
+import jwt from 'jsonwebtoken';
 import { validationResult } from 'express-validator';
 
 // Đăng ký user mới 
@@ -196,4 +196,63 @@ const deleteProfileById = async (req, res) => {
     });
   }
 };
+// dang nhap 
+// dang nhap bang email/sdt + password
+export const login = async (req, res) => {
+  const { identifier, password } = req.body; // identifier có thể là email hoặc số điện thoại
+  try {
+    // Tìm user theo email hoặc số điện thoại
+    const user = await User.findOne({ 
+      $or: [{ email: identifier }, { phone: identifier }] 
+    });
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email hoac sdt khong ton tai, vui long dang nhap lai!!!'
+      });
+    }
+     //Kiểm tra user có password không (trường hợp login Google/Facebook)
+    if (!user.password) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "User không có mật khẩu, vui lòng đăng nhập bằng Google hoặc Facebook",
+      });
+    }
+    // So sánh mật khẩu
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      return res.status(400).json({
+        success: false,
+        message: "Mật khẩu không đúng, vui lòng thử lại",
+      });
+    }
+    //Tạo token
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "7d",
+    });
+    // Tra ve du lieu user 
+    res.json({
+      message:"Dang nhap thanh cong",
+      token,
+      user:{
+        id: user._id,
+        email: user.email,
+        phone: user.phone,
+        name: user.name,
+      },
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi server, vui lòng thử lại'
+    });
+  }
+}
+import passport from 'passport';
+// dang nhap bang google
+export const googleAuth = passport.authenticate('google', { scope: ['profile', 'email'] });
+// dang nhap bang facebook
+export const facebookAuth = passport.authenticate('facebook', { scope: ['email'] });
 export  { register, getAllUsers, getProfileById, updateProfileById, deleteProfileById };

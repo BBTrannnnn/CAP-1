@@ -1,6 +1,7 @@
 import express from "express";
 import { body, } from "express-validator";
 import { register,getAllUsers,getProfileById, updateProfileById,deleteProfileById} from "../controllers/User_controller.js";
+import { login, googleAuth, facebookAuth } from "../controllers/Auth_controller.js";
 import { validateRequest } from "../../middlewares/validateReuqest.js";
 
 const router = express.Router();
@@ -46,5 +47,24 @@ const router = express.Router();
  router.put('/profile/:id',updateProfileValidation,updateProfileById);
  router.get('/profile/:id',getProfileById);
  router.delete('/:id',deleteProfileById);
+
+// Validation cho login bằng email/sđt + password
+const loginValidation = [
+  body("identifier") // có thể là email hoặc số điện thoại
+    .notEmpty()
+    .withMessage("Vui lòng nhập email hoặc số điện thoại"),
+  body("password")
+    .isLength({ min: 6 })
+    .withMessage("Mật khẩu phải có ít nhất 6 ký tự"),
+];
+
+// Route đăng nhập (email/sđt + password)
+router.post("/login", loginValidation, validateRequest, login);
+
+// Route đăng nhập bằng Google
+router.get("/google", googleAuth);
+
+// Route đăng nhập bằng Facebook
+router.get("/facebook", facebookAuth);
 
 export default router;
