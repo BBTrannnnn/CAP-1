@@ -43,4 +43,56 @@ const getAllCrops = asyncHandler(async (_req, res) => {
     });
 });
 
-export { createCrop, getAllCrops };
+const updateCropById = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { name, species, category, plantingDate, location, harvestDate, status, notes } = req.body;
+    const crop = await Crop.findByIdAndUpdate(id, {
+        name,
+        species,    
+        category,
+        plantingDate,
+        location,
+        harvestDate,
+        status,
+        notes
+    }, { new: true });
+    if (!crop) {
+        res.status(404);
+        throw new Error('Crop not found');
+    }
+    res.status(200).json({
+        success: true,
+        message: 'Crop updated successfully',   
+        data: {
+            crop: {
+                id: crop._id,
+                name: crop.name,
+                species: crop.species,
+                category: crop.category,
+                plantingDate: crop.plantingDate,    
+                location: crop.location,
+                harvestDate: crop.harvestDate,
+                status: crop.status,
+                notes: crop.notes,
+                createdAt: crop.createdAt,
+                updatedAt: crop.updatedAt
+            }
+        }
+    });
+});
+
+const deleteCropById = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const crop = await Crop.findByIdAndDelete(id);
+    if (!crop) {
+        res.status(404);
+        throw new Error('Crop not found');
+    }
+    res.status(200).json({
+        success: true,
+        message: 'Crop deleted successfully',
+        data: null
+    });
+});
+
+export { createCrop, getAllCrops , deleteCropById, updateCropById };

@@ -15,17 +15,24 @@ const userSchema = new mongoose.Schema({
         unique:true,
         match:[/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,'Vui lòng nhập đúng định dạng email']
     },
-    phone:{
-        type:String,
-        required:[true,'Vui lòng nhập số điện thoại của bạn'],
-        trim:true,
-        unique:true,
-        match:[/^[0-9]{10,11}$/,'Vui lòng nhập đúng định dạng số điện thoại']
-    },
-    password:{
-        type:String,
-        required:[true,'Vui lòng nhập mật khẩu của bạn'],
-        minLength:[6,'Mật khẩu của bạn phải có ít nhất 6 ký tự'],        
+    phone: {
+        type: String,
+        unique: true,
+        sparse: true, // cho phép nhiều document có null
+        required: function () {
+            // Chỉ yêu cầu phone khi login local
+            return this.loginProvider !== 'google' && this.isNew;
+        },
+        trim: true,
+        match: [/^[0-9]{10,11}$/, 'Vui lòng nhập đúng định dạng số điện thoại']
+        },
+    password: {
+        type: String,
+        required: function() {
+            // Chỉ yêu cầu password nếu không phải Google login
+            return this.loginProvider !== 'google' && this.isNew;
+        },
+        minLength: [6, 'Mật khẩu của bạn phải có ít nhất 6 ký tự']
     },
     confirmPassword:{
         type:String,
@@ -41,7 +48,10 @@ const userSchema = new mongoose.Schema({
             message:'Mật khẩu xác nhận không khớp'  
         }
     },
-
+    loginProvider: {
+        type: String,
+        default: 'local'
+    },
     isActive: {
         type: Boolean,
         default: true

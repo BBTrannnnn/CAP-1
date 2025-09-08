@@ -1,5 +1,5 @@
 import express from "express";
-import { register,getAllUsers,getProfileById, updateProfileById,deleteProfileById,login, loginWithGoogle } from "../controllers/User_controller.js";
+import { register,getAllUsers,getProfileById, updateProfileById,deleteProfileById,login, loginWithGoogle,googleCallback } from "../controllers/User_controller.js";
 import { validateRequest } from "../../middlewares/validateReuqest.js";
 import passport from 'passport';
 const router = express.Router();
@@ -16,7 +16,6 @@ router.post("/login", validateRequest, login);
 
 // Route đăng nhập bằng Google
 router.post("/google", loginWithGoogle);
-// Route đăng nhập bằng Facebook
-//router.get("/facebook", facebookAuth);
+router.get("/google/callback", googleCallback);
 
 export default router;

@@ -3,7 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import { errorHandler } from '../middlewares/errorHandler.js';
 import connectDB from './config/database.js';
-import userRoutes from './routes/User-Routes.js';
+import userRoutes from './routes/User-routes.js';
 import cropRoutes from './routes/Crop-routes.js';
 
 
