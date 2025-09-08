@@ -4,6 +4,7 @@ import { validationResult } from 'express-validator';
 import asyncHandler from "express-async-handler";
 import passport from 'passport';
 import { OAuth2Client } from "google-auth-library";
+import axios from 'axios';
 
 
 // Đăng ký user mới 
@@ -305,3 +306,14 @@ export {
   getGoogleAuthUrl,
   googleCallback
 };
+// api cua thoi tiet
+export const getWeather = asyncHandler(async (req, res) => {
+  const { city } = req.query;
+  const apiKey ="be208ad9226951969741a09021c500ae"; // ma api 
+  try {
+    const response = await axios.get(`https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric`);
+    res.json(response.data);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching weather data', error: error.message });
+  }
+});
