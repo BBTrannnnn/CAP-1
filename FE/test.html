@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Google Login Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+        button { padding: 15px 30px; font-size: 16px; background: #4285f4; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #3367d6; }
+    </style>
+</head>
+<body>
+    <h1>Test Google Login</h1>
+    <button onclick="loginWithGoogle()">🔐 Login with Google</button>
+    
+    <script>
+    function loginWithGoogle() {
+        const clientId = '803477306737-pvvd5qe1dkj602h4lkr3f5ed11tksgb4.apps.googleusercontent.com';
+        const redirectUri = 'http://127.0.0.1:5500/FE/test.html';
+        const scope = 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile';
+
+        // URL OAuth2 chuẩn
+        const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+                        `client_id=${clientId}&` +
+                        `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+                        `response_type=token&` +
+                        `scope=${encodeURIComponent(scope)}&` +
+                        `state=state_parameter_passthrough_value`;
+
+        window.location.href = authUrl;
+    }
+</script>
+<script>
+  // Khi quay về từ Google, URL sẽ có dạng .../test.html#access_token=...
+  window.onload = () => {
+    const hash = window.location.hash;
+    if (hash.includes("access_token")) {
+      const params = new URLSearchParams(hash.replace("#", ""));
+      const accessToken = params.get("access_token");
+
+      // Hiển thị token test
+      document.body.innerHTML += `<p><b>Access Token:</b> ${accessToken}</p>`;
+
+      // Gọi backend để login bằng Google
+      fetch("http://localhost:5000/users/google", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ access_token: accessToken })
+      })
+        .then(res => res.json())
+        .then(data => {
+          document.body.innerHTML += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+        });
+    }
+  };
+</script>
+</body>
+</html>
