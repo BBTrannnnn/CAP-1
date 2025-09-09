@@ -359,7 +359,7 @@ const resetPassword = asyncHandler(async (req, res) => {
   if (!isValidOTP) {
     return res.status(400).json({
       success: false,
-      message: 'OTP không hợp lệ hoặc đã hết hạn' 
+      message: 'OTP của bạn không hợp lệ hoặc đã hết hạn' 
     });
   }
 
