@@ -5,6 +5,9 @@ import asyncHandler from "express-async-handler";
 import passport from 'passport';
 import { OAuth2Client } from "google-auth-library";
 
+import sendMail from '../ultils/sendMail.js';
+import crypto from 'crypto';
+
 
 // Đăng ký user mới 
 const register = asyncHandler(async (req, res) => {
@@ -177,7 +180,7 @@ const login = asyncHandler(async (req, res) => {
     });
   }
   // So sánh mật khẩu
-  const isMatch = await user.comparePassword(password);
+  const isMatch = await user.comparePassword(password,user.password);
   if (!isMatch) {
     return res.status(400).json({
       success: false,
@@ -294,6 +297,86 @@ const googleCallback = asyncHandler(async (req, res) => {
   await loginWithGoogle(req, res);
 });
 
+
+//forgot password - chỉ tạo OTP và gửi email
+const forgotPassword = asyncHandler(async (req, res) => {
+  const { email } = req.query; 
+  if (!email) return res.status(400).json({ success: false, message: 'Missing Email' });
+
+  const user = await User.findOne({ email });
+  if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+  // Tạo OTP 6 số
+  const resetOTP = user.createResetOTP(); 
+  await user.save();
+
+  // Gửi email OTP
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h2 style="color: #333;">Đặt lại mật khẩu</h2>
+      <p>Bạn đã yêu cầu đặt lại mật khẩu. Sử dụng mã OTP sau để xác thực:</p>
+      <div style="background: #f5f5f5; padding: 20px; text-align: center; margin: 20px 0; border-radius: 8px;">
+        <h1 style="color: #007bff; font-size: 32px; margin: 0; letter-spacing: 5px;">
+          ${resetOTP}
+        </h1>
+      </div>
+      <p style="color: #666;">Mã OTP này có hiệu lực trong <strong>10 phút</strong>.</p>
+      <p style="color: #666;">Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.</p>
+      <hr style="margin: 20px 0;">
+      <p style="font-size: 12px; color: #999;">Email này được gửi từ Farming Assistant</p>
+    </div>
+  `;
+
+  const data = {
+    email,
+    html,
+    subject: "Mã OTP đặt lại mật khẩu" 
+  };
+  await sendMail(data);
+  return res.status(200).json({
+    success: true,
+    message: 'Mã OTP đã được gửi về email của bạn',
+  });
+});
+
+//reset password - nhập email + OTP + mật khẩu mới
+const resetPassword = asyncHandler(async (req, res) => {
+  const { email, otp, password } = req.body;
+
+  if (!email || !otp || !password) {
+    return res.status(400).json({
+      success: false,
+      message: 'Missing inputs: email, OTP, and password are required' 
+    });
+  }
+
+  const user = await User.findOne({ email });
+  if (!user) return res.status(404).json({ success: false, message: 'User không tồn tại' });
+
+  // Kiểm tra OTP
+  const isValidOTP = user.verifyOTP(otp); 
+  if (!isValidOTP) {
+    return res.status(400).json({
+      success: false,
+      message: 'OTP không hợp lệ hoặc đã hết hạn' 
+    });
+  }
+
+  // Cập nhật mật khẩu
+  user.password = password;
+  user.resetOTP = undefined;      
+  user.resetOTPExpires = undefined; 
+  user.isOTPVerified = false;      
+
+  await user.save();
+
+  return res.status(200).json({
+    success: true,
+    message: 'Cập nhật mật khẩu thành công' 
+  });
+});
+
+
 export { 
   register, 
   getAllUsers, 
@@ -303,5 +386,7 @@ export {
   loginWithGoogle, 
   login,
   getGoogleAuthUrl,
-  googleCallback
+  googleCallback,
+  forgotPassword,
+  resetPassword
 };

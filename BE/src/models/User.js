@@ -1,5 +1,9 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
+import * as CryptoJS from 'crypto-js';
+
+
 
 const userSchema = new mongoose.Schema({
     name:{
@@ -55,7 +59,30 @@ const userSchema = new mongoose.Schema({
     isActive: {
         type: Boolean,
         default: true
+    },
+    refreshToken: {
+        type: String,
+    },
+    passwordChangeAt: {
+        type: String,
+    },
+    passwordResetToken: {
+        type: String,
+    },
+    passwordResetExpires: {
+        type: String,
+    },
+    resetOTP: {
+    type: String
+    },
+    resetOTPExpires: {
+        type: Date
+    },
+    isOTPVerified: {
+        type: Boolean,
+        default: false
     }
+
 },  { timestamps: true
     
 });
@@ -74,6 +101,25 @@ userSchema.pre('save',async function(next){
 // So sánh mật khẩu
 userSchema.methods.comparePassword = async function(candidatePassword) {
     return await bcrypt.compare(candidatePassword, this.password);
+};
+
+// So sánh mật khẩu
+userSchema.methods.comparePassword = async function(candidatePassword) {
+    return await bcrypt.compare(candidatePassword, this.password);
+};
+
+//Tạo OTP 6 số
+userSchema.methods.createResetOTP = function() {
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    this.resetOTP = otp;
+    this.resetOTPExpires = Date.now() + 10 * 60 * 1000; // 10 phút
+    this.isOTPVerified = false;
+    return otp;
+};
+
+//Xác thực OTP
+userSchema.methods.verifyOTP = function(inputOTP) {
+    return this.resetOTP === inputOTP && this.resetOTPExpires > Date.now();
 };
 
 export default mongoose.model('User', userSchema);
