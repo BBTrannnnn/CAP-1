@@ -59,30 +59,7 @@ const userSchema = new mongoose.Schema({
     isActive: {
         type: Boolean,
         default: true
-    },
-    refreshToken: {
-        type: String,
-    },
-    passwordChangeAt: {
-        type: String,
-    },
-    passwordResetToken: {
-        type: String,
-    },
-    passwordResetExpires: {
-        type: String,
-    },
-    resetOTP: {
-    type: String
-    },
-    resetOTPExpires: {
-        type: Date
-    },
-    isOTPVerified: {
-        type: Boolean,
-        default: false
     }
-
 },  { timestamps: true
     
 });
@@ -103,12 +80,6 @@ userSchema.methods.comparePassword = async function(candidatePassword) {
     return await bcrypt.compare(candidatePassword, this.password);
 };
 
-// So sánh mật khẩu
-userSchema.methods.comparePassword = async function(candidatePassword) {
-    return await bcrypt.compare(candidatePassword, this.password);
-};
-
-//Tạo OTP 6 số
 userSchema.methods.createResetOTP = function() {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     this.resetOTP = otp;
