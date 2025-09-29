@@ -551,14 +551,17 @@ const logout = asyncHandler(async (req, res) => {
 });
 
 const forgotPassword = asyncHandler(async (req, res) => {
-  const { email } = req.query; 
+  const { email } = req.query;
   if (!email) return res.status(400).json({ success: false, message: 'Missing Email' });
 
   const user = await User.findOne({ email });
   if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
   // Tạo OTP 6 số
-  const resetOTP = user.createResetOTP(); 
+  const resetOTP = Math.floor(100000 + Math.random() * 900000).toString();
+  user.resetOTP = resetOTP;
+  user.resetOTPExpires = Date.now() + 10 * 60 * 1000; // 10 phút
+  user.isOTPVerified = false;
   await user.save();
 
   // Gửi email OTP
@@ -574,14 +577,14 @@ const forgotPassword = asyncHandler(async (req, res) => {
       <p style="color: #666;">Mã OTP này có hiệu lực trong <strong>10 phút</strong>.</p>
       <p style="color: #666;">Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.</p>
       <hr style="margin: 20px 0;">
-      <p style="font-size: 12px; color: #999;">Email này được gửi từ Farming Assistant</p>
+      <p style="font-size: 12px; color: #999;">Email này được gửi từ FLOW STATE</p>
     </div>
   `;
 
   const data = {
     email,
     html,
-    subject: "Mã OTP đặt lại mật khẩu" 
+    subject: "Mã OTP đặt lại mật khẩu"
   };
   await sendMail(data);
   return res.status(200).json({
@@ -590,41 +593,74 @@ const forgotPassword = asyncHandler(async (req, res) => {
   });
 });
 
-//reset password - nhập email + OTP + mật khẩu mới
-const resetPassword = asyncHandler(async (req, res) => {
-  const { email, otp, password } = req.body;
-
-  if (!email || !otp || !password) {
+//xac thực OTP - nhập email + otp
+const verifyOTP = asyncHandler(async (req, res) => {
+  const { email, otp } = req.body;
+  if (!email || !otp) {
     return res.status(400).json({
       success: false,
-      message: 'Missing inputs: email, OTP, and password are required' 
+      message: 'Missing email or OTP'
     });
   }
-
   const user = await User.findOne({ email });
   if (!user) return res.status(404).json({ success: false, message: 'User không tồn tại' });
 
-  // Kiểm tra OTP
-  const isValidOTP = user.verifyOTP(otp); 
-  if (!isValidOTP) {
+  if (
+    !user.resetOTP ||
+    !user.resetOTPExpires ||
+    user.resetOTP !== otp ||
+    user.resetOTPExpires < Date.now()
+  ) {
     return res.status(400).json({
       success: false,
-      message: 'OTP không hợp lệ hoặc đã hết hạn' ,
-      message: 'OTP của bạn không hợp lệ hoặc đã hết hạn' 
+      message: 'OTP của bạn không hợp lệ hoặc đã hết hạn'
     });
   }
 
-  // Cập nhật mật khẩu
+  user.isOTPVerified = true;
+  await user.save();
+
+  return res.status(200).json({
+    success: true,
+    message: 'OTP xác thực thành công'
+  });
+});
+
+//reset password - nhập email + mat khau moi + xac nhan mat khau
+const resetPassword = asyncHandler(async (req, res) => {
+  const { email, password, confirmPassword } = req.body;
+  if (!email || !password || !confirmPassword) {
+    return res.status(400).json({
+      success: false,
+      message: 'Missing inputs: email, password, and confirmPassword are required'
+    });
+  }
+  if (password !== confirmPassword) {
+    return res.status(400).json({
+      success: false,
+      message: 'Mật khẩu mới và xác nhận mật khẩu không khớp'
+    });
+  }
+  const user = await User.findOne({ email });
+  if (!user) return res.status(404).json({ success: false, message: 'User không tồn tại' });
+
+  if (!user.isOTPVerified) {
+    return res.status(400).json({
+      success: false,
+      message: 'Bạn chưa xác thực OTP'
+    });
+  }
+
   user.password = password;
-  user.resetOTP = undefined;      
-  user.resetOTPExpires = undefined; 
-  user.isOTPVerified = false;      
+  user.resetOTP = undefined;
+  user.resetOTPExpires = undefined;
+  user.isOTPVerified = false;
 
   await user.save();
 
   return res.status(200).json({
     success: true,
-    message: 'Cập nhật mật khẩu thành công' 
+    message: 'Cập nhật mật khẩu thành công'
   });
 });
 
@@ -641,4 +677,6 @@ export {
   googleCallback,
   forgotPassword,
   resetPassword,
+  verifyOTP,
 };
+
