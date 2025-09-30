@@ -641,6 +641,7 @@ const resetPassword = asyncHandler(async (req, res) => {
       message: 'Mật khẩu mới và xác nhận mật khẩu không khớp'
     });
   }
+  
   const user = await User.findOne({ email });
   if (!user) return res.status(404).json({ success: false, message: 'User không tồn tại' });
 
@@ -650,6 +651,7 @@ const resetPassword = asyncHandler(async (req, res) => {
       message: 'Bạn chưa xác thực OTP'
     });
   }
+
 
   user.password = password;
   user.resetOTP = undefined;
