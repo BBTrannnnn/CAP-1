@@ -26,9 +26,9 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, (err) => {
   if (err) {
-    console.error('❌ Lỗi kết nối server:', err);
+    console.error('Lỗi kết nối server:', err);
   } else {
-    console.log(`🚀 Server đang chạy tại: http://localhost:${PORT}`);
+    console.log(` Server đang chạy tại: http://localhost:${PORT}`);
   }
 });
 

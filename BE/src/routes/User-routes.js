@@ -1,5 +1,18 @@
 import express from "express";
-import { register,getAllUsers,getProfileById, updateProfileById,deleteProfileById,login, loginWithGoogle,getGoogleAuthUrl,googleCallback,forgotPassword, resetPassword} from "../controllers/User_controller.js";
+import { 
+  register,
+  getAllUsers,
+  getProfileById, 
+  updateProfileById, 
+  deleteProfileById, 
+  login, 
+  loginWithGoogle,
+  getGoogleAuthUrl, 
+  googleCallback, 
+  forgotPassword, 
+  resetPassword, 
+  verifyOTP
+} from "../controllers/User_controller.js";
 import { validateRequest } from "../../middlewares/validateReuqest.js";
 import authenticateToken from "../../middlewares/auth.js";
 
@@ -21,8 +34,9 @@ router.post("/google", loginWithGoogle);
 router.get("/google/callback", googleCallback);
 router.get("/google/auth-url", getGoogleAuthUrl); 
 
-//Quên mật khẩu - forgot lấy mã từu mail rồi xác nhận qua resetpassword
+//Quên mật khẩu - forgot lấy mã từu mail , rồi nhập otp rồi đổi mật khẩu qua resetpassword
 router.post("/forgotpassword", forgotPassword); // gửi OTP
+router.post('/verifyOTP', verifyOTP);// Xác thực OTP
 router.post("/resetpassword", resetPassword);   // reset password với mã verify OTP
 
 export default router;

@@ -1,5 +1,7 @@
 import nodemailer from 'nodemailer';
 import asyncHandler from 'express-async-handler';
+import dotenv from 'dotenv';
+dotenv.config();
 
 const sendMail = asyncHandler(async ({ email, html, subject  }) => {
     let transporter = nodemailer.createTransport({
@@ -12,12 +14,14 @@ const sendMail = asyncHandler(async ({ email, html, subject  }) => {
         },
     });
 
-    let info = await transporter.sendMail({
-        from: '"Farming Assistant" <no-reply@farmassistant.com>',
+    const mailOptions = {
+        from: `"${process.env.EMAIL_SENDER_NAME}" <${process.env.EMAIL_NAME}>`,
         to: email,
-        subject: subject,
-        html: html,
-    });
+        subject,
+        html,
+    };
+
+    let info = await transporter.sendMail(mailOptions);
 
     return info;
 });

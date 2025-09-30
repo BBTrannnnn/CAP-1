@@ -59,7 +59,10 @@ const userSchema = new mongoose.Schema({
     isActive: {
         type: Boolean,
         default: true
-    }
+    },
+    resetOTP: { type: String },
+    resetOTPExpires: { type: Number },
+    isOTPVerified: { type: Boolean, default: false }
 },  { timestamps: true
     
 });
