@@ -4,6 +4,7 @@ import cors from 'cors';
 import { errorHandler } from '../middlewares/errorHandler.js';
 import connectDB from './config/database.js';
 import userRoutes from './routes/User-routes.js';
+import SurveyRoutes from './routes/Survey-routes.js';
 
 
 
@@ -16,6 +17,7 @@ app.use(express.json());
 
 
 app.use('/api/users', userRoutes);
+app.use('/api/survey', SurveyRoutes);
 
 app.use(errorHandler);
 

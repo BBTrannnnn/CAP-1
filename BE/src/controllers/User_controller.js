@@ -432,7 +432,7 @@ const getGoogleAuthUrl = (req, res) => {
   });
 };
 
-// Callback Google
+
 // Callback Google
 const googleCallback = asyncHandler(async (req, res) => {
   const { code } = req.query;
