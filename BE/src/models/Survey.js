@@ -53,6 +53,8 @@ const habitSuggestionSchema = new mongoose.Schema({
 const Question = mongoose.model('Question', questionSchema);
 const SurveyResponse = mongoose.model('SurveyResponse', surveyResponseSchema);
 const UserAnalysis = mongoose.model('UserAnalysis', userAnalysisSchema);
+
+
 const HabitSuggestion = mongoose.model('HabitSuggestion', habitSuggestionSchema);
 
 export {
