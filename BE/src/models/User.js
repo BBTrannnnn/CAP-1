@@ -19,6 +19,7 @@ const userSchema = new mongoose.Schema({
         unique:true,
         match:[/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,'Vui lòng nhập đúng định dạng email']
     },
+    // Bỏ phân quyền admin/user – chỉ giữ các trường cần thiết cho Sleep & Auth
     phone: {
         type: String,
         unique: true,
@@ -60,9 +61,12 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: true
     },
+    //OTP cho việc reset password
     resetOTP: { type: String },
     resetOTPExpires: { type: Number },
-    isOTPVerified: { type: Boolean, default: false }
+    isOTPVerified: { type: Boolean, default: false },
+    // Danh sách nội dung thư giãn/truyện yêu thích
+    favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: 'SleepContent' }]
 },  { timestamps: true
     
 });
@@ -83,6 +87,7 @@ userSchema.methods.comparePassword = async function(candidatePassword) {
     return await bcrypt.compare(candidatePassword, this.password);
 };
 
+//Xác thực OTP
 userSchema.methods.createResetOTP = function() {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     this.resetOTP = otp;
@@ -91,7 +96,6 @@ userSchema.methods.createResetOTP = function() {
     return otp;
 };
 
-//Xác thực OTP
 userSchema.methods.verifyOTP = function(inputOTP) {
     return this.resetOTP === inputOTP && this.resetOTPExpires > Date.now();
 };

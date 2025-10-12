@@ -1,7 +1,7 @@
 import SleepLog from "../models/SleepLog.js";
 import mongoose from "mongoose";
 
-// ================= Helpers =================
+// Tính durationMin từ sleepAt & wakeAt
 const calcDurationMin = (sleepAt, wakeAt) => {
   const s = new Date(sleepAt).getTime();
   const w = new Date(wakeAt).getTime();
@@ -134,6 +134,11 @@ export const createSleepLog = async (req, res, next) => {
     let durationMin; try { durationMin = calcDurationMin(sleepAt, wakeAt); } catch (err) { return res.status(400).json({ success: false, message: err.message }); }
     const nowTs = Date.now(); const sTs = new Date(sleepAt).getTime(); const wTs = new Date(wakeAt).getTime();
     if (sTs > nowTs || wTs > nowTs) return res.status(400).json({ success: false, message: "Không được nhập thời gian trong tương lai" });
+    // Giới hạn chỉ cho phép lưu nhật ký trong 7 ngày gần đây (dựa theo wakeAt)
+    const cutoffTs = nowTs - 7 * 864e5; // 7 ngày tính theo mili-giây
+    if (wTs < cutoffTs) {
+      return res.status(400).json({ success: false, message: "Chỉ được lưu nhật ký trong 7 ngày gần đây (wakeAt phải trong 7 ngày gần nhất)" });
+    }
     if (durationMin < 15) return res.status(400).json({ success: false, message: "Thời lượng quá ngắn (<15 phút)" });
     if (durationMin > 12 * 60) return res.status(400).json({ success: false, message: "Thời lượng quá dài (>12 giờ)" });
     const overlap = await SleepLog.findOne({ userId, sleepAt: { $lt: new Date(wakeAt) }, wakeAt: { $gt: new Date(sleepAt) } });
@@ -151,9 +156,13 @@ export const listSleepLogs = async (req, res, next) => {
     const page = Math.max(1, parseInt(req.query.page || "1"));
     const limit = Math.min(50, Math.max(1, parseInt(req.query.limit || "10")));
     const skip = (page - 1) * limit;
+    //chỉ trả về lịch sử trong 7 ngày gần đây (lọc theo wakeAt)
+    const now = Date.now();
+    const cutoff = new Date(now - 7 * 864e5);
+    const query = { userId, wakeAt: { $gte: cutoff } };
     const [items, total] = await Promise.all([
-      SleepLog.find({ userId }).sort({ sleepAt: -1 }).skip(skip).limit(limit),
-      SleepLog.countDocuments({ userId })
+      SleepLog.find(query).sort({ sleepAt: -1 }).skip(skip).limit(limit),
+      SleepLog.countDocuments(query)
     ]);
     res.json({ success: true, data: items, pagination: { page, limit, total, pages: Math.ceil(total / limit) } });
   } catch (e) { next(e); }
@@ -162,6 +171,87 @@ export const listSleepLogs = async (req, res, next) => {
 export const sleepStats = async (req, res, next) => {
   try {
     const userId = toObjectId(getUserId(req)); if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
+    const [summary, trend] = await Promise.all([ buildStats(userId, 7), buildTrend(userId, 7) ]);
+    const evaluation = evaluateSleep(summary);
+    res.json({ success: true, weekly: { summary, trend }, evaluation });
+  } catch (e) { next(e); }
+};
+
+// Update a sleep log
+export const updateSleepLog = async (req, res, next) => {
+  try {
+    const userId = toObjectId(getUserId(req));
+    if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
+    const { id } = req.params;
+    if (!mongoose.isValidObjectId(id)) return res.status(400).json({ success: false, message: "Id không hợp lệ" });
+    const existing = await SleepLog.findOne({ _id: id, userId });
+    if (!existing) return res.status(404).json({ success: false, message: "Không tìm thấy bản ghi" });
+
+    // Parse/keep times
+    const hasTimePayload = ['sleepAt','wakeAt','date','sleepTime','wakeTime'].some(k => Object.prototype.hasOwnProperty.call(req.body || {}, k));
+    let times;
+    if (hasTimePayload) {
+      try { times = parseUiTimes(req.body); } catch (err) { return res.status(400).json({ success: false, message: err.message }); }
+    } else {
+      times = { sleepAt: existing.sleepAt.toISOString(), wakeAt: existing.wakeAt.toISOString() };
+    }
+    const { sleepAt, wakeAt } = times;
+
+    // Other fields
+    let quality = existing.quality;
+    if (req.body.quality != null) {
+      const qNum = Number(req.body.quality);
+      if (isNaN(qNum) || qNum < 1 || qNum > 5) return res.status(400).json({ success: false, message: "quality phải là số 1-5" });
+      quality = qNum;
+    }
+    const wakeMood = req.body.wakeMood ?? existing.wakeMood;
+    const factors = req.body.factors ?? existing.factors;
+    const notes = req.body.notes ?? existing.notes;
+
+    // Time validations
+    let durationMin; try { durationMin = calcDurationMin(sleepAt, wakeAt); } catch (err) { return res.status(400).json({ success: false, message: err.message }); }
+    const nowTs = Date.now(); const sTs = new Date(sleepAt).getTime(); const wTs = new Date(wakeAt).getTime();
+    if (sTs > nowTs || wTs > nowTs) return res.status(400).json({ success: false, message: "Không được nhập thời gian trong tương lai" });
+    const cutoffTs = nowTs - 7 * 864e5;
+    if (wTs < cutoffTs) return res.status(400).json({ success: false, message: "Chỉ được sửa nhật ký trong 7 ngày gần đây (wakeAt phải trong 7 ngày gần nhất)" });
+    if (durationMin < 15) return res.status(400).json({ success: false, message: "Thời lượng quá ngắn (<15 phút)" });
+    if (durationMin > 12 * 60) return res.status(400).json({ success: false, message: "Thời lượng quá dài (>12 giờ)" });
+
+    // Overlap excluding current
+    const overlap = await SleepLog.findOne({
+      userId,
+      _id: { $ne: existing._id },
+      sleepAt: { $lt: new Date(wakeAt) },
+      wakeAt: { $gt: new Date(sleepAt) }
+    });
+    if (overlap) return res.status(409).json({ success: false, message: "Khoảng thời gian bị trùng với bản ghi khác" });
+
+    existing.sleepAt = new Date(sleepAt);
+    existing.wakeAt = new Date(wakeAt);
+    existing.durationMin = durationMin;
+    existing.quality = quality;
+    existing.wakeMood = wakeMood;
+    existing.factors = factors;
+    existing.notes = notes;
+    await existing.save();
+
+    const [summary, trend] = await Promise.all([ buildStats(userId, 7), buildTrend(userId, 7) ]);
+    const evaluation = evaluateSleep(summary);
+    res.json({ success: true, data: existing, weekly: { summary, trend }, evaluation });
+  } catch (e) { next(e); }
+};
+
+// Delete a sleep log
+export const deleteSleepLog = async (req, res, next) => {
+  try {
+    const userId = toObjectId(getUserId(req));
+    if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
+    const { id } = req.params;
+    if (!mongoose.isValidObjectId(id)) return res.status(400).json({ success: false, message: "Id không hợp lệ" });
+    const existing = await SleepLog.findOne({ _id: id, userId });
+    if (!existing) return res.status(404).json({ success: false, message: "Không tìm thấy bản ghi" });
+
+    await SleepLog.deleteOne({ _id: existing._id, userId });
     const [summary, trend] = await Promise.all([ buildStats(userId, 7), buildTrend(userId, 7) ]);
     const evaluation = evaluateSleep(summary);
     res.json({ success: true, weekly: { summary, trend }, evaluation });

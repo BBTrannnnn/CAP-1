@@ -1,7 +1,6 @@
 // middlewares/auth.js
 import jwt from 'jsonwebtoken';
 import User from '../src/models/User.js';
-import cors from 'cors';
 
 const authenticateToken = async (req, res, next) => {
   try {
@@ -18,9 +17,15 @@ const authenticateToken = async (req, res, next) => {
 
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
-    // Tìm user trong database
-    const user = await User.findById(decoded.id).select('-password');
+
+    // Lấy userId từ token 
+    const userId = decoded?.id || decoded?._id || decoded?.userId;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'Token payload invalid.' });
+    }
+
+  // Tìm user trong database (bao gồm favorites để các controller có thể sử dụng req.user.save)
+  const user = await User.findById(userId).select('-password -confirmPassword');
     if (!user || !user.isActive) {
       return res.status(401).json({ 
         success: false,
@@ -28,7 +33,7 @@ const authenticateToken = async (req, res, next) => {
       });
     }
 
-    // Thêm user info vào req object
+  // Gắn trực tiếp user doc vào req để các controller (sleep, profile) có thể thao tác (populate/save)
     req.user = user;
     next();
   } catch (error) {

@@ -9,16 +9,16 @@ import { OAuth2Client } from "google-auth-library";
 import sendMail from '../ultils/sendMail.js';
 import crypto from 'crypto';
 
-// Helper function để tạo JWT token
+// Helper function để tạo JWT token (không dùng role)
 const generateToken = (user) => {
   return jwt.sign(
-    { 
-      id: user._id, 
+    {
+      id: user._id,
       email: user.email,
-      loginProvider: user.loginProvider 
+      loginProvider: user.loginProvider
     },
     process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
+    { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
   );
 };
 

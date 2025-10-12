@@ -21,10 +21,18 @@ const router = express.Router();
 
  // Routes
  router.post('/register',validateRequest, register);
- router.get('/',getAllUsers);
+ // Danh sách users (nếu không cần admin, có thể ẩn hoặc giữ cho dev). Để đơn giản: yêu cầu đăng nhập.
+ router.get('/', authenticateToken, getAllUsers);
+ // Debug: xem user hiện tại lấy từ token/DB
+ router.get('/me', authenticateToken, (req, res) => {
+   res.json({ success: true, user: req.user });
+ });
+ // Bỏ các route admin/debug/bootstrap
  router.put('/:id',validateRequest,authenticateToken,updateProfileById);
  router.get('/:id',authenticateToken,getProfileById);
- router.delete('/:id',authenticateToken,deleteProfileById)
+router.delete('/:id',authenticateToken,deleteProfileById)
+
+// Bỏ các route admin: cập nhật role, toggle active
 
 // Route đăng nhập (email/sđt + password)
 router.post("/login", validateRequest, login);
