@@ -57,6 +57,8 @@ const userSchema = new mongoose.Schema({
         type: String,
         default: 'local'
     },
+    // Role: 'user' | 'admin' - cho phép quản lý nội dung bởi admin
+    role: { type: String, enum: ['user', 'admin'], default: 'user' },
     isActive: {
         type: Boolean,
         default: true
@@ -66,7 +68,7 @@ const userSchema = new mongoose.Schema({
     resetOTPExpires: { type: Number },
     isOTPVerified: { type: Boolean, default: false },
     // Danh sách nội dung thư giãn/truyện yêu thích
-    favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: 'SleepContent' }]
+    // favorites moved to separate collection UserFavoriteSound (see models/UserFavoriteSound.js)
 },  { timestamps: true
     
 });

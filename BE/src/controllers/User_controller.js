@@ -9,6 +9,59 @@ import { OAuth2Client } from "google-auth-library";
 import sendMail from '../ultils/sendMail.js';
 import crypto from 'crypto';
 
+// Admin: cập nhật vai trò user (user <-> admin)
+const updateUserRole = asyncHandler(async (req, res) => {
+  const targetUserId = req.params.id;
+  const { role } = req.body;
+
+  // Validate ObjectId
+  if (!targetUserId.match(/^[0-9a-fA-F]{24}$/)) {
+    return res.status(400).json({ success: false, message: 'Định dạng user ID không hợp lệ' });
+  }
+
+  // Validate role
+  const allowedRoles = ['user', 'admin'];
+  if (!role || !allowedRoles.includes(role)) {
+    return res.status(400).json({ success: false, message: 'Giá trị role không hợp lệ (chỉ chấp nhận: user, admin)' });
+  }
+
+  const targetUser = await User.findById(targetUserId);
+  if (!targetUser) {
+    return res.status(404).json({ success: false, message: 'Không tìm thấy user' });
+  }
+
+  // Không cho tự hạ cấp chính mình (tránh mất quyền quản trị)
+  if (targetUser._id.toString() === req.user._id.toString() && role !== 'admin') {
+    return res.status(400).json({ success: false, message: 'Bạn không thể tự hạ cấp vai trò của chính mình.' });
+  }
+
+  // Nếu đang hạ cấp một admin về user, đảm bảo vẫn còn ít nhất một admin khác
+  if (targetUser.role === 'admin' && role === 'user') {
+    const otherAdminsCount = await User.countDocuments({ role: 'admin', _id: { $ne: targetUser._id } });
+    if (otherAdminsCount === 0) {
+      return res.status(400).json({ success: false, message: 'Không thể hạ cấp admin cuối cùng trong hệ thống.' });
+    }
+  }
+
+  targetUser.role = role;
+  await targetUser.save({ validateModifiedOnly: true });
+
+  return res.status(200).json({
+    success: true,
+    message: 'Cập nhật vai trò thành công',
+    data: {
+      id: targetUser._id,
+      name: targetUser.name,
+      email: targetUser.email,
+      phone: targetUser.phone,
+      role: targetUser.role,
+      isActive: targetUser.isActive,
+      createdAt: targetUser.createdAt,
+      updatedAt: targetUser.updatedAt,
+    },
+  });
+});
+
 // Helper function để tạo JWT token (không dùng role)
 const generateToken = (user) => {
   return jwt.sign(
@@ -164,6 +217,16 @@ const updateProfileById = asyncHandler(async (req, res) => {
     });
   }
 
+  // Chỉ cho phép chủ sở hữu hoặc admin cập nhật
+  const isOwner = req.user?._id?.toString() === userId;
+  const isAdmin = req.user?.role === 'admin';
+  if (!isOwner && !isAdmin) {
+    return res.status(403).json({
+      success: false,
+      message: 'Bạn không có quyền cập nhật hồ sơ của người khác',
+    });
+  }
+
   // Cập nhật name nếu có
   if (name && name.trim()) {
     user.name = name.trim();
@@ -228,13 +291,26 @@ const deleteProfileById = asyncHandler(async (req, res) => {
     });
   }
 
-  const user = await User.findByIdAndDelete(userId);
-  if (!user) {
+  // Tìm user trước khi xóa để kiểm tra quyền
+  const target = await User.findById(userId);
+  if (!target) {
     return res.status(404).json({
       success: false,
       message: "User not found",
     });
   }
+
+  // Chỉ cho phép chủ sở hữu hoặc admin xóa
+  const isOwner = req.user?._id?.toString() === userId;
+  const isAdmin = req.user?.role === 'admin';
+  if (!isOwner && !isAdmin) {
+    return res.status(403).json({
+      success: false,
+      message: 'Bạn không có quyền xóa tài khoản của người khác',
+    });
+  }
+
+  const user = await User.findByIdAndDelete(userId);
 
   res.status(200).json({
     success: true,
@@ -680,5 +756,6 @@ export {
   forgotPassword,
   resetPassword,
   verifyOTP,
+  updateUserRole,
 };
 

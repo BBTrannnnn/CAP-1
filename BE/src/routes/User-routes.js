@@ -11,18 +11,21 @@ import {
   googleCallback, 
   forgotPassword, 
   resetPassword, 
-  verifyOTP
+  verifyOTP,
+  updateUserRole,
 } from "../controllers/User_controller.js";
 import { validateRequest } from "../../middlewares/validateReuqest.js";
 import authenticateToken from "../../middlewares/auth.js";
+import requireAdmin from "../../middlewares/requireAdmin.js";
+import { body } from "express-validator";
 
 
 const router = express.Router();
 
  // Routes
  router.post('/register',validateRequest, register);
- // Danh sách users (nếu không cần admin, có thể ẩn hoặc giữ cho dev). Để đơn giản: yêu cầu đăng nhập.
- router.get('/', authenticateToken, getAllUsers);
+ // Danh sách users: CHỈ admin được xem
+ router.get('/', authenticateToken, requireAdmin, getAllUsers);
  // Debug: xem user hiện tại lấy từ token/DB
  router.get('/me', authenticateToken, (req, res) => {
    res.json({ success: true, user: req.user });
@@ -33,6 +36,16 @@ const router = express.Router();
 router.delete('/:id',authenticateToken,deleteProfileById)
 
 // Bỏ các route admin: cập nhật role, toggle active
+
+// Admin: cập nhật vai trò user
+router.patch(
+  '/:id/role',
+  authenticateToken,
+  requireAdmin,
+  body('role').isIn(['user', 'admin']).withMessage('role phải là "user" hoặc "admin"'),
+  validateRequest,
+  updateUserRole
+);
 
 // Route đăng nhập (email/sđt + password)
 router.post("/login", validateRequest, login);

@@ -8,17 +8,24 @@ const sleepContentSchema = new mongoose.Schema({
     enum: ['sound', 'story'],
     required: true
   },
-  title: { type: String, required: true, trim: true },
+  name: { type: String, required: true, trim: true },
   slug: { type: String, required: true, unique: true, lowercase: true, index: true },
   description: { type: String },
   // Thời lượng tính bằng giây để chính xác, FE có thể hiển thị displayDuration
-  durationSec: { type: Number, required: true },
+  duration: { type: Number, required: true },
   displayDuration: { type: String },
   audioUrl: { type: String, required: true },
-  coverImage: { type: String },
+  // small image/thumbnail to show in lists
+  thumbnail: { type: String },
+  // alternative cover/icon
+  icon: { type: String },
   category: { type: String }, // ví dụ: rain, ocean, forest, white-noise, adventure
   tags: [{ type: String }],
   language: { type: String, default: 'vi' },
+  // metrics
+  playCount: { type: Number, default: 0 },
+  viewType: { type: String },
+  rating: { type: Number, min: 0, max: 5 },
   isLoopRecommended: { type: Boolean, default: false },
   premium: { type: Boolean, default: false },
   sortOrder: { type: Number, default: 0 },

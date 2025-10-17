@@ -1,5 +1,7 @@
 import SleepContent from '../models/SleepContent.js';
 import mongoose from 'mongoose';
+import UserStoryHistory from '../models/UserStoryHistory.js';
+import UserFavoriteSound from '../models/UserFavoriteSound.js';
 
 // Lấy userId từ request (middleware auth đã gắn)
 const getUserId = (req) => req.user?._id?.toString?.() || req.user?.id;
@@ -12,9 +14,9 @@ export const listSleepContent = async (req, res, next) => {
     const l = Math.min(50, Math.max(1, parseInt(limit)));
     const filter = { active: true };
     if (type) filter.type = type;
-    if (tag) filter.tags = tag;
+  if (tag) filter.tags = tag;
     if (category) filter.category = category;
-    if (search) filter.title = { $regex: search.trim(), $options: 'i' };
+  if (search) filter.name = { $regex: search.trim(), $options: 'i' };
 
     const skip = (p - 1) * l;
     const [items, total] = await Promise.all([
@@ -24,24 +26,26 @@ export const listSleepContent = async (req, res, next) => {
 
     const userId = getUserId(req);
     let favoriteSet = new Set();
-    if (userId && req.user?.favorites?.length) {
-      favoriteSet = new Set(req.user.favorites.map(id => id.toString()));
+    if (userId) {
+      const favs = await UserFavoriteSound.find({ userId }).select('soundId').lean();
+      favoriteSet = new Set(favs.map(f => f.soundId.toString()));
     }
 
     const data = items.map(it => ({
       id: it._id,
       type: it.type,
-      title: it.title,
+      name: it.name,
       slug: it.slug,
       description: it.type === 'story' ? it.description : undefined,
-      durationSec: it.durationSec,
+      duration: it.duration,
       displayDuration: it.displayDuration,
       audioUrl: it.audioUrl,
-      coverImage: it.coverImage,
+      thumbnail: it.thumbnail,
       category: it.category,
       tags: it.tags,
       isLoopRecommended: it.isLoopRecommended,
       premium: it.premium,
+      playCount: it.playCount || 0,
       favorite: favoriteSet.has(it._id.toString())
     }));
 
@@ -52,7 +56,7 @@ export const listSleepContent = async (req, res, next) => {
 // Chi tiết theo id hoặc slug
 export const getSleepContent = async (req, res, next) => {
   try {
-    const { idOrSlug } = req.params;
+  const { idOrSlug } = req.params;
     let doc = null;
     if (mongoose.isValidObjectId(idOrSlug)) {
       doc = await SleepContent.findOne({ _id: idOrSlug, active: true }).lean();
@@ -62,8 +66,30 @@ export const getSleepContent = async (req, res, next) => {
     }
     if (!doc) return res.status(404).json({ success: false, message: 'Không tìm thấy nội dung' });
     const userId = getUserId(req);
-    const favorite = !!(userId && req.user?.favorites?.some(f => f.toString() === doc._id.toString()));
-    res.json({ success: true, data: { ...doc, favorite } });
+    let favorite = false;
+    if (userId) {
+      const f = await UserFavoriteSound.findOne({ userId, soundId: doc._id });
+      favorite = !!f;
+    }
+    // normalize response fields to match schema image
+    const out = {
+      id: doc._id,
+      type: doc.type,
+      name: doc.name,
+      slug: doc.slug,
+      description: doc.description,
+      duration: doc.duration,
+      displayDuration: doc.displayDuration,
+      audioUrl: doc.audioUrl,
+      thumbnail: doc.thumbnail,
+      category: doc.category,
+      icon: doc.icon,
+      tags: doc.tags,
+      playCount: doc.playCount || 0,
+      rating: doc.rating,
+      favorite
+    };
+    res.json({ success: true, data: out });
   } catch (e) { next(e); }
 };
 
@@ -79,18 +105,14 @@ export const toggleFavorite = async (req, res, next) => {
     }
     if (!content) content = await SleepContent.findOne({ slug: idOrSlug.toLowerCase(), active: true });
     if (!content) return res.status(404).json({ success: false, message: 'Không tìm thấy nội dung' });
-
-    const idx = user.favorites.findIndex(id => id.toString() === content._id.toString());
-    let favState;
-    if (idx >= 0) {
-      user.favorites.splice(idx, 1);
-      favState = false;
-    } else {
-      user.favorites.push(content._id);
-      favState = true;
+    // use UserFavoriteSound collection
+    const existing = await UserFavoriteSound.findOne({ userId: user._id, soundId: content._id });
+    if (existing) {
+      await existing.deleteOne();
+      return res.json({ success: true, favorite: false });
     }
-    await user.save();
-    res.json({ success: true, favorite: favState });
+    await UserFavoriteSound.create({ userId: user._id, soundId: content._id });
+    return res.json({ success: true, favorite: true });
   } catch (e) { next(e); }
 };
 
@@ -98,17 +120,81 @@ export const toggleFavorite = async (req, res, next) => {
 export const listFavorites = async (req, res, next) => {
   try {
     if (!req.user) return res.status(401).json({ success: false, message: 'Unauthorized' });
-    await req.user.populate({ path: 'favorites', match: { active: true }, options: { sort: { sortOrder: 1 } } });
-    const data = req.user.favorites.map(it => ({
+    const favs = await UserFavoriteSound.find({ userId: req.user._id }).sort({ addedAt: -1 }).lean();
+    const ids = favs.map(f => f.soundId);
+    const items = await SleepContent.find({ _id: { $in: ids }, active: true }).lean();
+    const data = items.map(it => ({
       id: it._id,
       type: it.type,
-      title: it.title,
+      name: it.name,
       slug: it.slug,
-      durationSec: it.durationSec,
+      duration: it.duration,
       displayDuration: it.displayDuration,
       audioUrl: it.audioUrl,
+      thumbnail: it.thumbnail,
       favorite: true
     }));
     res.json({ success: true, data });
+  } catch (e) { next(e); }
+};
+
+// Admin: create content
+export const createSleepContent = async (req, res, next) => {
+  try {
+    const payload = req.body;
+    const doc = new SleepContent(payload);
+    await doc.save();
+    res.status(201).json({ success: true, data: doc });
+  } catch (e) { next(e); }
+};
+
+// Admin: update
+export const updateSleepContent = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.isValidObjectId(id)) return res.status(400).json({ success: false, message: 'Invalid id' });
+    const updated = await SleepContent.findByIdAndUpdate(id, { $set: req.body }, { new: true });
+    if (!updated) return res.status(404).json({ success: false, message: 'Not found' });
+    res.json({ success: true, data: updated });
+  } catch (e) { next(e); }
+};
+
+// Admin: delete (soft)
+export const deleteSleepContent = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.isValidObjectId(id)) return res.status(400).json({ success: false, message: 'Invalid id' });
+    const updated = await SleepContent.findByIdAndUpdate(id, { $set: { active: false } }, { new: true });
+    if (!updated) return res.status(404).json({ success: false, message: 'Not found' });
+    res.json({ success: true, data: updated });
+  } catch (e) { next(e); }
+};
+
+// Track play: increment playCount and record user story history
+export const recordPlay = async (req, res, next) => {
+  try {
+    const { idOrSlug } = req.params;
+    let content = null;
+    if (mongoose.isValidObjectId(idOrSlug)) content = await SleepContent.findById(idOrSlug);
+    if (!content) content = await SleepContent.findOne({ slug: idOrSlug.toLowerCase() });
+    if (!content) return res.status(404).json({ success: false, message: 'Content not found' });
+
+    // increment playCount
+    content.playCount = (content.playCount || 0) + 1;
+    await content.save();
+
+    // If user logged in, update history
+    if (req.user) {
+      const userId = req.user._id;
+      const history = await UserStoryHistory.findOneAndUpdate(
+        { userId, storyId: content._id },
+        { $set: { lastViewedAt: new Date() } , $setOnInsert: { lastPosition: 0 } },
+        { upsert: true, new: true }
+      );
+      // return both
+      return res.json({ success: true, data: { content, history } });
+    }
+
+    res.json({ success: true, data: content });
   } catch (e) { next(e); }
 };
