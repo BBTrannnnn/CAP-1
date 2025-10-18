@@ -6,7 +6,7 @@ import asyncHandler from "express-async-handler";
 import { OAuth2Client } from "google-auth-library";
 
 
-import sendMail from '../ultils/sendMail.js';
+import sendMail from '../utils/sendMail.js';
 import crypto from 'crypto';
 
 // Admin: cập nhật vai trò user (user <-> admin)

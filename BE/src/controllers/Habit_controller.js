@@ -50,13 +50,14 @@ const createHabit = asyncHandler(async (req, res) => {
     color,
     frequency,
     customFrequency,
-    specificDays,
+
     category,
     habitType,
+    startDate,      
+    endDate,
     targetDays,
     reminders,
-    motivation,
-    reward,
+
     isFromSuggestion,
     suggestionId
   } = req.body;
@@ -80,13 +81,14 @@ const createHabit = asyncHandler(async (req, res) => {
     color: color || '#3B82F6',
     frequency: frequency || 'daily',
     customFrequency,
-    specificDays,
+
     category,
     habitType: habitType || 'build',
+    startDate: startDate || Date.now(),
+    endDate,
     targetDays: targetDays || 21,
     reminders: reminders || [],
-    motivation,
-    reward,
+
     isFromSuggestion: isFromSuggestion || false,
     suggestionId,
     order: habitCount
@@ -125,8 +127,7 @@ const updateHabit = asyncHandler(async (req, res) => {
 
   const allowedUpdates = [
     'name', 'description', 'icon', 'color', 'frequency', 'customFrequency',
-    'specificDays', 'category', 'habitType', 'targetDays', 'reminders',
-    'motivation', 'reward', 'isActive', 'order'
+    'category', 'habitType', 'targetDays', 'reminders', 'isActive', 'order'
   ];
 
   const updates = {};
@@ -163,8 +164,7 @@ const deleteHabit = asyncHandler(async (req, res) => {
       message: 'Habit not found'
     });
   }
-
-  await Habit.findByIdAndUpdate(habitId, { isActive: false });
+  await Habit.findByIdAndDelete(habitId, { isActive: false });
 
   res.json({
     success: true,
@@ -180,9 +180,8 @@ const deleteHabit = asyncHandler(async (req, res) => {
 const trackHabit = asyncHandler(async (req, res) => {
   const { habitId } = req.params;
   const userId = req.user.id;
-  const { status, date, notes, mood } = req.body; // status: 'completed', 'skipped', 'failed'
+  const { status, notes, date } = req.body; // THÊM date vào đây
 
-  // Validate habit exists and belongs to user
   const habit = await Habit.findOne({ _id: habitId, userId, isActive: true });
   if (!habit) {
     return res.status(404).json({
@@ -191,24 +190,22 @@ const trackHabit = asyncHandler(async (req, res) => {
     });
   }
 
-  // Parse date or use today
+  // Nếu có date thì dùng, không thì lấy hôm nay
   const trackingDate = date ? new Date(date) : new Date();
   trackingDate.setHours(0, 0, 0, 0);
 
   try {
-    // Upsert tracking record
+
     const tracking = await HabitTracking.findOneAndUpdate(
       { userId, habitId, date: trackingDate },
       {
         status,
         completedAt: status === 'completed' ? new Date() : null,
-        notes: notes || '',
-        mood
+        notes: notes || ''
       },
       { upsert: true, new: true }
     );
 
-    // Update habit statistics
     await updateHabitStats(habitId, userId);
 
     res.json({
@@ -219,10 +216,10 @@ const trackHabit = asyncHandler(async (req, res) => {
 
   } catch (error) {
     if (error.code === 11000) {
-      // Duplicate key error - try to update existing record
+
       const existingTracking = await HabitTracking.findOneAndUpdate(
         { userId, habitId, date: trackingDate },
-        { status, notes, mood, completedAt: status === 'completed' ? new Date() : null },
+        { status, notes, completedAt: status === 'completed' ? new Date() : null },
         { new: true }
       );
 
@@ -383,6 +380,70 @@ const getHabitTemplates = asyncHandler(async (req, res) => {
         .slice(0, 3)
         .map(([category, score]) => ({ category, score }))
     } : null
+  });
+});
+
+const createHabitFromTemplate = asyncHandler(async (req, res) => {
+  const userId = req.user.id;
+  const { templateId } = req.params;
+  const customizations = req.body?.customizations || {};
+
+  // Lấy template
+  const template = await HabitTemplate.findById(templateId);
+  
+  if (!template) {
+    res.status(404);
+    throw new Error('Template not found');
+  }
+
+  // Tạo habit mới từ template
+  const newHabit = await Habit.create({
+    userId,
+    name: customizations?.name || template.name,
+    description: customizations?.description || template.description,
+    category: template.category,
+    icon: customizations?.icon || template.defaultIcon,
+    color: customizations?.color || template.defaultColor,
+    frequency: customizations?.frequency || template.suggestedFrequency,
+    habitType: customizations?.habitType || 'build',
+    isActive: true,
+    startDate: customizations?.startDate || Date.now(),
+    targetDays: customizations?.targetDays || 21,
+    reminders: customizations?.reminders || [],
+    customFrequency: customizations?.customFrequency || {
+      times: 1,
+      period: 'day'
+    },
+    isFromSuggestion: false,
+    suggestionId: null
+  });
+
+  // Cập nhật usageCount của template
+  await HabitTemplate.findByIdAndUpdate(templateId, {
+    $inc: { usageCount: 1 }
+  });
+
+  res.status(201).json({
+    success: true,
+    habit: newHabit,
+    message: 'Habit created successfully from template'
+  });
+});
+const getSurveyQuestions = asyncHandler(async (req, res) => {
+  res.json({
+    success: true,
+    questions: surveyQuestions,
+    totalQuestions: surveyQuestions.length,
+    categories: [
+      'health',
+      'productivity', 
+      'learning',
+      'mindful',
+      'finance',
+      'digital',
+      'social',
+      'fitness'
+    ]
   });
 });
 
@@ -637,55 +698,116 @@ const updateHabitsOrder = asyncHandler(async (req, res) => {
   }
 });
 
-// ==================== Helper Functions ====================
+
 
 // Helper function to update habit statistics
 async function updateHabitStats(habitId, userId) {
   const habit = await Habit.findById(habitId);
   if (!habit) return;
 
-  // Get all tracking records for this habit
-  const allTracking = await HabitTracking.find({ habitId, userId }).sort({ date: 1 });
+  // Lấy tất cả tracking đã completed, sắp xếp từ MỚI → CŨ
+  const completedTracking = await HabitTracking.find({ 
+    habitId, 
+    userId, 
+    status: 'completed' 
+  }).sort({ date: -1 }); // -1 = descending (mới nhất trước)
+
+  // Nếu chưa có lần hoàn thành nào
+  if (completedTracking.length === 0) {
+    await Habit.findByIdAndUpdate(habitId, {
+      totalCompletions: 0,
+      currentStreak: 0,
+      longestStreak: 0,
+      completionRate: 0,
+      lastCompletedDate: null
+    });
+    return;
+  }
+
+  // ========== TÍNH CURRENT STREAK ==========
+  // Streak = số ngày LIÊN TIẾP hoàn thành tính từ hôm nay về trước
   
-  const completedDays = allTracking.filter(t => t.status === 'completed');
-  const totalCompletions = completedDays.length;
-  
-  // Calculate current streak
   let currentStreak = 0;
-  const sortedTracking = allTracking.sort((a, b) => b.date - a.date);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
   
-  for (const tracking of sortedTracking) {
-    if (tracking.status === 'completed') {
+  // Bắt đầu kiểm tra từ hôm nay hoặc hôm qua
+  let checkDate = new Date(today);
+  
+  // Nếu hôm nay chưa hoàn thành, bắt đầu từ hôm qua
+  const lastCompletedDate = new Date(completedTracking[0].date);
+  lastCompletedDate.setHours(0, 0, 0, 0);
+  
+  if (lastCompletedDate.getTime() < today.getTime()) {
+    // Hôm nay chưa hoàn thành → bắt đầu từ hôm qua
+    checkDate.setDate(checkDate.getDate() - 1);
+  }
+  
+  // Đếm streak
+  for (const tracking of completedTracking) {
+    const trackingDate = new Date(tracking.date);
+    trackingDate.setHours(0, 0, 0, 0);
+    
+    // Kiểm tra ngày có khớp không
+    if (trackingDate.getTime() === checkDate.getTime()) {
       currentStreak++;
-    } else {
+      checkDate.setDate(checkDate.getDate() - 1); // Lùi 1 ngày
+    } else if (trackingDate.getTime() < checkDate.getTime()) {
+      // Bỏ ngày → dừng đếm streak
       break;
     }
   }
+
+  // ========== TÍNH LONGEST STREAK ==========
+  // Streak dài nhất từ trước đến nay
   
-  // Calculate longest streak
   let longestStreak = 0;
-  let tempStreak = 0;
+  let tempStreak = 1;
   
-  for (const tracking of allTracking) {
-    if (tracking.status === 'completed') {
+  // Duyệt từ mới → cũ, so sánh khoảng cách giữa các ngày
+  for (let i = 0; i < completedTracking.length - 1; i++) {
+    const current = new Date(completedTracking[i].date);
+    const next = new Date(completedTracking[i + 1].date);
+    current.setHours(0, 0, 0, 0);
+    next.setHours(0, 0, 0, 0);
+    
+    // Tính số ngày chênh lệch
+    const diffDays = Math.floor((current - next) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 1) {
+      // Liên tiếp → tăng streak
       tempStreak++;
-      longestStreak = Math.max(longestStreak, tempStreak);
     } else {
-      tempStreak = 0;
+      // Không liên tiếp → lưu streak cũ, reset
+      longestStreak = Math.max(longestStreak, tempStreak);
+      tempStreak = 1;
     }
   }
   
-  // Calculate completion rate
-  const totalDays = allTracking.length;
-  const completionRate = totalDays > 0 ? Math.round((totalCompletions / totalDays) * 100) : 0;
+  // So sánh lần cuối
+  longestStreak = Math.max(longestStreak, tempStreak);
   
-  // Update habit
+  // Longest streak phải ít nhất bằng current streak
+  longestStreak = Math.max(longestStreak, currentStreak);
+
+  // ========== TÍNH COMPLETION RATE ==========
+  // Tỷ lệ hoàn thành = (số lần hoàn thành / số ngày đã qua) * 100
+  
+  const startDate = new Date(habit.startDate);
+  startDate.setHours(0, 0, 0, 0);
+  
+  const daysPassed = Math.floor((today - startDate) / (1000 * 60 * 60 * 24)) + 1;
+  
+  const totalCompletions = completedTracking.length;
+  const completionRate = Math.round((totalCompletions / daysPassed) * 100);
+
+  // ========== CẬP NHẬT HABIT ==========
   await Habit.findByIdAndUpdate(habitId, {
     totalCompletions,
     currentStreak,
     longestStreak,
-    completionRate,
-    lastCompletedDate: completedDays.length > 0 ? completedDays[completedDays.length - 1].date : null
+    completionRate: Math.min(completionRate, 100), // Max 100%
+    lastCompletedDate: completedTracking[0].date // Ngày gần nhất
   });
 }
 
@@ -701,5 +823,7 @@ export {
   getTodayOverview,
   getWeeklyReport,
   getHabitInsights,
-  updateHabitsOrder
+  updateHabitsOrder,
+  createHabitFromTemplate,
+  getSurveyQuestions
 };

@@ -11,7 +11,9 @@ import {
   getTodayOverview,
   getWeeklyReport,
   getHabitInsights,
-  updateHabitsOrder
+  updateHabitsOrder,
+  createHabitFromTemplate,
+  getSurveyQuestions
 } from '../controllers/Habit_controller.js';
 import authenticateToken from "../../middlewares/auth.js";
 
@@ -47,7 +49,11 @@ router.get('/:habitId/calendar', getHabitCalendar);
 // ==================== Templates & Suggestions ====================
 
 // Get habit templates (must be before /:habitId routes)
-router.get('/templates/list', getHabitTemplates);
+router.get('/templates', getHabitTemplates);
+// Create habit from template
+router.post('/templates/:templateId', createHabitFromTemplate);
+// Get survey questions for personalized habit suggestions
+router.get('/questions', getSurveyQuestions);
 
 // ==================== Dashboard & Reports ====================
 

@@ -9,7 +9,7 @@ const habitSchema = new mongoose.Schema({
     icon: { 
         type: String, 
         default: '🎯',
-        enum: ['🍎', '🏃', '⏰', '💝', '📚', '💻', '📱', '🧘', '💰', '😊', '💤', '⚡', '🎯', '📖', '✏️', '🏠', '🎵']
+        enum: ['🍎', '🏃', '⏰', '💝', '📚', '💻', '📱', '🧘', '💰', '😊', '💤', '⚡', '🎯', '📖', '✏️', '🏠', '🎵','🍵','💧','🥬','🏥','👟','👥']
     },
     color: { 
         type: String, 
@@ -27,11 +27,7 @@ const habitSchema = new mongoose.Schema({
         times: { type: Number, default: 1 },
         period: { type: String, enum: ['day', 'week', 'month'], default: 'day' }
     },
-    specificDays: [{ 
-        type: String, 
-        enum: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] 
-    }],
-    
+  
     // Category & Type
     category: {
         type: String,
@@ -47,6 +43,7 @@ const habitSchema = new mongoose.Schema({
     // Tracking
     isActive: { type: Boolean, default: true },
     startDate: { type: Date, default: Date.now },
+    endDate: { type: Date },
     targetDays: { type: Number, default: 21 },
     currentStreak: { type: Number, default: 0 },
     longestStreak: { type: Number, default: 0 },
@@ -59,10 +56,7 @@ const habitSchema = new mongoose.Schema({
         isEnabled: { type: Boolean, default: true }
     }],
     
-    // Motivation
-    motivation: { type: String, maxLength: 200 },
-    reward: { type: String, maxLength: 100 },
-    
+
     // Stats
     completionRate: { type: Number, default: 0 },
     lastCompletedDate: { type: Date },
@@ -114,6 +108,22 @@ const habitTemplateSchema = new mongoose.Schema({
     benefits: [String],
     isPopular: { type: Boolean, default: false },
     usageCount: { type: Number, default: 0 }
+});
+habitSchema.pre('findOneAndDelete', async function(next) {
+  const habitId = this.getQuery()._id;
+  
+  // Tự động xóa tất cả tracking của habit này
+  await mongoose.model('HabitTracking').deleteMany({ habitId });
+  
+  next();
+});
+
+habitSchema.pre('deleteOne', async function(next) {
+  const habitId = this.getQuery()._id;
+  
+  await mongoose.model('HabitTracking').deleteMany({ habitId });
+  
+  next();
 });
 
 const Habit = mongoose.model('Habit', habitSchema);
