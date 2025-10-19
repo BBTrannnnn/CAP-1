@@ -14,6 +14,7 @@ import {
   resetPassword, 
   verifyOTP,
   updateUserRole,
+  updateAdditionalInfo
 } from "../controllers/User_controller.js";
 import { validateRequest } from "../../middlewares/validateReuqest.js";
 import authenticateToken from "../../middlewares/auth.js";
@@ -34,7 +35,8 @@ const router = express.Router();
  // Bỏ các route admin/debug/bootstrap
  router.put('/:id',validateRequest,authenticateToken,updateProfileById);
  router.get('/:id',authenticateToken,getProfileById);
-router.delete('/:id',authenticateToken,deleteProfileById)
+ router.delete('/:id',authenticateToken,deleteProfileById)
+ router.put('/:id/addinfor', authenticateToken, validateRequest, updateAdditionalInfo);
 
 // Bỏ các route admin: cập nhật role, toggle active
 

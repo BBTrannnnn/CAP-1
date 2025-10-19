@@ -62,6 +62,20 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: true
     },
+    dateOfBirth: {
+    type: Date,
+    default: null
+    },
+    gender: {
+    type: String,
+    enum: ['male', 'female', 'other'],
+    default: null
+    },
+    address: {
+    type: String,
+    default: null,
+    trim: true
+    },
     //OTP cho việc reset password
     resetOTP: { type: String },
     resetOTPExpires: { type: Number },

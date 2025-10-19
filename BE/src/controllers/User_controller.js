@@ -281,6 +281,80 @@ const updateProfileById = asyncHandler(async (req, res) => {
   });
 });
 
+const updateAdditionalInfo = asyncHandler(async (req, res) => {
+  const { dateOfBirth, gender, address } = req.body;
+  const userId = req.user._id; // Lấy từ token đã xác thực
+
+  // Kiểm tra user có tồn tại không
+  const user = await User.findById(userId);
+  if (!user) {
+    return res.status(404).json({
+      success: false,
+      message: "User not found",
+    });
+  }
+
+  // Cập nhật dateOfBirth nếu có
+  if (dateOfBirth) {
+    // Validate ngày sinh (phải là ngày trong quá khứ)
+    const birthDate = new Date(dateOfBirth);
+    const today = new Date();
+    
+    if (isNaN(birthDate.getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid date format for date of birth",
+      });
+    }
+    
+    if (birthDate >= today) {
+      return res.status(400).json({
+        success: false,
+        message: "Date of birth must be in the past",
+      });
+    }
+
+    user.dateOfBirth = birthDate;
+  }
+
+  // Cập nhật gender nếu có
+  if (gender) {
+    const validGenders = ['male', 'female', 'other'];
+    if (!validGenders.includes(gender.toLowerCase())) {
+      return res.status(400).json({
+        success: false,
+        message: "Gender must be one of: male, female, other",
+      });
+    }
+    user.gender = gender.toLowerCase();
+  }
+
+  // Cập nhật address nếu có (dạng string)
+  if (address !== undefined) {
+    user.address = address.trim();
+  }
+
+  await user.save({ validateModifiedOnly: true });
+
+  res.status(200).json({
+    success: true,
+    message: "Additional information updated successfully",
+    data: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      dateOfBirth: user.dateOfBirth,
+      gender: user.gender,
+      address: user.address,
+      isActive: user.isActive,
+      loginProvider: user.loginProvider,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    },
+  });
+});
+
 const deleteProfileById = asyncHandler(async (req, res) => {
   const userId = req.params.id;
   
@@ -765,5 +839,6 @@ export {
   resetPassword,
   verifyOTP,
   updateUserRole,
+  updateAdditionalInfo
 };
 

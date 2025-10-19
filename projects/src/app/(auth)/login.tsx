@@ -1,21 +1,81 @@
 import { AntDesign, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { Link, useRouter } from 'expo-router';
-import { useState } from 'react';
-import { Image } from 'react-native';
-import { Button, Card, Checkbox, Input, Label, Separator, Text, Theme, XStack, YStack } from 'tamagui';
+import React, { useEffect, useState } from 'react';
+import { Alert, Image, Platform } from 'react-native';
+import { Button, Card, Checkbox, Input, Label, Separator, Text, Theme, XStack, YStack, Spinner } from 'tamagui';
+
+// ⬇️ import API đã đóng gói
+// ĐỔI đường dẫn này tới file users.js của bạn (ví dụ '@/api/users' hoặc '../../lib/users')
+import { login, setBaseUrl } from './../../server/users';
 
 // Logo app (đường dẫn đúng với cấu trúc bạn đang có)
 const Logo = require('../../assets/images/FlowState.png');
+
+// Tùy chọn: suy ra BASE_URL theo môi trường để test nhanh
+const inferBaseUrl = () => {
+  // Ưu tiên ENV (đặt trong app.json -> expo.extra.expoPublicApiUrl)
+  // @ts-ignore
+  const envBase = process.env.EXPO_PUBLIC_API_URL as string | undefined;
+  if (envBase) return envBase;
+
+  // Android emulator không dùng localhost
+  if (Platform.OS === 'android') return 'http://10.0.2.2:5000';
+
+  // iOS simulator / web dev
+  return 'http://localhost:5000';
+};
 
 export default function Login() {
   const [email, setEmail] = useState<string>('');
   const [pw, setPw] = useState<string>('');
   const [remember, setRemember] = useState<boolean>(false);
   const [showPw, setShowPw] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(false);
   const router = useRouter();
 
-  const onSubmit = () => {
-    // FE-only: sau này gắn auth thật
+  // Nhớ email (nếu user tick)
+  useEffect(() => {
+    (async () => {
+      try {
+        const url = inferBaseUrl();
+        setBaseUrl(url);
+        // Lazy-load remember email
+        const { default: AsyncStorage } = await import('@react-native-async-storage/async-storage');
+        const saved = await AsyncStorage.getItem('remember_email');
+        if (saved) {
+          setEmail(saved);
+          setRemember(true);
+        }
+      } catch {}
+    })();
+  }, []);
+
+  const onSubmit = async () => {
+    if (!email.trim() || !pw.trim()) {
+      Alert.alert('Thiếu thông tin', 'Vui lòng nhập email và mật khẩu.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await login({ email: email.trim(), password: pw });
+      // Lưu email nếu remember
+      const { default: AsyncStorage } = await import('@react-native-async-storage/async-storage');
+      if (remember) {
+        await AsyncStorage.setItem('remember_email', email.trim());
+      } else {
+        await AsyncStorage.removeItem('remember_email');
+      }
+
+      // Điều hướng sau khi đăng nhập thành công
+      // ĐỔI route này theo app của bạn: ví dụ '/home' hoặc '/(tabs)'
+      router.replace('/home');
+
+    } catch (err: any) {
+      const msg = err?.data?.message || err?.message || 'Đăng nhập thất bại. Vui lòng thử lại.';
+      Alert.alert('Lỗi đăng nhập', String(msg));
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -128,11 +188,16 @@ export default function Login() {
               backgroundColor='#085C9C'
               pressStyle={{ backgroundColor: '#2870A8' }}
               onPress={onSubmit}
+              disabled={loading}
             >
               <XStack alignItems='center' space={8}>
-                <MaterialIcons name='login' size={20} color='#FFFFFF' />
+                {loading ? (
+                  <Spinner size='small' />
+                ) : (
+                  <MaterialIcons name='login' size={20} color='#FFFFFF' />
+                )}
                 <Text fontSize={16} fontWeight='600' color='white'>
-                  Đăng nhập
+                  {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
                 </Text>
               </XStack>
             </Button>
@@ -147,7 +212,15 @@ export default function Login() {
             </XStack>
 
             {/* Google button with icon */}
-            <Button height={56} borderRadius={12} backgroundColor='#FFFFFF' borderWidth={1} borderColor='#E4E4E4' onPress={() => router.push('/(auth)/google-login')}>
+            <Button
+              height={56}
+              borderRadius={12}
+              backgroundColor='#FFFFFF'
+              borderWidth={1}
+              borderColor='#E4E4E4'
+              onPress={() => router.push('/(auth)/google-login')}
+              disabled={loading}
+            >
               <XStack alignItems='center' space={8}>
                 <AntDesign name='google' size={20} color='#4285F4' />
                 <Text fontSize={16} color='#111111'>
@@ -168,7 +241,7 @@ export default function Login() {
           </YStack>
         </Card>
 
-        {/* Legal text (giữ nguyên nếu cần) */}
+        {/* Legal text */}
         <Text
           textAlign='center'
           color='#585858'
