@@ -6,6 +6,7 @@ import {
   updateProfileById, 
   deleteProfileById, 
   login, 
+  logout,
   loginWithGoogle,
   getGoogleAuthUrl, 
   googleCallback, 
@@ -49,6 +50,9 @@ router.patch(
 
 // Route đăng nhập (email/sđt + password)
 router.post("/login", validateRequest, login);
+
+// Đăng xuất
+router.post("/logout", logout);
 
 // Route đăng nhập bằng Google
 router.post("/google", loginWithGoogle);

@@ -1,457 +1,457 @@
 {
-  "health-focused": {
-    "sampleCount": 108,
-    "avgScores": {
-      "health": 3.53,
-      "productivity": 2.39,
-      "learning": 2.4,
-      "mindful": 2.41,
-      "finance": 2.26,
-      "digital": 2.21,
-      "social": 2.21,
-      "fitness": 2.34
-    },
-    "topHabits": [
-      {
-        "name": "Tập thể dục buổi sáng",
-        "frequency": 63,
-        "percentage": "58.3%"
-      },
-      {
-        "name": "Uống đủ 8 ly nước mỗi ngày",
-        "frequency": 58,
-        "percentage": "53.7%"
-      },
-      {
-        "name": "Ăn 5 phần rau quả mỗi ngày",
-        "frequency": 48,
-        "percentage": "44.4%"
-      },
-      {
-        "name": "Ngủ đúng giờ (11 PM)",
-        "frequency": 47,
-        "percentage": "43.5%"
-      },
-      {
-        "name": "Tiết kiệm 50,000đ mỗi ngày",
-        "frequency": 27,
-        "percentage": "25.0%"
-      }
-    ],
-    "commonWeakAreas": [
-      {
-        "category": "digital",
-        "frequency": 54,
-        "percentage": "50.0%"
-      },
-      {
-        "category": "productivity",
-        "frequency": 50,
-        "percentage": "46.3%"
-      },
-      {
-        "category": "finance",
-        "frequency": 49,
-        "percentage": "45.4%"
-      }
-    ]
-  },
-  "productivity-driven": {
-    "sampleCount": 148,
-    "avgScores": {
-      "health": 2.3,
-      "productivity": 3.64,
-      "learning": 2.26,
-      "mindful": 2.32,
-      "finance": 2.35,
-      "digital": 2.39,
-      "social": 2.32,
-      "fitness": 2.41
-    },
-    "topHabits": [
-      {
-        "name": "Sử dụng kỹ thuật Pomodoro",
-        "frequency": 103,
-        "percentage": "69.6%"
-      },
-      {
-        "name": "Viết to-do list mỗi sáng",
-        "frequency": 100,
-        "percentage": "67.6%"
-      },
-      {
-        "name": "Dọn dẹp bàn làm việc cuối ngày",
-        "frequency": 93,
-        "percentage": "62.8%"
-      },
-      {
-        "name": "Viết nhật ký biết ơn",
-        "frequency": 35,
-        "percentage": "23.6%"
-      },
-      {
-        "name": "Tiết kiệm 50,000đ mỗi ngày",
-        "frequency": 30,
-        "percentage": "20.3%"
-      }
-    ],
-    "commonWeakAreas": [
-      {
-        "category": "health",
-        "frequency": 74,
-        "percentage": "50.0%"
-      },
-      {
-        "category": "learning",
-        "frequency": 73,
-        "percentage": "49.3%"
-      },
-      {
-        "category": "finance",
-        "frequency": 72,
-        "percentage": "48.6%"
-      }
-    ]
-  },
-  "finance-conscious": {
-    "sampleCount": 135,
-    "avgScores": {
-      "health": 2.33,
-      "productivity": 2.35,
-      "learning": 2.4,
-      "mindful": 2.22,
-      "finance": 3.82,
-      "digital": 2.29,
-      "social": 2.49,
-      "fitness": 2.39
-    },
-    "topHabits": [
-      {
-        "name": "Đọc tin tức tài chính",
-        "frequency": 91,
-        "percentage": "67.4%"
-      },
-      {
-        "name": "Theo dõi chi tiêu hàng ngày",
-        "frequency": 90,
-        "percentage": "66.7%"
-      },
-      {
-        "name": "Tiết kiệm 50,000đ mỗi ngày",
-        "frequency": 89,
-        "percentage": "65.9%"
-      },
-      {
-        "name": "Tắt điện thoại trước khi ngủ 1 tiếng",
-        "frequency": 39,
-        "percentage": "28.9%"
-      },
-      {
-        "name": "Hạn chế social media dưới 1 tiếng",
-        "frequency": 38,
-        "percentage": "28.1%"
-      }
-    ],
-    "commonWeakAreas": [
-      {
-        "category": "digital",
-        "frequency": 69,
-        "percentage": "51.1%"
-      },
-      {
-        "category": "mindful",
-        "frequency": 63,
-        "percentage": "46.7%"
-      },
-      {
-        "category": "health",
-        "frequency": 63,
-        "percentage": "46.7%"
-      }
-    ]
-  },
-  "mindful-seeker": {
-    "sampleCount": 103,
-    "avgScores": {
-      "health": 2.31,
-      "productivity": 2.32,
-      "learning": 2.23,
-      "mindful": 3.61,
-      "finance": 2.54,
-      "digital": 2.36,
-      "social": 2.37,
-      "fitness": 2.3
-    },
-    "topHabits": [
-      {
-        "name": "Viết nhật ký biết ơn",
-        "frequency": 73,
-        "percentage": "70.9%"
-      },
-      {
-        "name": "Thiền 10 phút",
-        "frequency": 71,
-        "percentage": "68.9%"
-      },
-      {
-        "name": "Tập yoga buổi sáng",
-        "frequency": 63,
-        "percentage": "61.2%"
-      },
-      {
-        "name": "Hạn chế social media dưới 1 tiếng",
-        "frequency": 23,
-        "percentage": "22.3%"
-      },
-      {
-        "name": "Tắt điện thoại trước khi ngủ 1 tiếng",
-        "frequency": 22,
-        "percentage": "21.4%"
-      }
-    ],
-    "commonWeakAreas": [
-      {
-        "category": "health",
-        "frequency": 52,
-        "percentage": "50.5%"
-      },
-      {
-        "category": "learning",
-        "frequency": 52,
-        "percentage": "50.5%"
-      },
-      {
-        "category": "productivity",
-        "frequency": 47,
-        "percentage": "45.6%"
-      }
-    ]
-  },
-  "fitness-driven": {
-    "sampleCount": 102,
-    "avgScores": {
-      "health": 2.39,
-      "productivity": 2.31,
-      "learning": 2.34,
-      "mindful": 2.38,
-      "finance": 2.24,
-      "digital": 2.3,
-      "social": 2.25,
-      "fitness": 3.87
-    },
-    "topHabits": [
-      {
-        "name": "Đi bộ 10,000 bước mỗi ngày",
-        "frequency": 56,
-        "percentage": "54.9%"
-      },
-      {
-        "name": "Tập gym 3 lần/tuần",
-        "frequency": 53,
-        "percentage": "52.0%"
-      },
-      {
-        "name": "Chạy bộ buổi sáng",
-        "frequency": 52,
-        "percentage": "51.0%"
-      },
-      {
-        "name": "Tập plank mỗi ngày",
-        "frequency": 43,
-        "percentage": "42.2%"
-      },
-      {
-        "name": "Tắt điện thoại trước khi ngủ 1 tiếng",
-        "frequency": 22,
-        "percentage": "21.6%"
-      }
-    ],
-    "commonWeakAreas": [
-      {
-        "category": "finance",
-        "frequency": 47,
-        "percentage": "46.1%"
-      },
-      {
-        "category": "learning",
-        "frequency": 44,
-        "percentage": "43.1%"
-      },
-      {
-        "category": "social",
-        "frequency": 43,
-        "percentage": "42.2%"
-      }
-    ]
-  },
-  "balanced-lifestyle": {
-    "sampleCount": 150,
+  "community-oriented": {
+    "sampleCount": 107,
     "avgScores": {
       "health": 2.4,
-      "productivity": 2.29,
-      "learning": 2.29,
-      "mindful": 2.25,
-      "finance": 2.19,
-      "digital": 3.51,
-      "social": 2.49,
+      "productivity": 2.22,
+      "learning": 2.25,
+      "mindful": 2.33,
+      "finance": 2.11,
+      "digital": 2.25,
+      "social": 3.82,
       "fitness": 2.31
     },
     "topHabits": [
       {
-        "name": "Hạn chế social media dưới 1 tiếng",
-        "frequency": 134,
-        "percentage": "89.3%"
+        "name": "Gọi điện cho gia đình",
+        "frequency": 75,
+        "percentage": "70.1%"
       },
       {
-        "name": "Tắt điện thoại trước khi ngủ 1 tiếng",
-        "frequency": 133,
-        "percentage": "88.7%"
+        "name": "Gặp gỡ bạn bè",
+        "frequency": 75,
+        "percentage": "70.1%"
       },
       {
-        "name": "Thiền 10 phút",
-        "frequency": 38,
-        "percentage": "25.3%"
+        "name": "Tham gia hoạt động cộng đồng",
+        "frequency": 64,
+        "percentage": "59.8%"
       },
       {
-        "name": "Xem video giáo dục",
-        "frequency": 32,
-        "percentage": "21.3%"
+        "name": "Tiết kiệm 50,000đ mỗi ngày",
+        "frequency": 22,
+        "percentage": "20.6%"
       },
       {
-        "name": "Tập yoga buổi sáng",
-        "frequency": 30,
+        "name": "Đọc tin tức tài chính",
+        "frequency": 22,
+        "percentage": "20.6%"
+      }
+    ],
+    "commonWeakAreas": [
+      {
+        "category": "productivity",
+        "frequency": 54,
+        "percentage": "50.5%"
+      },
+      {
+        "category": "finance",
+        "frequency": 51,
+        "percentage": "47.7%"
+      },
+      {
+        "category": "learning",
+        "frequency": 46,
+        "percentage": "43.0%"
+      }
+    ]
+  },
+  "health-focused": {
+    "sampleCount": 125,
+    "avgScores": {
+      "health": 3.5,
+      "productivity": 2.37,
+      "learning": 2.34,
+      "mindful": 2.32,
+      "finance": 2.36,
+      "digital": 2.32,
+      "social": 2.3,
+      "fitness": 2.26
+    },
+    "topHabits": [
+      {
+        "name": "Tập thể dục buổi sáng",
+        "frequency": 65,
+        "percentage": "52.0%"
+      },
+      {
+        "name": "Uống đủ 8 ly nước mỗi ngày",
+        "frequency": 65,
+        "percentage": "52.0%"
+      },
+      {
+        "name": "Ngủ đúng giờ (11 PM)",
+        "frequency": 63,
+        "percentage": "50.4%"
+      },
+      {
+        "name": "Ăn 5 phần rau quả mỗi ngày",
+        "frequency": 57,
+        "percentage": "45.6%"
+      },
+      {
+        "name": "Sử dụng kỹ thuật Pomodoro",
+        "frequency": 25,
         "percentage": "20.0%"
       }
     ],
     "commonWeakAreas": [
       {
-        "category": "finance",
-        "frequency": 76,
-        "percentage": "50.7%"
+        "category": "productivity",
+        "frequency": 63,
+        "percentage": "50.4%"
       },
       {
         "category": "mindful",
-        "frequency": 66,
-        "percentage": "44.0%"
+        "frequency": 57,
+        "percentage": "45.6%"
       },
       {
-        "category": "productivity",
-        "frequency": 64,
-        "percentage": "42.7%"
+        "category": "learning",
+        "frequency": 55,
+        "percentage": "44.0%"
       }
     ]
   },
-  "knowledge-seeker": {
-    "sampleCount": 138,
+  "productivity-driven": {
+    "sampleCount": 135,
     "avgScores": {
-      "health": 2.32,
-      "productivity": 2.25,
-      "learning": 3.63,
-      "mindful": 2.41,
-      "finance": 2.4,
-      "digital": 2.28,
-      "social": 2.26,
-      "fitness": 2.33
+      "health": 2.31,
+      "productivity": 3.62,
+      "learning": 2.47,
+      "mindful": 2.29,
+      "finance": 2.31,
+      "digital": 2.32,
+      "social": 2.19,
+      "fitness": 2.34
     },
     "topHabits": [
       {
-        "name": "Xem video giáo dục",
-        "frequency": 109,
-        "percentage": "79.0%"
+        "name": "Sử dụng kỹ thuật Pomodoro",
+        "frequency": 97,
+        "percentage": "71.9%"
       },
       {
-        "name": "Học ngoại ngữ 15 phút",
-        "frequency": 86,
-        "percentage": "62.3%"
+        "name": "Viết to-do list mỗi sáng",
+        "frequency": 96,
+        "percentage": "71.1%"
       },
       {
-        "name": "Đọc sách chuyên môn 30 phút",
-        "frequency": 81,
-        "percentage": "58.7%"
+        "name": "Dọn dẹp bàn làm việc cuối ngày",
+        "frequency": 77,
+        "percentage": "57.0%"
       },
       {
         "name": "Tắt điện thoại trước khi ngủ 1 tiếng",
         "frequency": 33,
-        "percentage": "23.9%"
+        "percentage": "24.4%"
       },
       {
-        "name": "Hạn chế social media dưới 1 tiếng",
-        "frequency": 30,
-        "percentage": "21.7%"
+        "name": "Tập yoga buổi sáng",
+        "frequency": 26,
+        "percentage": "19.3%"
       }
     ],
     "commonWeakAreas": [
       {
-        "category": "productivity",
-        "frequency": 80,
-        "percentage": "58.0%"
-      },
-      {
         "category": "health",
-        "frequency": 70,
-        "percentage": "50.7%"
+        "frequency": 65,
+        "percentage": "48.1%"
       },
       {
-        "category": "mindful",
-        "frequency": 55,
-        "percentage": "39.9%"
+        "category": "finance",
+        "frequency": 62,
+        "percentage": "45.9%"
+      },
+      {
+        "category": "digital",
+        "frequency": 58,
+        "percentage": "43.0%"
       }
     ]
   },
-  "community-oriented": {
-    "sampleCount": 116,
+  "knowledge-seeker": {
+    "sampleCount": 119,
     "avgScores": {
-      "health": 2.26,
-      "productivity": 2.35,
-      "learning": 2.25,
-      "mindful": 2.36,
-      "finance": 2.16,
-      "digital": 2.31,
-      "social": 3.84,
-      "fitness": 2.33
+      "health": 2.3,
+      "productivity": 2.38,
+      "learning": 3.66,
+      "mindful": 2.4,
+      "finance": 2.4,
+      "digital": 2.39,
+      "social": 2.42,
+      "fitness": 2.39
     },
     "topHabits": [
       {
-        "name": "Tham gia hoạt động cộng đồng",
-        "frequency": 86,
-        "percentage": "74.1%"
-      },
-      {
-        "name": "Gọi điện cho gia đình",
-        "frequency": 78,
-        "percentage": "67.2%"
-      },
-      {
-        "name": "Gặp gỡ bạn bè",
-        "frequency": 68,
-        "percentage": "58.6%"
-      },
-      {
         "name": "Xem video giáo dục",
-        "frequency": 23,
-        "percentage": "19.8%"
+        "frequency": 89,
+        "percentage": "74.8%"
+      },
+      {
+        "name": "Đọc sách chuyên môn 30 phút",
+        "frequency": 89,
+        "percentage": "74.8%"
+      },
+      {
+        "name": "Học ngoại ngữ 15 phút",
+        "frequency": 60,
+        "percentage": "50.4%"
+      },
+      {
+        "name": "Tắt điện thoại trước khi ngủ 1 tiếng",
+        "frequency": 33,
+        "percentage": "27.7%"
+      },
+      {
+        "name": "Hạn chế social media dưới 1 tiếng",
+        "frequency": 24,
+        "percentage": "20.2%"
+      }
+    ],
+    "commonWeakAreas": [
+      {
+        "category": "health",
+        "frequency": 63,
+        "percentage": "52.9%"
+      },
+      {
+        "category": "digital",
+        "frequency": 52,
+        "percentage": "43.7%"
+      },
+      {
+        "category": "productivity",
+        "frequency": 49,
+        "percentage": "41.2%"
+      }
+    ]
+  },
+  "balanced-lifestyle": {
+    "sampleCount": 138,
+    "avgScores": {
+      "health": 2.4,
+      "productivity": 2.32,
+      "learning": 2.32,
+      "mindful": 2.24,
+      "finance": 2.15,
+      "digital": 3.49,
+      "social": 2.33,
+      "fitness": 2.28
+    },
+    "topHabits": [
+      {
+        "name": "Hạn chế social media dưới 1 tiếng",
+        "frequency": 123,
+        "percentage": "89.1%"
+      },
+      {
+        "name": "Tắt điện thoại trước khi ngủ 1 tiếng",
+        "frequency": 119,
+        "percentage": "86.2%"
+      },
+      {
+        "name": "Viết nhật ký biết ơn",
+        "frequency": 27,
+        "percentage": "19.6%"
       },
       {
         "name": "Theo dõi chi tiêu hàng ngày",
-        "frequency": 22,
-        "percentage": "19.0%"
+        "frequency": 27,
+        "percentage": "19.6%"
+      },
+      {
+        "name": "Đọc tin tức tài chính",
+        "frequency": 26,
+        "percentage": "18.8%"
+      }
+    ],
+    "commonWeakAreas": [
+      {
+        "category": "mindful",
+        "frequency": 69,
+        "percentage": "50.0%"
+      },
+      {
+        "category": "productivity",
+        "frequency": 60,
+        "percentage": "43.5%"
+      },
+      {
+        "category": "learning",
+        "frequency": 58,
+        "percentage": "42.0%"
+      }
+    ]
+  },
+  "finance-conscious": {
+    "sampleCount": 148,
+    "avgScores": {
+      "health": 2.38,
+      "productivity": 2.33,
+      "learning": 2.37,
+      "mindful": 2.36,
+      "finance": 3.78,
+      "digital": 2.29,
+      "social": 2.51,
+      "fitness": 2.42
+    },
+    "topHabits": [
+      {
+        "name": "Đọc tin tức tài chính",
+        "frequency": 107,
+        "percentage": "72.3%"
+      },
+      {
+        "name": "Tiết kiệm 50,000đ mỗi ngày",
+        "frequency": 106,
+        "percentage": "71.6%"
+      },
+      {
+        "name": "Theo dõi chi tiêu hàng ngày",
+        "frequency": 83,
+        "percentage": "56.1%"
+      },
+      {
+        "name": "Tắt điện thoại trước khi ngủ 1 tiếng",
+        "frequency": 46,
+        "percentage": "31.1%"
+      },
+      {
+        "name": "Hạn chế social media dưới 1 tiếng",
+        "frequency": 38,
+        "percentage": "25.7%"
+      }
+    ],
+    "commonWeakAreas": [
+      {
+        "category": "health",
+        "frequency": 71,
+        "percentage": "48.0%"
+      },
+      {
+        "category": "productivity",
+        "frequency": 69,
+        "percentage": "46.6%"
+      },
+      {
+        "category": "learning",
+        "frequency": 68,
+        "percentage": "45.9%"
+      }
+    ]
+  },
+  "mindful-seeker": {
+    "sampleCount": 133,
+    "avgScores": {
+      "health": 2.3,
+      "productivity": 2.28,
+      "learning": 2.22,
+      "mindful": 3.62,
+      "finance": 2.39,
+      "digital": 2.17,
+      "social": 2.34,
+      "fitness": 2.32
+    },
+    "topHabits": [
+      {
+        "name": "Tập yoga buổi sáng",
+        "frequency": 90,
+        "percentage": "67.7%"
+      },
+      {
+        "name": "Thiền 10 phút",
+        "frequency": 90,
+        "percentage": "67.7%"
+      },
+      {
+        "name": "Viết nhật ký biết ơn",
+        "frequency": 88,
+        "percentage": "66.2%"
+      },
+      {
+        "name": "Tắt điện thoại trước khi ngủ 1 tiếng",
+        "frequency": 32,
+        "percentage": "24.1%"
+      },
+      {
+        "name": "Hạn chế social media dưới 1 tiếng",
+        "frequency": 30,
+        "percentage": "22.6%"
       }
     ],
     "commonWeakAreas": [
       {
         "category": "learning",
-        "frequency": 58,
-        "percentage": "50.0%"
+        "frequency": 70,
+        "percentage": "52.6%"
+      },
+      {
+        "category": "productivity",
+        "frequency": 64,
+        "percentage": "48.1%"
       },
       {
         "category": "health",
-        "frequency": 58,
-        "percentage": "50.0%"
+        "frequency": 63,
+        "percentage": "47.4%"
+      }
+    ]
+  },
+  "fitness-driven": {
+    "sampleCount": 95,
+    "avgScores": {
+      "health": 2.31,
+      "productivity": 2.33,
+      "learning": 2.37,
+      "mindful": 2.24,
+      "finance": 2.14,
+      "digital": 2.26,
+      "social": 2.18,
+      "fitness": 3.81
+    },
+    "topHabits": [
+      {
+        "name": "Đi bộ 10,000 bước mỗi ngày",
+        "frequency": 55,
+        "percentage": "57.9%"
+      },
+      {
+        "name": "Tập plank mỗi ngày",
+        "frequency": 49,
+        "percentage": "51.6%"
+      },
+      {
+        "name": "Tập gym 3 lần/tuần",
+        "frequency": 47,
+        "percentage": "49.5%"
+      },
+      {
+        "name": "Chạy bộ buổi sáng",
+        "frequency": 39,
+        "percentage": "41.1%"
+      },
+      {
+        "name": "Thiền 10 phút",
+        "frequency": 22,
+        "percentage": "23.2%"
+      }
+    ],
+    "commonWeakAreas": [
+      {
+        "category": "health",
+        "frequency": 46,
+        "percentage": "48.4%"
+      },
+      {
+        "category": "productivity",
+        "frequency": 45,
+        "percentage": "47.4%"
       },
       {
         "category": "finance",
-        "frequency": 57,
-        "percentage": "49.1%"
+        "frequency": 43,
+        "percentage": "45.3%"
       }
     ]
   }

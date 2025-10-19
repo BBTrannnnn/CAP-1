@@ -342,6 +342,13 @@ const login = asyncHandler(async (req, res) => {
 
   const { email, password } = req.body;
 
+  if (!password || password.trim() === '') {
+    return res.status(400).json({
+      success: false,
+      message: 'Password is not Null!'
+    });
+  }
+
   // Tìm user theo email
   const user = await User.findOne({ email, isActive: true });
   if (!user) {

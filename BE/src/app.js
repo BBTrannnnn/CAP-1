@@ -9,6 +9,9 @@ import HabitRoutes from './routes/Habit-routes.js';
 import sleepRoutes from './routes/Sleep-routes.js';
 import sleepContentRoutes from './routes/SleepContent-routes.js';
 import aiRoutes from './routes/AI-routes.js';
+import aiHabit_routes from './routes/aiHabit_routes.js';
+
+
 
 
 
@@ -28,6 +31,7 @@ app.use('/api/habits', HabitRoutes);
 app.use('/api/sleep', sleepRoutes);
 app.use('/api/sleep-content', sleepContentRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/ai-habits', aiHabit_routes);
 
 
 app.use(errorHandler);
