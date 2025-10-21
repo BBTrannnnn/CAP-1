@@ -5,11 +5,11 @@ import { useEffect, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { Button, Card, Input, Label, Separator, Text, Theme, XStack, YStack } from 'tamagui';
 
-// API client (đúng theo dự án của bạn)
+// API client
 import {
-  forgotPassword,     // client đã xử lý gửi dạng query param/string theo BE của bạn
-  verifyOTP,          // body: { email, otp }
-  resetPassword,      // body: { email, otp, newPassword }
+  forgotPassword,
+  verifyOTP,
+  resetPassword,
 } from './../../server/users';
 
 function isValidEmail(email: string) {
@@ -29,22 +29,28 @@ function validatePasswordRules(pw: string, email?: string) {
   return errors;
 }
 
+/** ==== ALERT HELPERS (thống nhất hiển thị) ==== */
+const showInfo = (msg: string, title = 'Thông báo') => alert(title, msg);
+const showSuccess = (msg: string, title = 'Thành công') => alert(title, msg);
+const showErr = (msg: string, title = 'Lỗi') => alert(title, msg);
+
 export default function ForgotPassword() {
-  // step: 1 = nhập email, 2 = nhập mật khẩu mới, 3 = nhập mã OTP
+  // step: 1 = nhập email, 2 = nhập OTP, 3 = nhập mật khẩu mới
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
   // common
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // password step
+  // password step (step 3)
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
 
-  // OTP step
+  // OTP step (step 2)
   const [codeInput, setCodeInput] = useState('');
   const [resendCountdown, setResendCountdown] = useState(0);
+  const [otpVerified, setOtpVerified] = useState(false);
 
   const router = useRouter();
 
@@ -54,114 +60,128 @@ export default function ForgotPassword() {
     return () => clearInterval(t);
   }, [resendCountdown]);
 
-  // STEP 1: gọi /forgotpassword để BE gửi mã OTP về email
+  // STEP 1: gửi OTP
   const handleSendCode = async () => {
     const cleanEmail = email.trim().toLowerCase();
     if (!isValidEmail(cleanEmail)) {
-      Alert.alert('Lỗi', 'Vui lòng nhập email hợp lệ.');
+      showErr('Vui lòng nhập email hợp lệ.');
       return;
     }
     setLoading(true);
     try {
       if (__DEV__) console.log('[ForgotPw] POST /forgotpassword', cleanEmail);
-      // forgotPassword nhận string, client sẽ tự build query param đúng theo BE
-      const res = await forgotPassword(cleanEmail);
-      if (__DEV__) console.log('[ForgotPw] forgotPassword res:', res);
-
-      Alert.alert('Đã gửi mã', 'Mã xác nhận đã được gửi tới email của bạn.');
+      await forgotPassword(cleanEmail);
+      showInfo('Mã xác nhận đã được gửi tới email của bạn.', 'Đã gửi mã');
+      setOtpVerified(false);
       setResendCountdown(60);
       setStep(2);
     } catch (err: any) {
       const msg = err?.data?.message || err?.message || 'Không thể gửi mã. Vui lòng thử lại.';
-      Alert.alert('Lỗi', String(msg));
+      showErr(String(msg));
     } finally {
       setLoading(false);
     }
   };
 
-  // STEP 2: chỉ validate mật khẩu rồi chuyển bước 3 (KHÔNG gọi API)
-  const handleSetPasswordAndContinue = () => {
+  // STEP 2: verify OTP
+  const handleVerifyOTPOnly = async () => {
     const cleanEmail = email.trim().toLowerCase();
-    const errs = validatePasswordRules(newPassword, cleanEmail);
-    if (errs.length) {
-      Alert.alert('Mật khẩu không hợp lệ', errs.join('\n'));
+    const otp = codeInput.trim();
+
+    if (!isValidEmail(cleanEmail)) {
+      showErr('Email không hợp lệ.');
       return;
     }
-    if (newPassword !== confirmPassword) {
-      Alert.alert('Lỗi', 'Mật khẩu xác nhận không khớp.');
+    if (otp.length !== 6) {
+      showErr('Nhập mã xác nhận 6 chữ số.');
       return;
     }
-    if (!resendCountdown) setResendCountdown(60);
-    setStep(3);
+
+    setLoading(true);
+    try {
+      if (__DEV__) console.log('[ForgotPw] POST /verifyOTP', { email: cleanEmail, otp });
+      const v = await verifyOTP({ email: cleanEmail, otp });
+      if (__DEV__) console.log('[ForgotPw] verifyOTP res:', v);
+
+      setOtpVerified(true);
+      showSuccess('Mã OTP hợp lệ. Vui lòng đặt mật khẩu mới.');
+      setStep(3);
+    } catch (err: any) {
+      const apiMsg = err?.data?.message || err?.message || '';
+      const friendly = 'Mã OTP không hợp lệ hoặc đã hết hạn. Vui lòng kiểm tra lại.';
+      showErr(friendly + (apiMsg ? `\n\nChi tiết: ${apiMsg}` : ''));
+      if (__DEV__) console.error('[ForgotPw] verify error:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // STEP 3: verify OTP -> nếu OK mới reset password
-const handleVerifyAndFinish = async () => {
-  const cleanEmail = email.trim().toLowerCase();
-  const otp = codeInput.trim();
-
-  if (otp.length !== 6) {
-    Alert.alert('Lỗi', 'Nhập mã xác nhận 6 chữ số.');
-    return;
-  }
-
-  setLoading(true);
-  try {
-    // 1) VERIFY OTP
-    if (__DEV__) console.log('[ForgotPw] POST /verifyOTP', { email: cleanEmail, otp });
-    const v = await verifyOTP({ email: cleanEmail, otp });
-    if (__DEV__) console.log('[ForgotPw] verifyOTP res:', v);
-
-    // 2) RESET PASSWORD (chỉ chạy nếu verify OTP không ném lỗi)
-    const payload = { email: cleanEmail, password : newPassword, confirmPassword };
-    if (__DEV__) console.log('[ForgotPw] POST /resetpassword', payload);
-    const r = await resetPassword(payload);
-    if (__DEV__) console.log('[ForgotPw] resetPassword res:', r);
-
-    Alert.alert('Thành công', 'Mật khẩu của bạn đã được đặt lại. Bạn có thể đăng nhập.', [
-      {
-        text: 'OK',
-        onPress: () => {
-          setStep(1);
-          setEmail('');
-          setNewPassword('');
-          setConfirmPassword('');
-          setCodeInput('');
-          router.replace('/(auth)/login');
-        },
-      },
-    ]);
-  } catch (err: any) {
-    // Tách thông điệp để biết lỗi ở bước nào
-    const apiMsg = err?.data?.message || err?.message || '';
-    const isVerifyError = apiMsg?.toLowerCase().includes('otp') || apiMsg?.toLowerCase().includes('verify');
-    const friendly = isVerifyError
-      ? 'Mã OTP không hợp lệ hoặc đã hết hạn. Vui lòng kiểm tra lại.'
-      : 'Đặt lại mật khẩu thất bại. Vui lòng thử lại.';
-    Alert.alert('Lỗi', friendly + (apiMsg ? `\n\nChi tiết: ${apiMsg}` : ''));
-    if (__DEV__) console.error('[ForgotPw] verify/reset error:', err);
-  } finally {
-    setLoading(false);
-  }
-};
-
-
+  // resend OTP
   const handleResendCode = async () => {
     if (resendCountdown > 0) return;
     const cleanEmail = email.trim().toLowerCase();
     if (!isValidEmail(cleanEmail)) {
-      Alert.alert('Lỗi', 'Email không hợp lệ.');
+      showErr('Email không hợp lệ.');
       return;
     }
     setLoading(true);
     try {
       if (__DEV__) console.log('[ForgotPw] resend OTP /forgotpassword', cleanEmail);
-      await forgotPassword(cleanEmail); // gửi lại OTP
+      await forgotPassword(cleanEmail);
       setResendCountdown(60);
-      Alert.alert('Đã gửi lại', 'Mã xác nhận đã được gửi lại.');
+      showInfo('Mã xác nhận đã được gửi lại.', 'Đã gửi lại');
     } catch (err: any) {
       const msg = err?.data?.message || err?.message || 'Không thể gửi lại mã.';
-      Alert.alert('Lỗi', String(msg));
+      showErr(String(msg));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // STEP 3: reset password
+  const handleResetPasswordOnly = async () => {
+    if (!otpVerified) {
+      showErr('Bạn cần xác thực OTP trước khi đặt mật khẩu.');
+      setStep(2);
+      return;
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const errs = validatePasswordRules(newPassword, cleanEmail);
+    if (errs.length) {
+      showErr(errs.join('\n'), 'Mật khẩu không hợp lệ');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      showErr('Mật khẩu xác nhận không khớp.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const payload = { email: cleanEmail, password: newPassword, confirmPassword };
+      if (__DEV__) console.log('[ForgotPw] POST /resetpassword', payload);
+      const r = await resetPassword(payload);
+      if (__DEV__) console.log('[ForgotPw] resetPassword res:', r);
+
+      alert('Thành công', 'Mật khẩu của bạn đã được đặt lại. Bạn có thể đăng nhập.', [
+        {
+          text: 'OK',
+          onPress: () => {
+            setStep(1);
+            setEmail('');
+            setNewPassword('');
+            setConfirmPassword('');
+            setCodeInput('');
+            setOtpVerified(false);
+            router.replace('/(auth)/login');
+          },
+        },
+      ]);
+    } catch (err: any) {
+      const apiMsg = err?.data?.message || err?.message || '';
+      showErr('Đặt lại mật khẩu thất bại. Vui lòng thử lại.' + (apiMsg ? `\n\nChi tiết: ${apiMsg}` : ''));
+      if (__DEV__) console.error('[ForgotPw] reset error:', err);
     } finally {
       setLoading(false);
     }
@@ -239,13 +259,14 @@ const handleVerifyAndFinish = async () => {
                     </Text>
                   </XStack>
 
-                  {/* --- STEP 1 --- */}
+                  {/* --- STEP 1: EMAIL --- */}
                   {step === 1 && (
                     <YStack space>
+                      <FontAwesome name="envelope" size={200} color="#085C9C" style={{ margin: 'auto' }} />
+
                       <Label fontSize={14} fontWeight="500" color="#585858">
                         Email đăng ký
                       </Label>
-                      <FontAwesome name="envelope" size={200} color="#085C9C" style={{ margin: 'auto' }} />
 
                       <XStack
                         alignItems="center"
@@ -288,10 +309,94 @@ const handleVerifyAndFinish = async () => {
                     </YStack>
                   )}
 
-                  {/* --- STEP 2 --- */}
+                  {/* --- STEP 2: OTP --- */}
                   {step === 2 && (
                     <YStack space>
+                      <FontAwesome name="key" size={200} color="red" style={{ margin: 'auto' }} />
+
+                      <Label fontSize={14} fontWeight="500" color="#585858">
+                        Nhập mã xác nhận (6 chữ số)
+                      </Label>
+
+                      <XStack
+                        alignItems="center"
+                        height={52}
+                        borderRadius={10}
+                        borderWidth={1}
+                        backgroundColor="#F8F8F8"
+                        borderColor="#E4E4E4"
+                        paddingHorizontal={12}
+                      >
+                        <MaterialCommunityIcons name="message-text-outline" size={18} color="#8C8C8C" />
+                        <Input
+                          flex={1}
+                          height={52}
+                          placeholder="123456"
+                          value={codeInput}
+                          onChangeText={(t) => setCodeInput(t.replace(/[^0-9]/g, '').slice(0, 6))}
+                          keyboardType="numeric"
+                          borderWidth={0}
+                          backgroundColor="transparent"
+                          marginLeft={8}
+                        />
+                      </XStack>
+
+                      <XStack alignItems="center" justifyContent="space-between">
+                        <Text fontSize={12} color="#666">
+                          Mã sẽ được gửi tới email của bạn.
+                        </Text>
+                        <Button
+                          height={36}
+                          borderRadius={8}
+                          backgroundColor={resendCountdown > 0 ? '#F1F1F1' : '#FFFFFF'}
+                          borderWidth={1}
+                          borderColor="#E4E4E4"
+                          onPress={handleResendCode}
+                          disabled={resendCountdown > 0 || loading}
+                        >
+                          <Text
+                            fontSize={13}
+                            color={resendCountdown > 0 ? '#8C8C8C' : '#085C9C'}
+                          >
+                            {resendCountdown > 0 ? `Gửi lại (${resendCountdown}s)` : 'Gửi lại mã'}
+                          </Text>
+                        </Button>
+                      </XStack>
+
+                      <XStack space alignItems="center" justifyContent="space-between">
+                        <Button
+                          height={48}
+                          width="48%"
+                          borderRadius={10}
+                          backgroundColor="#E6EEF6"
+                          onPress={() => setStep(1)}
+                        >
+                          <Text color="#085C9C" fontWeight="600">
+                            Quay lại
+                          </Text>
+                        </Button>
+
+                        <Button
+                          height={48}
+                          width="48%"
+                          borderRadius={10}
+                          backgroundColor="#085C9C"
+                          onPress={handleVerifyOTPOnly}
+                          disabled={loading}
+                        >
+                          <Text color="white" fontWeight="600">
+                            {loading ? 'Đang xử lý...' : 'Xác nhận OTP'}
+                          </Text>
+                        </Button>
+                      </XStack>
+                    </YStack>
+                  )}
+
+                  {/* --- STEP 3: NEW PASSWORD --- */}
+                  {step === 3 && (
+                    <YStack space>
                       <FontAwesome name="lock" size={200} color="#dddd00" style={{ margin: 'auto' }} />
+
                       <Label fontSize={14} fontWeight="500" color="#585858">
                         Mật khẩu mới
                       </Label>
@@ -370,91 +475,6 @@ const handleVerifyAndFinish = async () => {
                           width="48%"
                           borderRadius={10}
                           backgroundColor="#E6EEF6"
-                          onPress={() => setStep(1)}
-                        >
-                          <Text color="#085C9C" fontWeight="600">
-                            Quay lại
-                          </Text>
-                        </Button>
-
-                        <Button
-                          height={48}
-                          width="48%"
-                          borderRadius={10}
-                          backgroundColor="#085C9C"
-                          onPress={handleSetPasswordAndContinue}
-                        >
-                          <Text color="white" fontWeight="600">
-                            Tiếp tục
-                          </Text>
-                        </Button>
-                      </XStack>
-                    </YStack>
-                  )}
-
-                  {/* --- STEP 3 --- */}
-                  {step === 3 && (
-                    <YStack space>
-                      <FontAwesome name="key" size={200} color="red" style={{ margin: 'auto' }} />
-                      <Label fontSize={14} fontWeight="500" color="#585858">
-                        Nhập mã xác nhận (6 chữ số)
-                      </Label>
-
-                      <XStack
-                        alignItems="center"
-                        height={52}
-                        borderRadius={10}
-                        borderWidth={1}
-                        backgroundColor="#F8F8F8"
-                        borderColor="#E4E4E4"
-                        paddingHorizontal={12}
-                      >
-                        <MaterialCommunityIcons
-                          name="message-text-outline"
-                          size={18}
-                          color="#8C8C8C"
-                        />
-                        <Input
-                          flex={1}
-                          height={52}
-                          placeholder="123456"
-                          value={codeInput}
-                          onChangeText={(t) => setCodeInput(t.replace(/[^0-9]/g, '').slice(0, 6))}
-                          keyboardType="numeric"
-                          borderWidth={0}
-                          backgroundColor="transparent"
-                          marginLeft={8}
-                        />
-                      </XStack>
-
-                      <XStack alignItems="center" justifyContent="space-between">
-                        <Text fontSize={12} color="#666">
-                          Mã sẽ được gửi tới email của bạn.
-                        </Text>
-                        <Button
-                          height={36}
-                          borderRadius={8}
-                          backgroundColor={resendCountdown > 0 ? '#F1F1F1' : '#FFFFFF'}
-                          borderWidth={1}
-                          borderColor="#E4E4E4"
-                          onPress={handleResendCode}
-                          disabled={resendCountdown > 0 || loading}
-                        >
-                          <Text
-                            fontSize={13}
-                            color={resendCountdown > 0 ? '#8C8C8C' : '#085C9C'}
-                          >
-                            {resendCountdown > 0 ? `Gửi lại (${resendCountdown}s)` : 'Gửi lại mã'}
-                          </Text>
-                        </Button>
-                      </XStack>
-
-                      <XStack space alignItems="center" justifyContent="space-between">
-                        <Button
-                          height={48}
-                          width="48%"
-                          borderRadius={10}
-                          backgroundColor="#E6EEF6"
                           onPress={() => setStep(2)}
                         >
                           <Text color="#085C9C" fontWeight="600">
@@ -467,11 +487,11 @@ const handleVerifyAndFinish = async () => {
                           width="48%"
                           borderRadius={10}
                           backgroundColor="#085C9C"
-                          onPress={handleVerifyAndFinish}
+                          onPress={handleResetPasswordOnly}
                           disabled={loading}
                         >
                           <Text color="white" fontWeight="600">
-                            {loading ? 'Đang xử lý...' : 'Xác nhận'}
+                            {loading ? 'Đang xử lý...' : 'Đặt mật khẩu'}
                           </Text>
                         </Button>
                       </XStack>
