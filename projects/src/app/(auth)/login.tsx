@@ -2,6 +2,7 @@ import { AntDesign, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-i
 import { Link, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Alert, Image, Platform } from 'react-native';
+import { Check } from 'lucide-react';
 import { Button, Card, Checkbox, Input, Label, Separator, Text, Theme, XStack, YStack, Spinner } from 'tamagui';
 
 // ⬇️ import API đã đóng gói
@@ -46,13 +47,13 @@ export default function Login() {
           setEmail(saved);
           setRemember(true);
         }
-      } catch {}
+      } catch { }
     })();
   }, []);
 
   const onSubmit = async () => {
     if (!email.trim() || !pw.trim()) {
-      Alert.alert('Thiếu thông tin', 'Vui lòng nhập email và mật khẩu.');
+      alert('Thiếu thông tin', 'Vui lòng nhập email và mật khẩu.');
       return;
     }
     setLoading(true);
@@ -72,7 +73,7 @@ export default function Login() {
 
     } catch (err: any) {
       const msg = err?.data?.message || err?.message || 'Đăng nhập thất bại. Vui lòng thử lại.';
-      Alert.alert('Lỗi đăng nhập', String(msg));
+      alert('Lỗi đăng nhập', String(msg));
     } finally {
       setLoading(false);
     }
@@ -166,20 +167,42 @@ export default function Login() {
             </XStack>
 
             {/* Remember + Forgot */}
-            <XStack alignItems='center' justifyContent='space-between' marginTop={8} marginBottom={12}>
-              <XStack alignItems='center'>
-                <Checkbox size='$2' checked={remember} onCheckedChange={(val) => setRemember(!!val)} />
-                <Text fontSize={13} color='#585858' onPress={() => setRemember((v) => !v)} style={{ marginLeft: 8 }}>
+            <XStack alignItems="center" justifyContent="space-between" marginTop={8} marginBottom={12}>
+              <XStack alignItems="center" space="$3">
+                <Checkbox
+                  id="remember"
+                  size="$3"
+                  checked={remember}
+                  onCheckedChange={(val) => setRemember(!!val)}   // val: boolean | 'indeterminate'
+                  backgroundColor={remember ? '#085C9C' : '#FFFFFF'}
+                  borderColor={remember ? '#085C9C' : '#E4E4E4'}
+                  borderWidth={1}
+                  borderRadius={6}
+                  hitSlop={8}
+                >
+                  <Checkbox.Indicator>
+                    <Check size={14} color="#FFFFFF" strokeWidth={3} />
+                  </Checkbox.Indicator>
+                </Checkbox>
+
+                {/* Nhấn vào chữ cũng toggle */}
+                <Label
+                  htmlFor="remember"
+                  fontSize={13}
+                  color="#585858"
+                  onPress={() => setRemember((v) => !v)}
+                >
                   Nhớ mật khẩu
-                </Text>
+                </Label>
               </XStack>
 
               <Link href='/(auth)/forgot_password' asChild>
-                <Text fontSize={14} fontWeight='500' color='#085C9C'>
+                <Text fontSize={14} fontWeight="500" color="#085C9C">
                   Quên mật khẩu?
                 </Text>
               </Link>
             </XStack>
+
 
             {/* Login button with icon */}
             <Button
@@ -187,6 +210,7 @@ export default function Login() {
               borderRadius={12}
               backgroundColor='#085C9C'
               pressStyle={{ backgroundColor: '#2870A8' }}
+              hoverStyle={{ backgroundColor: '#2870A8'}}
               onPress={onSubmit}
               disabled={loading}
             >
@@ -212,22 +236,7 @@ export default function Login() {
             </XStack>
 
             {/* Google button with icon */}
-            <Button
-              height={56}
-              borderRadius={12}
-              backgroundColor='#FFFFFF'
-              borderWidth={1}
-              borderColor='#E4E4E4'
-              onPress={() => router.push('/(auth)/google-login')}
-              disabled={loading}
-            >
-              <XStack alignItems='center' space={8}>
-                <AntDesign name='google' size={20} color='#4285F4' />
-                <Text fontSize={16} color='#111111'>
-                  Đăng nhập bằng Google
-                </Text>
-              </XStack>
-            </Button>
+
 
             {/* Register */}
             <Text textAlign='center' marginTop={12} color='#585858' fontSize={14}>
