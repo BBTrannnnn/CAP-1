@@ -19,6 +19,7 @@ import {
 } from 'tamagui';
 
 import { register as apiRegister, setBaseUrl } from './../../server/users';
+import { Check } from 'lucide-react';
 
 // Logo app
 const Logo = require('../../assets/images/FlowState.png');
@@ -66,7 +67,7 @@ export default function Register() {
     const msg = validate();
     if (msg) {
       if (__DEV__) console.warn('[Register] Validate failed:', msg);
-      Alert.alert('Thiếu thông tin', msg);
+      alert('Thiếu thông tin', msg);
       return;
     }
 
@@ -97,7 +98,7 @@ export default function Register() {
         console.log('[Register] API success:', res);
       }
 
-      Alert.alert('Thành công', 'Tạo tài khoản thành công. Vui lòng đăng nhập.', [
+      alert('Thành công', 'Tạo tài khoản thành công. Vui lòng đăng nhập.', [
         {
           text: 'OK',
           onPress: () => {
@@ -112,7 +113,7 @@ export default function Register() {
         console.error('[Register] API error:', err?.status, err?.data || err);
       }
       const e = err?.data?.message || err?.message || 'Đăng ký thất bại. Vui lòng thử lại.';
-      Alert.alert('Lỗi đăng ký', String(e));
+      alert('Lỗi đăng ký', String(e));
     } finally {
       setLoading(false);
     }
@@ -282,21 +283,45 @@ export default function Register() {
               />
 
               {/* Agree terms */}
-              <XStack alignItems="center" marginBottom={20}>
+              {/* Agree terms */}
+              <XStack alignItems="center" marginBottom={20} space="$3">
                 <Checkbox
-                  size="$2"
+                  id="agree"
+                  size="$3"
                   checked={agree}
                   onCheckedChange={(val) => {
-                    const b = !!val;
+                    const b = !!val;         // Tamagui trả về boolean | 'indeterminate'
                     setAgree(b);
                     if (__DEV__) console.log('[Register] agree toggled:', b);
                   }}
-                />
-                <Text fontSize={13} color="#585858" style={{ marginLeft: 8 }}>
+                  // Style: đổi nền/viền khi checked để nhìn rõ
+                  backgroundColor={agree ? '#085C9C' : '#FFFFFF'}
+                  borderColor={agree ? '#085C9C' : '#E4E4E4'}
+                  borderWidth={1}
+                  borderRadius={6}
+                  pressStyle={{ opacity: 0.85 }}
+                  focusStyle={{ outlineWidth: 2, outlineColor: '#085C9C' }}
+                  hitSlop={8}
+                >
+                  {/* BẮT BUỘC có Indicator để hiện icon check */}
+                  <Checkbox.Indicator>
+                    <Check size={14} color="#FFFFFF" strokeWidth={3} />
+                  </Checkbox.Indicator>
+                </Checkbox>
+
+                {/* Kết nối với checkbox qua htmlFor để click vào text cũng toggle */}
+                <Label
+                  htmlFor="agree"
+                  fontSize={13}
+                  color="#585858"
+                  // cho dễ bấm toàn dòng
+                  onPress={() => setAgree((v) => !v)}
+                >
                   Tôi đồng ý với <Text style={{ color: '#085C9C' }}>Điều khoản</Text> &{' '}
                   <Text style={{ color: '#085C9C' }}>Chính sách bảo mật</Text>
-                </Text>
+                </Label>
               </XStack>
+
 
               {/* Register button */}
               <Button
@@ -304,6 +329,7 @@ export default function Register() {
                 borderRadius={12}
                 backgroundColor="#085C9C"
                 pressStyle={{ backgroundColor: '#2870A8' }}
+                hoverStyle={{ backgroundColor: '#2870A8'}}
                 onPress={onRegister}
                 disabled={loading}
               >
@@ -324,27 +350,7 @@ export default function Register() {
                 <Separator flex={1} backgroundColor="#E0E6EE" />
               </XStack>
 
-              {/* Google sign up (placeholder) */}
-              <Button
-                height={56}
-                borderRadius={12}
-                backgroundColor="#FFFFFF"
-                borderWidth={1}
-                borderColor="#E4E4E4"
-                pressStyle={{ backgroundColor: '#F1F1F1' }}
-                disabled={loading}
-                onPress={() => {
-                  Alert.alert('Thông báo', 'Google Sign-In demo');
-                  if (__DEV__) console.log('[Register] Google Sign-In pressed');
-                }}
-              >
-                <XStack alignItems="center" space={8}>
-                  <AntDesign name="google" size={22} color="#DB4437" />
-                  <Text fontSize={16} style={{ color: '#111111' }}>
-                    Đăng ký bằng Google
-                  </Text>
-                </XStack>
-              </Button>
+             
 
               {/* Link back to login */}
               <Text textAlign="center" marginTop={12} color="#585858" fontSize={14}>
