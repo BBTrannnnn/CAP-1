@@ -1,17 +1,18 @@
 // app/(auth)/forgot_password.tsx
 import { FontAwesome, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { Button, Card, Input, Label, Separator, Text, Theme, XStack, YStack } from 'tamagui';
 
-// API client
+// API client (đúng theo dự án của bạn)
 import {
-  forgotPassword,
-  verifyOTP,
-  resetPassword,
+  forgotPassword,     // ví dụ: forgotPassword(email: string)
+  verifyOTP,          // ví dụ: verifyOTP({ email, otp })
+  resetPassword,      // ví dụ: resetPassword({ email, password, confirmPassword })
 } from './../../server/users';
 
+/* ================== VALIDATIONS ================== */
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
@@ -29,10 +30,16 @@ function validatePasswordRules(pw: string, email?: string) {
   return errors;
 }
 
-/** ==== ALERT HELPERS (thống nhất hiển thị) ==== */
-const showInfo = (msg: string, title = 'Thông báo') => alert(title, msg);
-const showSuccess = (msg: string, title = 'Thành công') => alert(title, msg);
-const showErr = (msg: string, title = 'Lỗi') => alert(title, msg);
+/* ================== ALERT HELPERS ================== */
+const getApiMsg = (res: any, fallback: string) =>
+  res?.message || res?.data?.message || fallback;
+
+const getErrMsg = (err: any, fallback: string) =>
+  err?.response?.data?.message || err?.data?.message || err?.message || fallback;
+
+const showInfo = (msg: string, title = 'Thông báo') => alert(msg);
+const showSuccess = (msg: string, title = 'Thành công') => alert(msg);
+const showErr = (msg: string, title = 'Lỗi') => alert(msg);
 
 export default function ForgotPassword() {
   // step: 1 = nhập email, 2 = nhập OTP, 3 = nhập mật khẩu mới
@@ -54,13 +61,14 @@ export default function ForgotPassword() {
 
   const router = useRouter();
 
+  /* ================== COUNTDOWN EFFECT ================== */
   useEffect(() => {
     if (resendCountdown <= 0) return;
     const t = setInterval(() => setResendCountdown((c) => Math.max(0, c - 1)), 1000);
     return () => clearInterval(t);
   }, [resendCountdown]);
 
-  // STEP 1: gửi OTP
+  /* ================== STEP 1: GỬI OTP ================== */
   const handleSendCode = async () => {
     const cleanEmail = email.trim().toLowerCase();
     if (!isValidEmail(cleanEmail)) {
@@ -70,75 +78,76 @@ export default function ForgotPassword() {
     setLoading(true);
     try {
       if (__DEV__) console.log('[ForgotPw] POST /forgotpassword', cleanEmail);
-      await forgotPassword(cleanEmail);
-      showInfo('Mã xác nhận đã được gửi tới email của bạn.', 'Đã gửi mã');
+      const res = await forgotPassword(cleanEmail);
+
+      const apiMsg = getApiMsg(res, 'Mã xác nhận đã được gửi tới email của bạn.');
+      showSuccess(apiMsg, 'Đã gửi mã');
+
       setOtpVerified(false);
       setResendCountdown(60);
       setStep(2);
     } catch (err: any) {
-      const msg = err?.data?.message || err?.message || 'Không thể gửi mã. Vui lòng thử lại.';
+      if (__DEV__) console.error('[ForgotPw] send code error:', err?.status, err?.data || err);
+      const msg = getErrMsg(err, 'Không thể gửi mã. Vui lòng thử lại.');
       showErr(String(msg));
     } finally {
       setLoading(false);
     }
   };
 
-  // STEP 2: verify OTP
+  /* ================== STEP 2: XÁC THỰC OTP ================== */
   const handleVerifyOTPOnly = async () => {
     const cleanEmail = email.trim().toLowerCase();
     const otp = codeInput.trim();
 
-    if (!isValidEmail(cleanEmail)) {
-      showErr('Email không hợp lệ.');
-      return;
-    }
-    if (otp.length !== 6) {
-      showErr('Nhập mã xác nhận 6 chữ số.');
-      return;
-    }
+    if (!isValidEmail(cleanEmail)) return showErr('Email không hợp lệ.');
+    if (otp.length !== 6) return showErr('Nhập mã xác nhận 6 chữ số.');
 
     setLoading(true);
     try {
       if (__DEV__) console.log('[ForgotPw] POST /verifyOTP', { email: cleanEmail, otp });
-      const v = await verifyOTP({ email: cleanEmail, otp });
-      if (__DEV__) console.log('[ForgotPw] verifyOTP res:', v);
+      const res = await verifyOTP({ email: cleanEmail, otp });
+      if (__DEV__) console.log('[ForgotPw] verifyOTP res:', res);
+
+      const apiMsg = getApiMsg(res, 'Mã OTP hợp lệ. Vui lòng đặt mật khẩu mới.');
+      showSuccess(apiMsg);
 
       setOtpVerified(true);
-      showSuccess('Mã OTP hợp lệ. Vui lòng đặt mật khẩu mới.');
       setStep(3);
     } catch (err: any) {
-      const apiMsg = err?.data?.message || err?.message || '';
-      const friendly = 'Mã OTP không hợp lệ hoặc đã hết hạn. Vui lòng kiểm tra lại.';
-      showErr(friendly + (apiMsg ? `\n\nChi tiết: ${apiMsg}` : ''));
-      if (__DEV__) console.error('[ForgotPw] verify error:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // resend OTP
-  const handleResendCode = async () => {
-    if (resendCountdown > 0) return;
-    const cleanEmail = email.trim().toLowerCase();
-    if (!isValidEmail(cleanEmail)) {
-      showErr('Email không hợp lệ.');
-      return;
-    }
-    setLoading(true);
-    try {
-      if (__DEV__) console.log('[ForgotPw] resend OTP /forgotpassword', cleanEmail);
-      await forgotPassword(cleanEmail);
-      setResendCountdown(60);
-      showInfo('Mã xác nhận đã được gửi lại.', 'Đã gửi lại');
-    } catch (err: any) {
-      const msg = err?.data?.message || err?.message || 'Không thể gửi lại mã.';
+      if (__DEV__) console.error('[ForgotPw] verify error:', err?.status, err?.data || err);
+      const msg = getErrMsg(err, 'Mã OTP không hợp lệ hoặc đã hết hạn. Vui lòng kiểm tra lại.');
       showErr(String(msg));
     } finally {
       setLoading(false);
     }
   };
 
-  // STEP 3: reset password
+  /* ================== GỬI LẠI OTP ================== */
+  const handleResendCode = async () => {
+    if (resendCountdown > 0) return;
+    const cleanEmail = email.trim().toLowerCase();
+    if (!isValidEmail(cleanEmail)) return showErr('Email không hợp lệ.');
+
+    setLoading(true);
+    try {
+      if (__DEV__) console.log('[ForgotPw] resend OTP /forgotpassword', cleanEmail);
+      const res = await forgotPassword(cleanEmail);
+
+      const apiMsg = getApiMsg(res, 'Mã xác nhận đã được gửi lại.');
+      showInfo(apiMsg, 'Đã gửi lại');
+
+      setResendCountdown(60);
+    } catch (err: any) {
+      if (__DEV__) console.error('[ForgotPw] resend error:', err?.status, err?.data || err);
+      const msg = getErrMsg(err, 'Không thể gửi lại mã.');
+      showErr(String(msg));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /* ================== STEP 3: ĐẶT MẬT KHẨU ================== */
   const handleResetPasswordOnly = async () => {
     if (!otpVerified) {
       showErr('Bạn cần xác thực OTP trước khi đặt mật khẩu.');
@@ -148,26 +157,22 @@ export default function ForgotPassword() {
 
     const cleanEmail = email.trim().toLowerCase();
     const errs = validatePasswordRules(newPassword, cleanEmail);
-    if (errs.length) {
-      showErr(errs.join('\n'), 'Mật khẩu không hợp lệ');
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      showErr('Mật khẩu xác nhận không khớp.');
-      return;
-    }
+    if (errs.length) return showErr(errs.join('\n'), 'Mật khẩu không hợp lệ');
+    if (newPassword !== confirmPassword) return showErr('Mật khẩu xác nhận không khớp.');
 
     setLoading(true);
     try {
       const payload = { email: cleanEmail, password: newPassword, confirmPassword };
       if (__DEV__) console.log('[ForgotPw] POST /resetpassword', payload);
-      const r = await resetPassword(payload);
-      if (__DEV__) console.log('[ForgotPw] resetPassword res:', r);
+      const res = await resetPassword(payload);
+      if (__DEV__) console.log('[ForgotPw] resetPassword res:', res);
 
-      alert('Thành công', 'Mật khẩu của bạn đã được đặt lại. Bạn có thể đăng nhập.', [
+      const apiMsg = getApiMsg(res, 'Mật khẩu của bạn đã được đặt lại. Bạn có thể đăng nhập.');
+      alert('Thành công', apiMsg, [
         {
           text: 'OK',
           onPress: () => {
+            // Reset state + điều hướng về login
             setStep(1);
             setEmail('');
             setNewPassword('');
@@ -178,15 +183,17 @@ export default function ForgotPassword() {
           },
         },
       ]);
+      router.replace('/(auth)/login');
     } catch (err: any) {
-      const apiMsg = err?.data?.message || err?.message || '';
-      showErr('Đặt lại mật khẩu thất bại. Vui lòng thử lại.' + (apiMsg ? `\n\nChi tiết: ${apiMsg}` : ''));
-      if (__DEV__) console.error('[ForgotPw] reset error:', err);
+      if (__DEV__) console.error('[ForgotPw] reset error:', err?.status, err?.data || err);
+      const msg = getErrMsg(err, 'Đặt lại mật khẩu thất bại. Vui lòng thử lại.');
+      showErr(String(msg));
     } finally {
       setLoading(false);
     }
   };
 
+  /* ================== UI ================== */
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />

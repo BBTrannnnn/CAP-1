@@ -51,33 +51,57 @@ export default function Login() {
     })();
   }, []);
 
-  const onSubmit = async () => {
-    if (!email.trim() || !pw.trim()) {
-      alert('Thiếu thông tin', 'Vui lòng nhập email và mật khẩu.');
-      return;
-    }
-    setLoading(true);
-    try {
-      const res = await login({ email: email.trim(), password: pw });
-      // Lưu email nếu remember
-      const { default: AsyncStorage } = await import('@react-native-async-storage/async-storage');
-      if (remember) {
-        await AsyncStorage.setItem('remember_email', email.trim());
-      } else {
-        await AsyncStorage.removeItem('remember_email');
-      }
+ const onSubmit = async () => {
+  if (!email.trim() || !pw.trim()) {
+    alert('Thiếu thông tin', 'Vui lòng nhập email và mật khẩu.');
+    return;
+  }
 
-      // Điều hướng sau khi đăng nhập thành công
-      // ĐỔI route này theo app của bạn: ví dụ '/home' hoặc '/(tabs)'
-      router.replace('/home');
+  setLoading(true);
+  try {
+    const res = await login({ email: email.trim(), password: pw });
 
-    } catch (err: any) {
-      const msg = err?.data?.message || err?.message || 'Đăng nhập thất bại. Vui lòng thử lại.';
-      alert('Lỗi đăng nhập', String(msg));
-    } finally {
-      setLoading(false);
+    if (__DEV__) console.log('[Login] API success:', res);
+
+    // Ưu tiên message từ API (tùy backend có thể ở res.message hoặc res.data.message)
+    const apiMessage =
+      res?.message ||
+      res?.data?.message ||
+      'Đăng nhập thành công!';
+
+    alert('Thành công', apiMessage, [
+      {
+        text: 'OK',
+        onPress: () => {
+          // Điều hướng sau khi đăng nhập thành công
+          // Đổi route nếu app bạn dùng đường khác
+          router.replace('/home');
+        },
+      },
+    ]);
+
+    // (Tuỳ chọn) Lưu email nếu nhớ
+    const { default: AsyncStorage } = await import('@react-native-async-storage/async-storage');
+    if (remember) {
+      await AsyncStorage.setItem('remember_email', email.trim());
+    } else {
+      await AsyncStorage.removeItem('remember_email');
     }
-  };
+  } catch (err: any) {
+    if (__DEV__) console.error('[Login] API error:', err?.status, err?.data || err);
+
+    const msg =
+      err?.response?.data?.message || // axios style
+      err?.data?.message ||           // fetch wrapper tự gán
+      err?.message ||                 // fallback chung
+      'Đăng nhập thất bại. Vui lòng thử lại.';
+
+    alert(String(msg));
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <Theme name='light'>
