@@ -40,6 +40,10 @@ const habitSchema = new mongoose.Schema({
         default: 'build'
     },
     
+    trackingMode: { type: String, enum: ['check', 'count'], default: 'check' }, // check = chỉ hoàn thành 1 lần/ngày
+    targetCount: { type: Number, default: 1 }, // ví dụ 5 ly nước
+    unit: { type: String, maxLength: 20 }, // ví dụ: "ly", "bước"
+    
     // Tracking
     isActive: { type: Boolean, default: true },
     startDate: { type: Date, default: Date.now },
@@ -70,25 +74,35 @@ const habitSchema = new mongoose.Schema({
 });
 
 const habitTrackingSchema = new mongoose.Schema({
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    habitId: { type: mongoose.Schema.Types.ObjectId, ref: 'Habit', required: true },
-    date: { type: Date, required: true },
-    status: { 
-        type: String, 
-        enum: ['completed', 'skipped', 'failed'], 
-        required: true 
-    },
-    completedAt: { type: Date },
-    notes: { type: String, maxLength: 200 },
-    mood: { 
-        type: String, 
-        enum: ['great', 'good', 'okay', 'bad'] 
-    }
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  habitId: { type: mongoose.Schema.Types.ObjectId, ref: 'Habit', required: true },
+  
+  date: { type: Date, required: true }, // vẫn để 00:00 để gom theo ngày
+  status: { type: String, enum: ['in-progress', 'completed', 'skipped', 'failed'], default: 'in-progress' },
+
+  // ✅ THÊM MỚI
+  targetCount: { type: Number, default: 1 }, // ví dụ: 5 ly nước/ngày
+  completedCount: { type: Number, default: 0 }, // hiện đã xong mấy lần
+
+  notes: { type: String, maxlength: 200 }
+
 }, { 
     timestamps: true 
 });
 
+const HabitSubTrackingSchema = new mongoose.Schema({
+  habitTrackingId: { type: mongoose.Schema.Types.ObjectId, ref: 'HabitTracking', required: true },
+  habitId: { type: mongoose.Schema.Types.ObjectId, ref: 'Habit', required: true },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+
+  startTime: { type: Date, required: true },
+  endTime: { type: Date }, 
+  quantity: { type: Number, default: 1, min: 1 }, // ví dụ: số ly, số lần
+  note: { type: String, maxlength: 200 }
+}, { timestamps: true });
+
 habitTrackingSchema.index({ userId: 1, habitId: 1, date: 1 }, { unique: true });
+HabitSubTrackingSchema.index({ userId: 1, habitId: 1, timestamp: -1 });
 
 const habitTemplateSchema = new mongoose.Schema({
     name: { type: String, required: true },
@@ -129,9 +143,11 @@ habitSchema.pre('deleteOne', async function(next) {
 const Habit = mongoose.model('Habit', habitSchema);
 const HabitTracking = mongoose.model('HabitTracking', habitTrackingSchema);
 const HabitTemplate = mongoose.model('HabitTemplate', habitTemplateSchema);
+const HabitSubTracking = mongoose.model('HabitSubTracking', HabitSubTrackingSchema);
 
 export {
     Habit,
     HabitTracking,
-    HabitTemplate
+    HabitTemplate,
+    HabitSubTracking
 };

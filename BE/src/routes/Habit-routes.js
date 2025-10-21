@@ -13,7 +13,8 @@ import {
   getHabitInsights,
   updateHabitsOrder,
   createHabitFromTemplate,
-  getSurveyQuestions
+  getSurveyQuestions,
+  addHabitSubTracking
 } from '../controllers/Habit_controller.js';
 import authenticateToken from "../../middlewares/auth.js";
 
@@ -39,6 +40,8 @@ router.delete('/:habitId', deleteHabit);
 
 // Track habit completion
 router.post('/:habitId/track', trackHabit);
+// Add sub-tracking entry for habits with quantity
+router.post('/:habitId/subtrack', addHabitSubTracking);
 
 // Get habit statistics
 router.get('/:habitId/stats', getHabitStats);

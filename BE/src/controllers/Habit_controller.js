@@ -1,5 +1,5 @@
 import asyncHandler from 'express-async-handler';
-import { Habit, HabitTracking, HabitTemplate } from '../models/Habit.js';
+import { Habit, HabitTracking, HabitTemplate,HabitSubTracking } from '../models/Habit.js';
 import { UserAnalysis } from '../models/Survey.js';
 
 // ==================== CRUD Operations ====================
@@ -53,37 +53,64 @@ const createHabit = asyncHandler(async (req, res) => {
 
     category,
     habitType,
-    startDate,      
+    startDate,
     endDate,
     targetDays,
     reminders,
+
+    trackingMode,   // ✅ mới
+    targetCount,    // ✅ mới
+    unit,           // ✅ mới
 
     isFromSuggestion,
     suggestionId
   } = req.body;
 
-  // Validate required fields
+  // 🧩 Validate bắt buộc
   if (!name || !category) {
     return res.status(400).json({
       success: false,
-      message: 'Name and category are required'
+      message: 'Name and category are required.'
     });
   }
 
-  // Get user's habit count for ordering
+  // 🧩 Validate cho trackingMode
+  if (!['check', 'count'].includes(trackingMode || 'check')) {
+    return res.status(400).json({
+      success: false,
+      message: 'trackingMode must be "check" or "count".'
+    });
+  }
+
+  // Nếu là count mà không có targetCount -> lỗi
+  if (trackingMode === 'count' && !targetCount) {
+    return res.status(400).json({
+      success: false,
+      message: 'Please provide targetCount for "count" tracking habits.'
+    });
+  }
+
+  // Lấy số thứ tự của habit để sắp xếp UI
   const habitCount = await Habit.countDocuments({ userId, isActive: true });
 
+  // 🧩 Tạo habit mới
   const newHabit = new Habit({
     userId,
     name,
     description,
-    icon: icon || '🎯',
-    color: color || '#3B82F6',
+    icon: icon ,
+    color: color ,
     frequency: frequency || 'daily',
     customFrequency,
 
     category,
     habitType: habitType || 'build',
+
+    // Tracking logic
+    trackingMode: trackingMode || 'check',
+    targetCount: trackingMode === 'count' ? targetCount : 1,
+    unit: trackingMode === 'count' ? unit || '' : '',
+
     startDate: startDate || Date.now(),
     endDate,
     targetDays: targetDays || 21,
@@ -96,19 +123,20 @@ const createHabit = asyncHandler(async (req, res) => {
 
   await newHabit.save();
 
-  // If created from template, increment usage count
+  // Cập nhật template (nếu có)
   if (suggestionId) {
     await HabitTemplate.findByIdAndUpdate(suggestionId, {
       $inc: { usageCount: 1 }
     });
   }
 
-  res.status(201).json({
+  return res.status(201).json({
     success: true,
     message: 'Habit created successfully',
     habit: newHabit
   });
 });
+
 
 // @desc    Update habit
 // @route   PUT /api/habits/:habitId
@@ -189,6 +217,13 @@ const trackHabit = asyncHandler(async (req, res) => {
       message: 'Habit not found'
     });
   }
+  const allowedStatuses = ['completed', 'skipped', 'failed'];
+  if (!allowedStatuses.includes(status)) {
+    return res.status(400).json({
+      success: false,
+      message: `Invalid status. Must be one of: ${allowedStatuses.join(', ')}`
+    });
+  }
 
   // Nếu có date thì dùng, không thì lấy hôm nay
   const trackingDate = date ? new Date(date) : new Date();
@@ -234,6 +269,75 @@ const trackHabit = asyncHandler(async (req, res) => {
     throw error;
   }
 });
+
+ const addHabitSubTracking = async (req, res) => {
+  try {
+    const { habitId } = req.params;
+    const userId = req.user.id;
+    const { quantity = 1, startTime, endTime, note } = req.body;
+
+    const habit = await Habit.findOne({ _id: habitId, userId, isActive: true });
+    if (!habit) {
+      return res.status(404).json({ success: false, message: 'Habit not found' });
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    let habitTracking = await HabitTracking.findOne({ habitId, userId, date: today });
+
+    if (!habitTracking) {
+      habitTracking = await HabitTracking.create({
+        habitId,
+        userId,
+        date: today,
+        targetCount: habit.targetCount || 1,
+        completedCount: 0
+      });
+    }
+
+    // 🕒 Tạo sub tracking
+    const sub = await HabitSubTracking.create({
+      habitTrackingId: habitTracking._id,
+      habitId,
+      userId,
+      startTime: new Date(startTime),
+      endTime: endTime ? new Date(endTime) : null,
+      quantity,
+      note
+    });
+
+    // 📊 Cập nhật tiến độ
+    if (habit.trackingMode === 'count') {
+      habitTracking.completedCount += quantity;
+      if (habitTracking.completedCount >= habitTracking.targetCount) {
+        habitTracking.completedCount = habitTracking.targetCount;
+        habitTracking.status = 'completed';
+      } else {
+        habitTracking.status = 'in-progress';
+      }
+    } else {
+      habitTracking.status = 'completed';
+      habitTracking.completedCount = 1;
+    }
+
+    await habitTracking.save();
+
+    res.status(201).json({
+      success: true,
+      message: `Đã ghi nhận ${quantity} lần thực hiện.`,
+      progress: `${habitTracking.completedCount}/${habitTracking.targetCount}`,
+      status: habitTracking.status,
+      subTracking: sub
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+
 
 // @desc    Get habit statistics
 // @route   GET /api/habits/:habitId/stats
@@ -705,14 +809,11 @@ async function updateHabitStats(habitId, userId) {
   const habit = await Habit.findById(habitId);
   if (!habit) return;
 
-  // Lấy tất cả tracking đã completed, sắp xếp từ MỚI → CŨ
-  const completedTracking = await HabitTracking.find({ 
-    habitId, 
-    userId, 
-    status: 'completed' 
-  }).sort({ date: -1 }); // -1 = descending (mới nhất trước)
-
-  // Nếu chưa có lần hoàn thành nào
+  const completedTracking = await HabitTracking.find({
+    habitId,
+    userId,
+    status: 'completed'
+  }).sort({ date: -1 });
   if (completedTracking.length === 0) {
     await Habit.findByIdAndUpdate(habitId, {
       totalCompletions: 0,
@@ -724,90 +825,129 @@ async function updateHabitStats(habitId, userId) {
     return;
   }
 
-  // ========== TÍNH CURRENT STREAK ==========
-  // Streak = số ngày LIÊN TIẾP hoàn thành tính từ hôm nay về trước
-  
-  let currentStreak = 0;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
-  // Bắt đầu kiểm tra từ hôm nay hoặc hôm qua
-  let checkDate = new Date(today);
-  
-  // Nếu hôm nay chưa hoàn thành, bắt đầu từ hôm qua
-  const lastCompletedDate = new Date(completedTracking[0].date);
-  lastCompletedDate.setHours(0, 0, 0, 0);
-  
-  if (lastCompletedDate.getTime() < today.getTime()) {
-    // Hôm nay chưa hoàn thành → bắt đầu từ hôm qua
-    checkDate.setDate(checkDate.getDate() - 1);
-  }
-  
-  // Đếm streak
-  for (const tracking of completedTracking) {
-    const trackingDate = new Date(tracking.date);
-    trackingDate.setHours(0, 0, 0, 0);
-    
-    // Kiểm tra ngày có khớp không
-    if (trackingDate.getTime() === checkDate.getTime()) {
-      currentStreak++;
-      checkDate.setDate(checkDate.getDate() - 1); // Lùi 1 ngày
-    } else if (trackingDate.getTime() < checkDate.getTime()) {
-      // Bỏ ngày → dừng đếm streak
-      break;
-    }
-  }
-
-  // ========== TÍNH LONGEST STREAK ==========
-  // Streak dài nhất từ trước đến nay
-  
-  let longestStreak = 0;
-  let tempStreak = 1;
-  
-  // Duyệt từ mới → cũ, so sánh khoảng cách giữa các ngày
-  for (let i = 0; i < completedTracking.length - 1; i++) {
-    const current = new Date(completedTracking[i].date);
-    const next = new Date(completedTracking[i + 1].date);
-    current.setHours(0, 0, 0, 0);
-    next.setHours(0, 0, 0, 0);
-    
-    // Tính số ngày chênh lệch
-    const diffDays = Math.floor((current - next) / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 1) {
-      // Liên tiếp → tăng streak
-      tempStreak++;
-    } else {
-      // Không liên tiếp → lưu streak cũ, reset
-      longestStreak = Math.max(longestStreak, tempStreak);
-      tempStreak = 1;
-    }
-  }
-  
-  // So sánh lần cuối
-  longestStreak = Math.max(longestStreak, tempStreak);
-  
-  // Longest streak phải ít nhất bằng current streak
-  longestStreak = Math.max(longestStreak, currentStreak);
-
-  // ========== TÍNH COMPLETION RATE ==========
-  // Tỷ lệ hoàn thành = (số lần hoàn thành / số ngày đã qua) * 100
-  
-  const startDate = new Date(habit.startDate);
-  startDate.setHours(0, 0, 0, 0);
-  
-  const daysPassed = Math.floor((today - startDate) / (1000 * 60 * 60 * 24)) + 1;
-  
   const totalCompletions = completedTracking.length;
-  const completionRate = Math.round((totalCompletions / daysPassed) * 100);
+
+  let currentStreak = 0;
+  let longestStreak = 0;
+  let completionRate = 0;
+
+  // ===================== DAILY =====================
+  if (habit.frequency === 'daily') {
+    let checkDate = new Date(today);
+    const lastCompletedDate = new Date(completedTracking[0].date);
+    lastCompletedDate.setHours(0, 0, 0, 0);
+
+    if (lastCompletedDate.getTime() < today.getTime()) {
+      checkDate.setDate(checkDate.getDate() - 1);
+    }
+
+    // Đếm streak ngày liên tiếp
+    for (const tracking of completedTracking) {
+      const trackingDate = new Date(tracking.date);
+      trackingDate.setHours(0, 0, 0, 0);
+
+      if (trackingDate.getTime() === checkDate.getTime()) {
+        currentStreak++;
+        checkDate.setDate(checkDate.getDate() - 1);
+      } else if (trackingDate.getTime() < checkDate.getTime()) {
+        break;
+      }
+    }
+
+    // Longest streak (giữ nguyên code của bạn)
+    let tempStreak = 1;
+    for (let i = 0; i < completedTracking.length - 1; i++) {
+      const current = new Date(completedTracking[i].date);
+      const next = new Date(completedTracking[i + 1].date);
+      current.setHours(0, 0, 0, 0);
+      next.setHours(0, 0, 0, 0);
+
+      const diffDays = Math.floor((current - next) / (1000 * 60 * 60 * 24));
+      if (diffDays === 1) {
+        tempStreak++;
+      } else {
+        longestStreak = Math.max(longestStreak, tempStreak);
+        tempStreak = 1;
+      }
+    }
+    longestStreak = Math.max(longestStreak, tempStreak, currentStreak);
+
+    const startDate = new Date(habit.startDate);
+    startDate.setHours(0, 0, 0, 0);
+    const daysPassed = Math.floor((today - startDate) / (1000 * 60 * 60 * 24)) + 1;
+    completionRate = Math.round((totalCompletions / daysPassed) * 100);
+  }
+
+  // ===================== WEEKLY =====================
+  else if (habit.frequency === 'weekly') {
+    // Tính số tuần liên tiếp đạt mục tiêu
+    const timesPerWeek = habit.customFrequency?.times || 1;
+    const groupedByWeek = {};
+
+    for (const t of completedTracking) {
+      const d = new Date(t.date);
+      const weekKey = `${d.getFullYear()}-W${Math.ceil(((d - new Date(d.getFullYear(), 0, 1)) / 86400000 + d.getDay() + 1) / 7)}`;
+      groupedByWeek[weekKey] = (groupedByWeek[weekKey] || 0) + 1;
+    }
+
+    const sortedWeeks = Object.keys(groupedByWeek).sort((a, b) => b.localeCompare(a));
+    currentStreak = 0;
+
+    for (let i = 0; i < sortedWeeks.length; i++) {
+      const count = groupedByWeek[sortedWeeks[i]];
+      if (count >= timesPerWeek) {
+        currentStreak++;
+      } else {
+        break;
+      }
+    }
+
+    longestStreak = currentStreak; // có thể lưu thêm max streak theo tuần sau
+
+    // Tính % hoàn thành tuần hiện tại
+    const latestWeekKey = sortedWeeks[0];
+    const completionsThisWeek = groupedByWeek[latestWeekKey] || 0;
+    completionRate = Math.min((completionsThisWeek / timesPerWeek) * 100, 100);
+  }
+
+  // ===================== MONTHLY =====================
+  else if (habit.frequency === 'monthly') {
+    const timesPerMonth = habit.customFrequency?.times || 1;
+    const groupedByMonth = {};
+
+    for (const t of completedTracking) {
+      const d = new Date(t.date);
+      const key = `${d.getFullYear()}-${d.getMonth() + 1}`;
+      groupedByMonth[key] = (groupedByMonth[key] || 0) + 1;
+    }
+
+    const sortedMonths = Object.keys(groupedByMonth).sort((a, b) => b.localeCompare(a));
+    currentStreak = 0;
+
+    for (let i = 0; i < sortedMonths.length; i++) {
+      const count = groupedByMonth[sortedMonths[i]];
+      if (count >= timesPerMonth) {
+        currentStreak++;
+      } else {
+        break;
+      }
+    }
+
+    longestStreak = currentStreak;
+    const latestMonth = sortedMonths[0];
+    const completionsThisMonth = groupedByMonth[latestMonth] || 0;
+    completionRate = Math.min((completionsThisMonth / timesPerMonth) * 100, 100);
+  }
 
   // ========== CẬP NHẬT HABIT ==========
   await Habit.findByIdAndUpdate(habitId, {
     totalCompletions,
     currentStreak,
     longestStreak,
-    completionRate: Math.min(completionRate, 100), // Max 100%
-    lastCompletedDate: completedTracking[0].date // Ngày gần nhất
+    completionRate: Math.min(completionRate, 100),
+    lastCompletedDate: completedTracking[0].date
   });
 }
 
@@ -825,5 +965,6 @@ export {
   getHabitInsights,
   updateHabitsOrder,
   createHabitFromTemplate,
-  getSurveyQuestions
+  getSurveyQuestions,
+  addHabitSubTracking,
 };
