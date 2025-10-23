@@ -1,4 +1,4 @@
-import { config } from '@/tamagui.config';
+import { config } from '../../tamagui.config';
 import { TamaguiProvider } from '@tamagui/core';
 import { Stack } from 'expo-router';
 import 'react-native-reanimated';

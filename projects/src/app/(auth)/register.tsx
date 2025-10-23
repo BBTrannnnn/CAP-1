@@ -35,7 +35,7 @@ const inferBaseUrl = () => {
 export default function Register() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState(''); // sẽ gửi dưới key 'phon'
+  const [phone, setPhone] = useState('');
   const [pw, setPw] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
   const [agree, setAgree] = useState(false);
@@ -67,7 +67,7 @@ export default function Register() {
     const msg = validate();
     if (msg) {
       if (__DEV__) console.warn('[Register] Validate failed:', msg);
-      alert('Thiếu thông tin', msg);
+      alert(msg);
       return;
     }
 
@@ -98,22 +98,37 @@ export default function Register() {
         console.log('[Register] API success:', res);
       }
 
-      alert('Thành công', 'Tạo tài khoản thành công. Vui lòng đăng nhập.', [
-        {
-          text: 'OK',
-          onPress: () => {
-            if (__DEV__) console.log('[Register] Navigating to /login');
-            router.replace('/(auth)/login');
+      // Ưu tiên message từ API
+      const apiMessage =
+        res?.message ||
+        res?.data?.message ||
+        'Tạo tài khoản thành công. Vui lòng đăng nhập.';
+
+      Alert.alert(
+        'Thành công',
+        apiMessage,
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              if (__DEV__) console.log('[Register] Navigating to /login');
+              router.replace('/(auth)/login');
+            },
           },
-        },
-      ]);
+        ],
+        { cancelable: false }
+      );
     } catch (err: any) {
-      // Ghi log chi tiết lỗi khi dev
       if (__DEV__) {
         console.error('[Register] API error:', err?.status, err?.data || err);
       }
-      const e = err?.data?.message || err?.message || 'Đăng ký thất bại. Vui lòng thử lại.';
-      alert('Lỗi đăng ký', String(e));
+      const e =
+        err?.data?.message ||
+        err?.response?.data?.message ||
+        err?.message ||
+        'Đăng ký thất bại. Vui lòng thử lại.';
+
+      Alert.alert('Lỗi', String(e));
     } finally {
       setLoading(false);
     }
@@ -283,18 +298,16 @@ export default function Register() {
               />
 
               {/* Agree terms */}
-              {/* Agree terms */}
               <XStack alignItems="center" marginBottom={20} space="$3">
                 <Checkbox
                   id="agree"
                   size="$3"
                   checked={agree}
                   onCheckedChange={(val) => {
-                    const b = !!val;         // Tamagui trả về boolean | 'indeterminate'
+                    const b = !!val;
                     setAgree(b);
                     if (__DEV__) console.log('[Register] agree toggled:', b);
                   }}
-                  // Style: đổi nền/viền khi checked để nhìn rõ
                   backgroundColor={agree ? '#085C9C' : '#FFFFFF'}
                   borderColor={agree ? '#085C9C' : '#E4E4E4'}
                   borderWidth={1}
@@ -303,18 +316,15 @@ export default function Register() {
                   focusStyle={{ outlineWidth: 2, outlineColor: '#085C9C' }}
                   hitSlop={8}
                 >
-                  {/* BẮT BUỘC có Indicator để hiện icon check */}
                   <Checkbox.Indicator>
                     <Check size={14} color="#FFFFFF" strokeWidth={3} />
                   </Checkbox.Indicator>
                 </Checkbox>
 
-                {/* Kết nối với checkbox qua htmlFor để click vào text cũng toggle */}
                 <Label
                   htmlFor="agree"
                   fontSize={13}
                   color="#585858"
-                  // cho dễ bấm toàn dòng
                   onPress={() => setAgree((v) => !v)}
                 >
                   Tôi đồng ý với <Text style={{ color: '#085C9C' }}>Điều khoản</Text> &{' '}
@@ -322,14 +332,13 @@ export default function Register() {
                 </Label>
               </XStack>
 
-
               {/* Register button */}
               <Button
                 height={56}
                 borderRadius={12}
                 backgroundColor="#085C9C"
                 pressStyle={{ backgroundColor: '#2870A8' }}
-                hoverStyle={{ backgroundColor: '#2870A8'}}
+                hoverStyle={{ backgroundColor: '#2870A8' }}
                 onPress={onRegister}
                 disabled={loading}
               >
@@ -349,8 +358,6 @@ export default function Register() {
                 </Text>
                 <Separator flex={1} backgroundColor="#E0E6EE" />
               </XStack>
-
-             
 
               {/* Link back to login */}
               <Text textAlign="center" marginTop={12} color="#585858" fontSize={14}>

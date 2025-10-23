@@ -53,31 +53,55 @@ export default function Login() {
 
   const onSubmit = async () => {
     if (!email.trim() || !pw.trim()) {
-      alert('Thiếu thông tin', 'Vui lòng nhập email và mật khẩu.');
+      Alert.alert('Thiếu thông tin', 'Vui lòng nhập email và mật khẩu.');
       return;
     }
+
     setLoading(true);
     try {
       const res = await login({ email: email.trim(), password: pw });
-      // Lưu email nếu remember
+
+      if (__DEV__) console.log('[Login] API success:', res);
+
+      // Ưu tiên message từ API (tùy backend có thể ở res.message hoặc res.data.message)
+      const apiMessage =
+        res?.message ||
+        res?.data?.message ||
+        'Đăng nhập thành công!';
+
+      Alert.alert('Thành công', apiMessage, [
+        {
+          text: 'OK',
+          onPress: () => {
+            // Điều hướng sau khi đăng nhập thành công
+            // Đổi route nếu app bạn dùng đường khác
+            router.replace('/home');
+          },
+        },
+      ]);
+
+      // (Tuỳ chọn) Lưu email nếu nhớ
       const { default: AsyncStorage } = await import('@react-native-async-storage/async-storage');
       if (remember) {
         await AsyncStorage.setItem('remember_email', email.trim());
       } else {
         await AsyncStorage.removeItem('remember_email');
       }
-
-      // Điều hướng sau khi đăng nhập thành công
-      // ĐỔI route này theo app của bạn: ví dụ '/home' hoặc '/(tabs)'
-      router.replace('/home');
-
     } catch (err: any) {
-      const msg = err?.data?.message || err?.message || 'Đăng nhập thất bại. Vui lòng thử lại.';
-      alert('Lỗi đăng nhập', String(msg));
+      if (__DEV__) console.error('[Login] API error:', err?.status, err?.data || err);
+
+      const msg =
+        err?.response?.data?.message || // axios style
+        err?.data?.message ||           // fetch wrapper tự gán
+        err?.message ||                 // fallback chung
+        'Đăng nhập thất bại. Vui lòng thử lại.';
+
+      alert(String(msg));
     } finally {
       setLoading(false);
     }
   };
+
 
   return (
     <Theme name='light'>
@@ -168,12 +192,20 @@ export default function Login() {
 
             {/* Remember + Forgot */}
             <XStack alignItems="center" justifyContent="space-between" marginTop={8} marginBottom={12}>
-              <XStack alignItems="center" space="$3">
+              <XStack alignItems="center" gap="$3">
                 <Checkbox
                   id="remember"
                   size="$3"
-                  checked={remember}
-                  onCheckedChange={(val) => setRemember(!!val)}   // val: boolean | 'indeterminate'
+                  onCheckedChange={(val) => {
+                    // Narrow the runtime type before comparisons to satisfy TypeScript unions
+                    if (typeof val === 'boolean') {
+                      setRemember(val);
+                    } else if (typeof val === 'string') {
+                      setRemember(val === 'true' || val === '$true');
+                    } else {
+                      setRemember(false);
+                    }
+                  }}   // val: boolean | 'indeterminate'
                   backgroundColor={remember ? '#085C9C' : '#FFFFFF'}
                   borderColor={remember ? '#085C9C' : '#E4E4E4'}
                   borderWidth={1}
@@ -210,7 +242,7 @@ export default function Login() {
               borderRadius={12}
               backgroundColor='#085C9C'
               pressStyle={{ backgroundColor: '#2870A8' }}
-              hoverStyle={{ backgroundColor: '#2870A8'}}
+              hoverStyle={{ backgroundColor: '#2870A8' }}
               onPress={onSubmit}
               disabled={loading}
             >
