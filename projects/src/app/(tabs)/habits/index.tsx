@@ -1,9 +1,22 @@
-import React from 'react';
-import { Stack,Link } from "expo-router";
+// app/(tabs)/habits/index.tsx  (ví dụ)
+// React Native version — compatible with Expo Go (no web tags)
+import React, { useMemo, useState } from 'react';
+import { Stack, Link, router } from 'expo-router';
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  Pressable,
+  TouchableOpacity,
+  Modal,
+  TextInput,
+  SafeAreaView,
+} from 'react-native';
 import {
   Home, TrendingUp, Moon, Users, User, Plus, BarChart3, ChevronLeft,
   Check, X, Minus, MoreVertical
-} from 'lucide-react';
+} from 'lucide-react-native';
 
 type Habit = {
   id: number;
@@ -15,13 +28,12 @@ type Habit = {
 };
 
 export default function FlowStateHabits() {
-  const [chartView, setChartView] = React.useState<'day'|'week'|'month'>('day');
-  const [habitStatus, setHabitStatus] = React.useState<Record<number, 'success'|'fail'|'skip'|undefined>>({});
-  const [activeMenu, setActiveMenu] = React.useState<number | null>(null);
-  const [notes, setNotes] = React.useState<Record<number, string>>({});
+  const [chartView, setChartView] = useState<'day'|'week'|'month'>('day');
+  const [habitStatus, setHabitStatus] = useState<Record<number, 'success'|'fail'|'skip'|undefined>>({});
+  const [activeMenu, setActiveMenu] = useState<number | null>(null);
+  const [notes, setNotes] = useState<Record<number, string>>({});
 
-  // Danh sách thói quen (để sửa/xóa)
-  const initialHabits: Habit[] = React.useMemo(() => ([
+  const initialHabits: Habit[] = useMemo(() => ([
     { id: 1, title: 'Thiền 10 phút', subtitle: 'Thiền chính niệm buổi sáng', tag: 'Mindful', tagColor: 'bg-green-500', duration: '12 ngày' },
     { id: 2, title: 'Đi bộ 30 phút', subtitle: 'Đi bộ ngoài trời hoặc treadmill', tag: 'Energy', tagColor: 'bg-orange-500', duration: '8 ngày' },
     { id: 3, title: 'Ngủ đúng giờ', subtitle: 'Đi ngủ trước 23:00', tag: 'Sleep', tagColor: 'bg-blue-500', duration: '16 ngày' },
@@ -29,19 +41,19 @@ export default function FlowStateHabits() {
     { id: 5, title: 'Uống 2L nước', subtitle: 'Uống đủ nước mỗi ngày', tag: 'Energy', tagColor: 'bg-orange-500', duration: '20 ngày' },
     { id: 6, title: 'Viết nhật ký', subtitle: 'Ghi lại suy nghĩ cuối ngày', tag: 'Mindful', tagColor: 'bg-green-500', duration: '3 ngày' }
   ]), []);
-  const [habitList, setHabitList] = React.useState<Habit[]>(initialHabits);
+  const [habitList, setHabitList] = useState<Habit[]>(initialHabits);
 
   // Modal chỉnh sửa
-  const [editOpen, setEditOpen] = React.useState(false);
-  const [editId, setEditId] = React.useState<number | null>(null);
-  const [editTitle, setEditTitle] = React.useState('');
-  const [editSubtitle, setEditSubtitle] = React.useState('');
-  const [editTag, setEditTag] = React.useState('');
+  const [editOpen, setEditOpen] = useState(false);
+  const [editId, setEditId] = useState<number | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editSubtitle, setEditSubtitle] = useState('');
+  const [editTag, setEditTag] = useState('');
 
-  // Modal xác nhận xóa (riêng, nổi phía trên)
-  const [confirmOpen, setConfirmOpen] = React.useState(false);
-  const [confirmName, setConfirmName] = React.useState('');
-  const [confirmId, setConfirmId] = React.useState<number | null>(null);
+  // Modal xác nhận xóa
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmName, setConfirmName] = useState('');
+  const [confirmId, setConfirmId] = useState<number | null>(null);
 
   const openEditModal = (h: Habit) => {
     setEditId(h.id);
@@ -77,7 +89,10 @@ export default function FlowStateHabits() {
       )
     );
     closeEditModal();
+    // Nếu muốn tự chuyển sang trang chi tiết chỉnh sửa:
+    // router.push('/(tabs)/habits/CreateHabitDetail');
   };
+
   const deleteHabit = (id: number) => {
     setHabitList(list => list.filter(h => h.id !== id));
     setHabitStatus(({[id]: _, ...rest}) => rest);
@@ -114,202 +129,125 @@ export default function FlowStateHabits() {
     }));
   };
 
-  const getStatusStyle = (status?: 'success'|'fail'|'skip') => {
-    if (status === 'success') return { border: '2px solid #10b981', backgroundColor: '#10b981', color: 'white' };
-    if (status === 'fail') return { border: '2px solid #ef4444', backgroundColor: '#ef4444', color: 'white' };
-    if (status === 'skip') return { border: '2px dashed #94a3b8', backgroundColor: '#94a3b8', color: 'white' };
-    return { border: '2px solid #d1d5db', backgroundColor: 'white', color: '#d1d5db' };
+  const getStatusStyle = (status?: 'success'|'fail'|'skip'): { bg: string; border: string } => {
+    if (status === 'success') return { bg: '#10b981', border: '#10b981' };
+    if (status === 'fail')    return { bg: '#ef4444', border: '#ef4444' };
+    if (status === 'skip')    return { bg: '#94a3b8', border: '#94a3b8' };
+    return { bg: '#ffffff', border: '#d1d5db' };
   };
 
   const renderStatusIcon = (status?: 'success'|'fail'|'skip') => {
-    if (status === 'success') return <Check size={18} color="white" />;
-    if (status === 'fail') return <X size={18} color="white" />;
-    if (status === 'skip') return <Minus size={18} color="white" />;
+    if (status === 'success') return <Check size={18} color="#fff" />;
+    if (status === 'fail')    return <X size={18} color="#fff" />;
+    if (status === 'skip')    return <Minus size={18} color="#fff" />;
     return null;
   };
 
   const totalHabits = habitList.length;
-  const completedCount = React.useMemo(
+  const completedCount = useMemo(
     () => habitList.filter(h => habitStatus[h.id] === 'success').length,
     [habitList, habitStatus]
   );
   const progressPercent = totalHabits > 0 ? Math.round((completedCount / totalHabits) * 100) : 0;
 
   return (
-    <>
-    <Stack.Screen options={{ tabBarStyle: { display: 'none' } }} />
-    <div
-      style={{
-        width: '100%', height: '100vh', overflow: 'auto',
-        background:
-          'radial-gradient(1200px 600px at 10% -10%, #dbeafe 10%, transparent 40%), radial-gradient(800px 500px at 110% 10%, #fce7f3 10%, transparent 45%), linear-gradient(180deg, #f8fafc, #eef2ff)',
-      }}
-    >
-      {/* CSS nâng cấp UI + modal */}
-      <style>{`
-        .card { background: rgba(255,255,255,0.8); backdrop-filter: blur(10px); border: 1px solid rgba(148,163,184,0.18); border-radius: 16px; box-shadow: 0 10px 25px rgba(15,23,42,0.06); }
-        .btn { border: none; border-radius: 12px; cursor: pointer; transition: transform .12s ease, box-shadow .2s ease, background .2s ease; }
-        .btn:active { transform: translateY(1px) scale(0.99); }
-        .icon-btn { width: 40px; height: 40px; border-radius: 50%; display:flex; align-items:center; justify-content:center; box-shadow: 0 6px 16px rgba(37, 99, 235, .25); }
+    <SafeAreaView style={styles.safe}>
+      <Stack.Screen options={{ headerShown: false }} />
 
-        .progress-rail { width: 100%; height: 10px; border-radius: 999px; overflow: hidden; background: linear-gradient(90deg, #e5e7eb, #f1f5f9); }
-        .progress-bar { height: 100%; background: linear-gradient(90deg, #34d399, #22c55e); border-radius: 999px; transition: width .35s ease; box-shadow: 0 6px 14px rgba(34,197,94,.35) inset; }
+      {/* Header */}
+      <View style={[styles.card, styles.header]}>
+        <View style={styles.headerLeft}>
+          <Pressable style={[styles.iconBtn, { backgroundColor: '#2563eb' }]}>
+            <ChevronLeft size={20} color="#fff" />
+          </Pressable>
+          <View>
+            <Text style={styles.title}>Flow State Habits</Text>
+            <Text style={styles.subtitle}>Theo dõi thói quen hằng ngày</Text>
+          </View>
+        </View>
 
-        @keyframes growUp { from { transform: translateY(12px) scaleY(0.6); opacity: .2; } to { transform: translateY(0) scaleY(1); opacity: 1; } }
-        @keyframes fadeSlide { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-        .bar { border-radius: 8px 8px 4px 4px; background: linear-gradient(180deg, #86efac, #4ade80); box-shadow: 0 6px 16px rgba(74, 222, 128, .35); transition: transform .15s ease, box-shadow .2s ease, opacity .2s ease; animation: growUp .45s ease forwards; }
-        .bar:hover { transform: translateY(-3px); box-shadow: 0 10px 22px rgba(74, 222, 128, .5); }
-        .chart-enter { animation: fadeSlide .35s ease; }
-
-        .month-grid { display: grid; grid-template-columns: repeat(12, 1fr); column-gap: 8px; align-items: end; }
-        .month-cell { display: flex; flex-direction: column; align-items: center; gap: 6px; }
-
-        .habit-item { display:flex; align-items:center; gap:12px; padding:12px; border:1px solid rgba(203,213,225,.4); border-radius:14px; transition: background .2s, box-shadow .2s, transform .12s; position: relative; }
-        .habit-item:hover { box-shadow: 0 10px 22px rgba(15,23,42,.06); transform: translateY(-1px); background: linear-gradient(180deg, rgba(248,250,252,.7), rgba(255,255,255,.9)); }
-        .status-dot { width: 34px; height: 34px; border-radius: 50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition: all .2s; }
-        .glow-success { box-shadow: 0 0 0 4px rgba(16,185,129,.12), 0 10px 20px rgba(16,185,129,.25); }
-        .glow-fail   { box-shadow: 0 0 0 4px rgba(239,68,68,.12), 0 10px 20px rgba(239,68,68,.25); }
-
-        .tag { padding: 3px 10px; border-radius: 999px; font-weight: 600; font-size: 11px; color: white; box-shadow: 0 6px 16px rgba(0,0,0,.1); }
-        .mini-menu { background: linear-gradient(180deg, #f8fafc, #ffffff); border: 1px solid rgba(203,213,225,.5); border-radius: 12px; padding: 10px; }
-
-        .skip-btn { background: repeating-linear-gradient(45deg, #e5e7eb, #e5e7eb 8px, #f1f5f9 8px, #f1f5f9 16px); color: #334155; font-weight: 700; border: 2px dashed #94a3b8; }
-        .skip-btn:hover { opacity: .95; }
-
-        .pill { display:inline-flex; align-items:center; gap:8px; background: linear-gradient(180deg, #eef2ff, #e0e7ff); color:#4338ca; padding:6px 10px; border-radius:999px; font-weight:600; font-size:12px; border: 1px solid rgba(99,102,241,.25) }
-
-        .bottom-nav { position:fixed; left:0; right:0; bottom:0; background: rgba(255,255,255,.8); backdrop-filter: blur(10px); border-top:1px solid rgba(203,213,225,.6); display:flex; justify-content:space-around; padding:12px 0; z-index:10 }
-        .nav-btn { background:none; border:none; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:4px; transition: transform .12s ease, opacity .2s ease; }
-        .nav-btn:active { transform: translateY(1px) scale(.98); }
-
-        .dot-btn { width: 34px; height: 34px; border-radius: 10px; border: 1px solid rgba(203,213,225,.7); background: #ffffffaa; display:flex; align-items:center; justify-content:center; }
-
-        /* Modal chung */
-        .modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.35); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 50; animation: fadeSlide .2s ease; }
-        .modal-card {
-          width: min(92%, 440px);
-          background: white; border-radius: 20px;
-          box-shadow: 0 30px 60px rgba(15,23,42,.25);
-          border: 1px solid rgba(203,213,225,.6);
-          padding: 18px;
-          box-sizing: border-box;
-          overflow: hidden;
-        }
-        .modal-title { font-size: 18px; font-weight: 800; color: #0f172a; margin-bottom: 12px; }
-        .modal-input { width: 100%; padding: 10px 12px; margin-bottom: 10px; border: 1px solid #cbd5e1; border-radius: 12px; font-size: 14px; background: linear-gradient(180deg, #ffffff, #f8fafc); box-sizing: border-box; }
-        .modal-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }
-        .link-danger { color: #dc2626; background: none; border: none; cursor: pointer; font-weight: 700; }
-        .btn-ghost { background: #e2e8f0; border: none; border-radius: 12px; padding: 8px 12px; font-weight: 700; cursor: pointer; }
-        .btn-primary { background: #2563eb; color: white; border: none; border-radius: 12px; padding: 8px 14px; font-weight: 700; cursor: pointer; }
-
-        /* Modal xác nhận xóa (nổi cao hơn) */
-        .confirm-overlay { z-index: 60; }
-        .confirm-card { width: min(92%, 420px); padding: 22px; border-radius: 24px; }
-        .confirm-title { font-size: 18px; font-weight: 800; color: #0f172a; margin-bottom: 6px; }
-        .confirm-sub { font-size: 14px; color: #64748b; margin-bottom: 16px; }
-        .confirm-actions { display:flex; justify-content:center; gap:12px; }
-        .btn-cancel { background:#e5e7eb; color:#0f172a; border:none; border-radius:999px; padding:10px 16px; font-weight:700; cursor:pointer; }
-        .btn-danger { background:#ef4444; color:#fff; border:none; border-radius:999px; padding:10px 16px; font-weight:700; cursor:pointer; }
-
-        /* Chống tràn chữ dài */
-        .ellipsis-wrap { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      `}</style>
-
-      <div style={{ maxWidth: 480, margin: '0 auto', paddingBottom: 88 }}>
-        {/* Header */}
-        <div className="card" style={{ position: 'sticky', top: 0, zIndex: 10, padding: 14, margin: '10px 10px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div className="btn icon-btn" style={{ background: 'linear-gradient(180deg, #1d4ed8, #2563eb)' }}>
-              <ChevronLeft size={20} color="#fff" />
-            </div>
-            <div>
-              <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: .2 }}>Flow State Habits</div>
-              <div style={{ fontSize: 12, color: '#64748b' }}>Theo dõi thói quen hằng ngày</div>
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <Link href="/(tabs)/habits/AddHabitModal">
-            <button className="btn icon-btn" style={{ background: 'linear-gradient(180deg, #1d4ed8, #2563eb)', color: 'white' }}>
-              <Plus size={20} />
-            </button>
-            </Link>
-            <Link href="/(tabs)/habits/HabitStreak">
-            <button className="btn icon-btn" style={{ background: 'linear-gradient(180deg, #e2e8f0, #f8fafc)' }}>
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <Link href="/(tabs)/habits/AddHabitModal" asChild>
+            <Pressable style={[styles.iconBtn, { backgroundColor: '#2563eb' }]}>
+              <Plus size={20} color="#fff" />
+            </Pressable>
+          </Link>
+          <Link href="/(tabs)/habits/HabitStreak" asChild>
+            <Pressable style={[styles.iconBtn, { backgroundColor: '#E5E7EB' }]}>
               <BarChart3 size={20} color="#0f172a" />
-            </button>
-            </Link>
-          </div>
-        </div>
+            </Pressable>
+          </Link>
+        </View>
+      </View>
+
+      <ScrollView contentContainerStyle={{ paddingBottom: 96 }}>
 
         {/* Progress Summary */}
-        <div className="card" style={{ padding: 16, margin: '12px 10px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-            <span className="pill">
-              <TrendingUp size={16} />
-              Tiến độ hôm nay
-            </span>
-            <span style={{ fontSize: 13, color: '#334155', fontWeight: 600 }}>
-              {completedCount}/{totalHabits} hoàn thành
-            </span>
-          </div>
-          <div className="progress-rail">
-            <div className="progress-bar" style={{ width: `${progressPercent}%` }} />
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
-            <span style={{ fontSize: 12, color: '#64748b' }}>Mục tiêu: hoàn thành tất cả</span>
-            <span style={{ fontSize: 20, fontWeight: 800 }}>{progressPercent}%</span>
-          </div>
-        </div>
+        <View style={[styles.card, { padding: 16, marginHorizontal: 10, marginTop: 8 }]}>
+          <View style={styles.rowBetween}>
+            <View style={styles.pill}>
+              <TrendingUp size={16} color="#4338ca" />
+              <Text style={styles.pillText}>Tiến độ hôm nay</Text>
+            </View>
+            <Text style={styles.smallStrong}>{completedCount}/{totalHabits} hoàn thành</Text>
+          </View>
+
+          <View style={styles.progressRail}>
+            <View style={[styles.progressBar, { width: `${progressPercent}%` }]} />
+          </View>
+
+          <View style={[styles.rowBetween, { marginTop: 8 }]}>
+            <Text style={styles.muted}>Mục tiêu: hoàn thành tất cả</Text>
+            <Text style={styles.percent}>{progressPercent}%</Text>
+          </View>
+        </View>
 
         {/* Chart Section */}
-        <div className="card" style={{ padding: 16, margin: '12px 10px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <span style={{ fontSize: 16, fontWeight: 700 }}>Biểu đồ tiến bộ</span>
-            <div style={{ display: 'inline-flex', gap: 8 }}>
-              {['day', 'week', 'month'].map(v => (
-                <button
+        <View style={[styles.card, { padding: 16, marginHorizontal: 10, marginTop: 12 }]}>
+          <View style={styles.rowBetween}>
+            <Text style={styles.sectionTitle}>Biểu đồ tiến bộ</Text>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {(['day','week','month'] as const).map(v => (
+                <Pressable
                   key={v}
-                  onClick={() => setChartView(v as any)}
-                  className="btn"
-                  style={{
-                    padding: '6px 12px',
-                    background: chartView === v ? 'linear-gradient(180deg, #1d4ed8, #2563eb)' : 'linear-gradient(180deg, #e2e8f0, #f8fafc)',
-                    color: chartView === v ? 'white' : '#334155',
-                    fontSize: 12, fontWeight: 700, border: '1px solid rgba(99,102,241,.15)'
-                  }}
+                  onPress={() => setChartView(v)}
+                  style={[
+                    styles.switchBtn,
+                    chartView === v ? styles.switchActive : styles.switchIdle
+                  ]}
                 >
-                  {v === 'day' ? 'Ngày' : v === 'week' ? 'Tuần' : 'Tháng'}
-                </button>
+                  <Text style={[styles.switchText, chartView === v && { color: '#fff' }]}>
+                    {v === 'day' ? 'Ngày' : v === 'week' ? 'Tuần' : 'Tháng'}
+                  </Text>
+                </Pressable>
               ))}
-            </div>
-          </div>
+            </View>
+          </View>
 
-          <div key={chartView} className="chart-enter">
-            {chartView !== 'month' ? (
-              <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', height: 140, gap: 8, overflow: 'hidden', padding: '6px 2px' }}>
-                {getChartData().map((item, index) => (
-                  <div key={index} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, minWidth: 44 }}>
-                    <div className="bar" title={`${item.day}: ${item.height}`} style={{ width: 28, height: item.height }} />
-                    <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>{item.day}</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="month-grid" style={{ height: 160, padding: '6px 2px' }}>
-                {getChartData().map((item, index) => (
-                  <div key={index} className="month-cell">
-                    <div className="bar" title={`${item.day}: ${item.height}`} style={{ width: '100%', maxWidth: 26, height: item.height, margin: '0 auto' }} />
-                    <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>{item.day}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+          {chartView !== 'month' ? (
+            <View style={styles.chartRow}>
+              {getChartData().map((item, i) => (
+                <View key={i} style={styles.chartCol}>
+                  <View style={[styles.bar, { height: item.height }]} />
+                  <Text style={styles.barLabel}>{item.day}</Text>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.monthGrid}>
+              {getChartData().map((item, i) => (
+                <View key={i} style={styles.monthCell}>
+                  <View style={[styles.bar, { height: item.height, width: 26 }]} />
+                  <Text style={styles.barLabel}>{item.day}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
 
         {/* Habits List */}
-        <div className="card" style={{ padding: 16, margin: '12px 10px' }}>
-          <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 12 }}>Danh sách thói quen</div>
+        <View style={[styles.card, { padding: 16, marginHorizontal: 10, marginTop: 12 }]}>
+          <Text style={styles.sectionTitle}>Danh sách thói quen</Text>
 
           {habitList.map((habit) => {
             const status = habitStatus[habit.id];
@@ -317,150 +255,327 @@ export default function FlowStateHabits() {
               habit.tagColor === 'bg-green-500' ? '#10b981' :
               habit.tagColor === 'bg-orange-500' ? '#f97316' : '#3b82f6';
 
+            const s = getStatusStyle(status);
+
             return (
-              <div key={habit.id} style={{ marginBottom: 10 }}>
-                <div
-                  onClick={() => setActiveMenu(activeMenu === habit.id ? null : habit.id)}
-                  className="habit-item"
-                  style={{
-                    background:
-                      status === 'success'
-                        ? 'linear-gradient(180deg, #f0fdf4, #ffffff)'
-                        : status === 'fail'
-                        ? 'linear-gradient(180deg, #fef2f2, #ffffff)'
-                        : 'linear-gradient(180deg, rgba(248,250,252,.7), rgba(255,255,255,.9))'
-                  }}
+              <View key={habit.id} style={{ marginBottom: 10 }}>
+                <Pressable
+                  onPress={() => setActiveMenu(activeMenu === habit.id ? null : habit.id)}
+                  style={[
+                    styles.habitItem,
+                    status === 'success' ? { backgroundColor: '#f0fdf4' }
+                    : status === 'fail' ? { backgroundColor: '#fef2f2' }
+                    : { backgroundColor: '#ffffff' }
+                  ]}
                 >
-                  <div
-                    className={[
-                      'status-dot',
-                      status === 'success' ? 'glow-success' : '',
-                      status === 'fail' ? 'glow-fail' : ''
-                    ].join(' ')}
-                    style={{ ...getStatusStyle(status) }}
+                  <View
+                    style={[
+                      styles.statusDot,
+                      { backgroundColor: s.bg, borderColor: s.border }
+                    ]}
                   >
                     {renderStatusIcon(status)}
-                  </div>
+                  </View>
 
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                      <span className="ellipsis-wrap" style={{ fontSize: 15, fontWeight: 700 }}>{habit.title}</span>
-                      <span className="tag" style={{ background: bgTag }}>{habit.tag}</span>
-                    </div>
-                    <div className="ellipsis-wrap" style={{ fontSize: 13, color: '#64748b' }}>{habit.subtitle}</div>
-                  </div>
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                      <Text numberOfLines={1} style={styles.habitTitle}>{habit.title}</Text>
+                      <View style={[styles.tag, { backgroundColor: bgTag }]}>
+                        <Text style={styles.tagText}>{habit.tag}</Text>
+                      </View>
+                    </View>
+                    <Text numberOfLines={1} style={styles.habitSubtitle}>{habit.subtitle}</Text>
+                  </View>
 
-                  <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600, marginRight: 8 }}>{habit.duration}</span>
+                  <Text style={styles.durationText}>{habit.duration}</Text>
 
-                  {/* Nút 3 chấm mở modal chỉnh sửa */}
-                  <button
-                    className="dot-btn"
-                    onClick={(e) => { e.stopPropagation(); openEditModal(habit); }}
-                    title="Chỉnh sửa thói quen"
+                  <Pressable
+                    onPress={(e) => { e.stopPropagation?.(); openEditModal(habit); }}
+                    style={styles.dotBtn}
                   >
                     <MoreVertical size={18} color="#0f172a" />
-                  </button>
-                </div>
+                  </Pressable>
+                </Pressable>
 
-                {/* Mini Menu trạng thái & ghi chú */}
                 {activeMenu === habit.id && (
-                  <div className="mini-menu" style={{ margin: '8px 0 6px 46px' }}>
-                    <div style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
-                      <button
-                        onClick={() => handleStatusChange(habit.id, 'success')}
-                        className="btn"
-                        style={{ flex: 1, background: 'linear-gradient(180deg, #10b981, #059669)', color: 'white', fontSize: 13, fontWeight: 700, padding: '8px 10px' }}
-                        title="Đánh dấu Hoàn thành – sẽ tính vào % tiến độ hôm nay"
+                  <View style={styles.miniMenu}>
+                    <View style={{ flexDirection: 'row', gap: 8, marginBottom: 6 }}>
+                      <TouchableOpacity
+                        onPress={() => handleStatusChange(habit.id, 'success')}
+                        style={[styles.actionBtn, { backgroundColor: '#10b981' }]}
                       >
-                        Hoàn thành
-                      </button>
-                      <button
-                        onClick={() => handleStatusChange(habit.id, 'fail')}
-                        className="btn"
-                        style={{ flex: 1, background: 'linear-gradient(180deg, #ef4444, #dc2626)', color: 'white', fontSize: 13, fontWeight: 700, padding: '8px 10px' }}
-                        title="Đánh dấu Thất bại – không tính vào % tiến độ"
+                        <Text style={styles.actionText}>Hoàn thành</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => handleStatusChange(habit.id, 'fail')}
+                        style={[styles.actionBtn, { backgroundColor: '#ef4444' }]}
                       >
-                        Thất bại
-                      </button>
-                      <button
-                        onClick={() => handleStatusChange(habit.id, 'skip')}
-                        className="btn skip-btn"
-                        style={{ flex: 1, fontSize: 13, padding: '8px 10px' }}
-                        title="Bỏ qua – không tính vào % tiến độ hôm nay"
+                        <Text style={styles.actionText}>Thất bại</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => handleStatusChange(habit.id, 'skip')}
+                        style={[styles.actionBtn, styles.skipBtn]}
                       >
-                        Bỏ qua
-                      </button>
-                    </div>
-                    <div style={{ fontSize: 11, color: '#64748b', marginBottom: 8 }}>
-                      * Bỏ qua: trung lập cho ngày hôm nay, <b>không cộng cũng không trừ</b> vào tiến độ.
-                    </div>
-                    <textarea
+                        <Text style={[styles.actionText, { color: '#334155' }]}>Bỏ qua</Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    <Text style={styles.helperNote}>
+                      * Bỏ qua: trung lập cho ngày hôm nay, <Text style={{ fontWeight: 'bold' }}>không cộng cũng không trừ</Text> vào tiến độ.
+                    </Text>
+
+                    <TextInput
                       placeholder="Ghi chú..."
                       value={notes[habit.id] || ''}
-                      onChange={(e) => setNotes({ ...notes, [habit.id]: e.target.value })}
-                      style={{ width: '100%', fontSize: 13, padding: 10, borderRadius: 10, border: '1px solid rgba(203,213,225,.9)', background: 'linear-gradient(180deg, #ffffff, #f8fafc)', resize: 'none' }}
-                      rows={2}
+                      onChangeText={(t) => setNotes({ ...notes, [habit.id]: t })}
+                      style={styles.noteInput}
+                      multiline
                     />
-                  </div>
+                  </View>
                 )}
-              </div>
+              </View>
             );
           })}
-        </div>
-      </div>
+        </View>
+      </ScrollView>
 
       {/* Bottom Navigation */}
-      <div className="bottom-nav">
+      <View style={styles.bottomNav}>
         {[
-          { icon: Home, label: 'Trang chủ', active: false },
-          { icon: TrendingUp, label: 'Thói quen', active: true },
-          { icon: Moon, label: 'Giấc ngủ', active: false },
-          { icon: Users, label: 'Cộng đồng', active: false },
-          { icon: User, label: 'Cá nhân', active: false }
+          { icon: Home, label: 'Trang chủ', active: false, href: '/(tabs)/home' },
+          { icon: TrendingUp, label: 'Thói quen', active: true, href: '/(tabs)/habits' },
+          { icon: Moon, label: 'Giấc ngủ', active: false, href: '/(tabs)/sleep' },
+          { icon: Users, label: 'Cộng đồng', active: false, href: '/(tabs)/community' },
+          { icon: User, label: 'Cá nhân', active: false, href: '/(tabs)/profile' }
         ].map((item, index) => {
           const Icon = item.icon;
           return (
-            <button key={index} className="nav-btn" style={{ color: item.active ? '#2563eb' : '#94a3b8' }}>
-              <Icon size={22} />
-              <span style={{ fontSize: 11, fontWeight: 700 }}>{item.label}</span>
-            </button>
+            <Link key={index} href={item.href as any} asChild>
+              <Pressable style={styles.navBtn}>
+                <Icon size={22} color={item.active ? '#2563eb' : '#94a3b8'} />
+                <Text style={[styles.navLabel, { color: item.active ? '#2563eb' : '#94a3b8' }]}>{item.label}</Text>
+              </Pressable>
+            </Link>
           );
         })}
-      </div>
+      </View>
 
       {/* MODAL chỉnh sửa */}
-      {editOpen && (
-        <div className="modal-overlay" onClick={closeEditModal}>
-          <div className="modal-card" onClick={(e)=>e.stopPropagation()}>
-            <div className="modal-title">Chỉnh sửa thói quen</div>
-            <input className="modal-input" value={editTitle} onChange={(e)=>setEditTitle(e.target.value)} placeholder="Tên thói quen" />
-            <input className="modal-input" value={editSubtitle} onChange={(e)=>setEditSubtitle(e.target.value)} placeholder="Mô tả / ghi chú" />
-            <input className="modal-input" value={editTag} onChange={(e)=>setEditTag(e.target.value)} placeholder="Tag (Mindful, Energy, ...)" />
-            <div className="modal-actions">
-              <button className="link-danger" onClick={()=> editId!=null && askDelete(editId, editTitle || '')}>Xóa</button>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button className="btn-ghost" onClick={closeEditModal}>Hủy</button>
-                <button className="btn-primary" onClick={saveEdit}>Lưu</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <Modal visible={editOpen} transparent animationType="fade" onRequestClose={closeEditModal}>
+        <Pressable style={styles.modalOverlay} onPress={closeEditModal}>
+          <Pressable style={styles.modalCard} onPress={(e)=>e.stopPropagation()}>
+            <Text style={styles.modalTitle}>Chỉnh sửa thói quen</Text>
 
-      {/* MODAL xác nhận xóa (đẹp, cân giữa) */}
-      {confirmOpen && (
-        <div className="modal-overlay confirm-overlay" onClick={closeConfirm}>
-          <div className="modal-card confirm-card" onClick={(e)=>e.stopPropagation()}>
-            <div className="confirm-title">Xóa thói quen “{confirmName}”?</div>
-            <div className="confirm-sub">Hành động này không thể hoàn tác.</div>
-            <div className="confirm-actions">
-              <button className="btn-cancel" onClick={closeConfirm}>Hủy</button>
-              <button className="btn-danger" onClick={()=> confirmId!=null && deleteHabit(confirmId)}>Xóa</button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-    </>
+            <TextInput
+              style={styles.modalInput}
+              value={editTitle}
+              onChangeText={setEditTitle}
+              placeholder="Tên thói quen"
+            />
+            <TextInput
+              style={styles.modalInput}
+              value={editSubtitle}
+              onChangeText={setEditSubtitle}
+              placeholder="Mô tả / ghi chú"
+            />
+            <TextInput
+              style={styles.modalInput}
+              value={editTag}
+              onChangeText={setEditTag}
+              placeholder="Tag (Mindful, Energy, ...)"
+            />
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity onPress={()=> editId!=null && askDelete(editId, editTitle || '')}>
+                <Text style={styles.linkDanger}>Xóa</Text>
+              </TouchableOpacity>
+
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TouchableOpacity style={styles.btnGhost} onPress={closeEditModal}>
+                  <Text style={styles.btnGhostText}>Hủy</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.btnPrimary}
+                  onPress={saveEdit}
+                  // hoặc nếu muốn chuyển trang sau lưu:
+                  // onPress={() => { saveEdit(); router.push('/(tabs)/habits/CreateHabitDetail'); }}
+                >
+                  <Text style={styles.btnPrimaryText}>Chỉnh sửa</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* MODAL xác nhận xóa */}
+      <Modal visible={confirmOpen} transparent animationType="fade" onRequestClose={closeConfirm}>
+        <Pressable style={styles.modalOverlay} onPress={closeConfirm}>
+          <Pressable style={[styles.modalCard, { padding: 22 }]} onPress={(e)=>e.stopPropagation()}>
+            <Text style={styles.confirmTitle}>Xóa thói quen “{confirmName}”?</Text>
+            <Text style={styles.confirmSub}>Hành động này không thể hoàn tác.</Text>
+            <View style={styles.confirmActions}>
+              <TouchableOpacity style={styles.btnCancel} onPress={closeConfirm}>
+                <Text style={styles.btnCancelText}>Hủy</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.btnDanger} onPress={()=> confirmId!=null && deleteHabit(confirmId!)}>
+                <Text style={styles.btnDangerText}>Xóa</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: '#EEF2FF' },
+
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(203,213,225,0.6)',
+    marginBottom: 8,
+    shadowColor: '#0f172a',
+    shadowOpacity: 0.08,
+    shadowOffset: { width: 0, height: 8 },
+    shadowRadius: 12,
+    elevation: 4,
+  },
+
+  header: {
+    marginHorizontal: 10,
+    marginTop: 10,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+
+  iconBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    alignItems: 'center', justifyContent: 'center',
+  },
+
+  title: { fontSize: 18, fontWeight: '800', letterSpacing: 0.2, color: '#0f172a' },
+  subtitle: { fontSize: 12, color: '#64748b' },
+
+  rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  smallStrong: { fontSize: 13, color: '#334155', fontWeight: '700' },
+
+  progressRail: {
+    width: '100%', height: 10, borderRadius: 999, overflow: 'hidden',
+    backgroundColor: '#e5e7eb', marginTop: 6,
+  },
+  progressBar: { height: '100%', backgroundColor: '#22c55e', borderRadius: 999 },
+
+  pill: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: '#e0e7ff', paddingHorizontal: 10, paddingVertical: 6,
+    borderRadius: 999, borderWidth: 1, borderColor: 'rgba(99,102,241,.25)'
+  },
+  pillText: { color: '#4338ca', fontWeight: '700', fontSize: 12 },
+
+  percent: { fontSize: 20, fontWeight: '800', color: '#0f172a' },
+  muted: { fontSize: 12, color: '#64748b' },
+
+  sectionTitle: { fontSize: 16, fontWeight: '800', marginBottom: 12, color: '#0f172a' },
+
+  switchBtn: {
+    paddingVertical: 6, paddingHorizontal: 12, borderRadius: 10,
+    borderWidth: 1, borderColor: 'rgba(99,102,241,.15)',
+  },
+  switchActive: { backgroundColor: '#2563eb' },
+  switchIdle: { backgroundColor: '#e2e8f0' },
+  switchText: { fontSize: 12, fontWeight: '700', color: '#334155' },
+
+  chartRow: {
+    flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between',
+    height: 140, gap: 8, paddingVertical: 6,
+  },
+  chartCol: { alignItems: 'center', minWidth: 36, gap: 6 },
+  bar: {
+    width: 28, borderRadius: 8,
+    backgroundColor: '#4ade80',
+  },
+  barLabel: { fontSize: 11, color: '#64748b', fontWeight: '600' },
+  monthGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'flex-end', height: 160, paddingVertical: 6 },
+  monthCell: { width: '8.3%', alignItems: 'center', gap: 6 },
+
+  habitItem: {
+    borderWidth: 1, borderColor: 'rgba(203,213,225,.4)', borderRadius: 14,
+    padding: 12, flexDirection: 'row', alignItems: 'center', gap: 12,
+  },
+  statusDot: {
+    width: 34, height: 34, borderRadius: 17,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2,
+  },
+  habitTitle: { fontSize: 15, fontWeight: '700', color: '#0f172a', flexShrink: 1 },
+  habitSubtitle: { fontSize: 13, color: '#64748b' },
+  durationText: { fontSize: 12, color: '#64748b', fontWeight: '600', marginRight: 8 },
+
+  tag: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 },
+  tagText: { color: '#fff', fontWeight: '700', fontSize: 11 },
+
+  dotBtn: {
+    width: 34, height: 34, borderRadius: 10, borderWidth: 1,
+    borderColor: 'rgba(203,213,225,.7)', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#ffffff',
+  },
+
+  miniMenu: { marginTop: 8, marginLeft: 46, borderWidth: 1, borderColor: 'rgba(203,213,225,.5)', borderRadius: 12, padding: 10, backgroundColor: '#fff' },
+  actionBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: 'center' },
+  actionText: { color: '#fff', fontSize: 13, fontWeight: '700' },
+  skipBtn: { backgroundColor: '#e5e7eb', borderWidth: 2, borderStyle: 'dashed', borderColor: '#94a3b8' },
+
+  helperNote: { fontSize: 11, color: '#64748b', marginBottom: 8 },
+
+  noteInput: {
+    borderWidth: 1, borderColor: 'rgba(203,213,225,.9)', borderRadius: 10,
+    backgroundColor: '#fff', padding: 10, fontSize: 13, minHeight: 60, textAlignVertical: 'top'
+  },
+
+  bottomNav: {
+    position: 'absolute', left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(255,255,255,0.86)',
+    borderTopWidth: 1, borderTopColor: 'rgba(203,213,225,.6)',
+    flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 12,
+  },
+  navBtn: { alignItems: 'center', gap: 4 },
+  navLabel: { fontSize: 11, fontWeight: '700' },
+
+  // Modal
+  modalOverlay: {
+    flex: 1, backgroundColor: 'rgba(15,23,42,0.35)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  modalCard: {
+    width: '92%', maxWidth: 440, backgroundColor: '#fff',
+    borderRadius: 20, borderWidth: 1, borderColor: 'rgba(203,213,225,.6)',
+    padding: 18,
+  },
+  modalTitle: { fontSize: 18, fontWeight: '800', color: '#0f172a', marginBottom: 12 },
+  modalInput: {
+    width: '100%', paddingVertical: 10, paddingHorizontal: 12,
+    borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 12,
+    fontSize: 14, backgroundColor: '#fff', marginBottom: 10,
+  },
+  modalActions: { marginTop: 6, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  linkDanger: { color: '#dc2626', fontWeight: '700' },
+  btnGhost: { backgroundColor: '#e2e8f0', borderRadius: 12, paddingVertical: 8, paddingHorizontal: 12 },
+  btnGhostText: { fontWeight: '700', color: '#0f172a' },
+  btnPrimary: { backgroundColor: '#2563eb', borderRadius: 12, paddingVertical: 8, paddingHorizontal: 14 },
+  btnPrimaryText: { color: '#fff', fontWeight: '700' },
+
+  confirmTitle: { fontSize: 18, fontWeight: '800', color: '#0f172a', marginBottom: 6 },
+  confirmSub: { fontSize: 14, color: '#64748b', marginBottom: 16 },
+  confirmActions: { flexDirection: 'row', justifyContent: 'center', gap: 12 },
+  btnCancel: { backgroundColor: '#e5e7eb', borderRadius: 999, paddingVertical: 10, paddingHorizontal: 16 },
+  btnCancelText: { color: '#0f172a', fontWeight: '700' },
+  btnDanger: { backgroundColor: '#ef4444', borderRadius: 999, paddingVertical: 10, paddingHorizontal: 16 },
+  btnDangerText: { color: '#fff', fontWeight: '700' },
+});

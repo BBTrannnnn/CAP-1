@@ -19,7 +19,7 @@ import {
 } from 'tamagui';
 
 import { register as apiRegister, setBaseUrl } from './../../server/users';
-import { Check } from 'lucide-react';
+import { Check } from 'lucide-react-native';
 
 // Logo app
 const Logo = require('../../assets/images/FlowState.png');
@@ -104,20 +104,10 @@ export default function Register() {
         res?.data?.message ||
         'Tạo tài khoản thành công. Vui lòng đăng nhập.';
 
-      Alert.alert(
-        'Thành công',
-        apiMessage,
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              if (__DEV__) console.log('[Register] Navigating to /login');
-              router.replace('/(auth)/login');
-            },
-          },
-        ],
-        { cancelable: false }
+      alert(
+        'Đăng ký thành công',
       );
+      router.replace("/(auth)/login");
     } catch (err: any) {
       if (__DEV__) {
         console.error('[Register] API error:', err?.status, err?.data || err);
@@ -128,7 +118,7 @@ export default function Register() {
         err?.message ||
         'Đăng ký thất bại. Vui lòng thử lại.';
 
-      Alert.alert('Lỗi', String(e));
+      alert(String(e));
     } finally {
       setLoading(false);
     }

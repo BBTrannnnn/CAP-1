@@ -13,6 +13,7 @@
   "dependencies": {
     "@expo/metro-runtime": "^6.1.2",
     "@react-native-async-storage/async-storage": "2.2.0",
+    "@react-native-community/datetimepicker": "8.4.4",
     "@tamagui/config": "^1.135.4",
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
@@ -29,7 +30,7 @@
     "express-validator": "^7.2.1",
     "google-auth-library": "^10.3.0",
     "jsonwebtoken": "^9.0.2",
-    "lucide-react": "^0.546.0",
+    "lucide-react-native": "^0.546.0",
     "mongoose": "^8.18.2",
     "nodemailer": "^7.0.6",
     "react": "^19.1.0",
@@ -37,6 +38,7 @@
     "react-native": "^0.81.5",
     "react-native-gesture-handler": "~2.28.0",
     "react-native-reanimated": "~4.1.1",
+    "react-native-svg": "15.12.1",
     "react-native-web": "^0.21.2",
     "react-native-worklets": "^0.5.1",
     "tamagui": "^1.135.4"

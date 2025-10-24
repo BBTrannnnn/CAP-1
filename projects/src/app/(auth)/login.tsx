@@ -2,7 +2,7 @@ import { AntDesign, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-i
 import { Link, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Alert, Image, Platform } from 'react-native';
-import { Check } from 'lucide-react';
+import { Check } from 'lucide-react-native';
 import { Button, Card, Checkbox, Input, Label, Separator, Text, Theme, XStack, YStack, Spinner } from 'tamagui';
 
 // ⬇️ import API đã đóng gói
@@ -53,7 +53,7 @@ export default function Login() {
 
   const onSubmit = async () => {
     if (!email.trim() || !pw.trim()) {
-      Alert.alert('Thiếu thông tin', 'Vui lòng nhập email và mật khẩu.');
+      alert('Vui lòng nhập email và mật khẩu.');
       return;
     }
 
@@ -69,16 +69,8 @@ export default function Login() {
         res?.data?.message ||
         'Đăng nhập thành công!';
 
-      Alert.alert('Thành công', apiMessage, [
-        {
-          text: 'OK',
-          onPress: () => {
-            // Điều hướng sau khi đăng nhập thành công
-            // Đổi route nếu app bạn dùng đường khác
-            router.replace('/home');
-          },
-        },
-      ]);
+      alert('Thành công');
+      router.replace("/(tabs)/home");
 
       // (Tuỳ chọn) Lưu email nếu nhớ
       const { default: AsyncStorage } = await import('@react-native-async-storage/async-storage');

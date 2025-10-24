@@ -1,35 +1,73 @@
-import React, { useState } from 'react';
-import { X, ChevronLeft, Check, MoreVertical } from 'lucide-react';
-import { Link, Stack } from "expo-router";
+// app/(tabs)/habits/CreateHabitDetail.tsx
+import React, { useMemo, useState } from 'react';
+import { Stack, Link } from 'expo-router';
+import {
+  View, Text, SafeAreaView, ScrollView, StyleSheet,
+  Pressable, TextInput, TouchableOpacity, Modal, Platform
+} from 'react-native';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import { X, ChevronLeft, Check, MoreVertical } from 'lucide-react-native';
+
+type Freq = 'daily' | 'weekly' | 'custom';
+type Repeat = 'everyday' | 'avoid';
+
+function fmtDate(d: Date) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 export default function CreateHabitDetail() {
-  
   const [habitName, setHabitName] = useState('Ăn uống lành mạnh');
   const [selectedIcon, setSelectedIcon] = useState('🏃');
   const [selectedColor, setSelectedColor] = useState('#10b981');
-  const [frequency, setFrequency] = useState<'daily'|'weekly'|'custom'>('daily');
+  const [frequency, setFrequency] = useState<Freq>('daily');
   const [customFrequency, setCustomFrequency] = useState('3');
-  const [repeatType, setRepeatType] = useState<'everyday'|'avoid'>('everyday');
+  const [repeatType, setRepeatType] = useState<Repeat>('everyday');
   const [selectedCategories, setSelectedCategories] = useState<string[]>(['Health']);
 
   const [actionOpen, setActionOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   // Dates
-  const todayISO = new Date().toISOString().slice(0, 10);
-  const [startDate, setStartDate] = useState(todayISO);
-  const [endDate, setEndDate] = useState<string>('');
-  const invalidRange = endDate && new Date(endDate) < new Date(startDate);
+  const [startDate, setStartDate] = useState<Date>(new Date());
+  const [endDate, setEndDate] = useState<Date | null>(null);
+  const invalidRange = !!(endDate && endDate < startDate);
 
-  const icons = ['🏃','⭐','🧘','🏋️','📖','📚','🤝','😊','%','✏️','📅','🔥','⚡','🎯','🌙','🎨'];
+  const [showStartPicker, setShowStartPicker] = useState(false);
+  const [showEndPicker, setShowEndPicker] = useState(false);
+
+  const onPick =
+    (which: 'start' | 'end') =>
+    (_e: DateTimePickerEvent, date?: Date) => {
+      if (Platform.OS === 'android') {
+        if (which === 'start') setShowStartPicker(false);
+        else setShowEndPicker(false);
+      }
+      if (date) {
+        if (which === 'start') {
+          setStartDate(date);
+          if (endDate && endDate < date) setEndDate(date);
+        } else {
+          setEndDate(date);
+        }
+      }
+    };
+
+  const icons = useMemo(
+    () => ['🍎','🏃','⏰','💝','📚','💻','📱','🧘','💰','😊','💤','⚡','🎯','📖','✏️','🏠','🎵','🍵','💧','🥬','🏥','👟','👥'],
+    [],
+  );
   const colors = ['#10b981','#f97316','#3b82f6','#ec4899','#6366f1','#ef4444','#22c55e','#f59e0b','#8b5cf6','#9ca3af'];
   const frequencies = [
-    { id: 'daily',  label: 'Hằng ngày' },
+    { id: 'daily', label: 'Hằng ngày' },
     { id: 'weekly', label: 'Hằng tuần' },
     { id: 'custom', label: 'Tùy chỉnh' },
   ] as const;
   const repeatTypes = [
-    { id: 'everyday', label: 'Làm',   icon: Check },
-    { id: 'avoid',    label: 'Tránh', icon: X },
+    { id: 'everyday', label: 'Làm',   Icon: Check },
+    { id: 'avoid',    label: 'Tránh', Icon: X },
   ] as const;
   const categories = [
     { id: 'Health',   label: 'Health',   icon: '🏋️', color: '#ec4899' },
@@ -47,307 +85,380 @@ export default function CreateHabitDetail() {
   const toggleCategory = (id: string) =>
     setSelectedCategories(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
 
-  const handleEdit = () => { setActionOpen(false); };
-  const handleDelete = () => { setActionOpen(false); setConfirmOpen(true); };
-
   return (
-    <>
-    <Stack.Screen options={{ tabBarStyle: { display: 'none' } }} />
-    
-    <div
-      style={{
-        width:'100%', maxWidth:420, height:'100vh', margin:'0 auto',
-        fontFamily:'-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-        background:'radial-gradient(900px 500px at -10% -20%, #dbeafe 8%, transparent 40%), radial-gradient(800px 450px at 110% 10%, #fce7f3 10%, transparent 45%), linear-gradient(180deg, #f8fafc, #eef2ff)',
-        display:'flex', flexDirection:'column', position:'relative'
-      }}
-    >
-      <style>{`
-        .glass{background:rgba(255,255,255,.85);border:1px solid rgba(148,163,184,.2);border-radius:16px;box-shadow:0 12px 30px rgba(15,23,42,.06);backdrop-filter:blur(8px)}
-        .btn{border:none;border-radius:12px;cursor:pointer;transition:transform .1s,box-shadow .2s,background .2s,opacity .2s}
-        .btn:active{transform:translateY(1px) scale(.99)}
-        .input{width:100%;padding:12px;border:1px solid #e5e7eb;border-radius:12px;font-size:14px;outline:none;background:linear-gradient(180deg,#fff,#f8fafc);box-sizing:border-box}
-        .input:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.15)}
-        .title{font-size:16px;font-weight:800;color:#0f172a;margin:6px 0 12px}
-        .subtle{color:#64748b;font-size:12px}
-        .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-        .grid8{display:grid;grid-template-columns:repeat(8,1fr);gap:8px}
-        .grid10{display:grid;grid-template-columns:repeat(10,1fr);gap:8px}
-        .seg{padding:10px;border-radius:12px;border:1px solid #e5e7eb;background:#fff;font-size:13px;font-weight:600;color:#475569}
-        .seg.active{border:2px solid #2563eb;background:#eff6ff;color:#2563eb}
-        .chip{border-radius:12px;padding:10px;border:1px solid #e5e7eb;background:#fff;font-weight:600;font-size:13px;display:flex;align-items:center;gap:6px}
-        .chip.active{background:#f8fafc;box-shadow:inset 0 0 0 2px rgba(0,0,0,.04)}
-        .menu{position:absolute;right:44px;top:40px;min-width:140px;overflow:hidden;border-radius:12px;border:1px solid #e5e7eb;background:#fff;box-shadow:0 16px 32px rgba(2,8,23,.12);z-index:10}
-        .menu button{width:100%;padding:10px 12px;background:#fff;border:none;text-align:left;font-size:13px}
-        .menu button:hover{background:#f1f5f9}
-        .overlay{position:fixed;inset:0;background:rgba(15,23,42,.35);backdrop-filter:blur(2px);display:flex;align-items:center;justify-content:center;z-index:50}
-        .confirm{width:min(92%,420px);border-radius:22px;padding:22px;background:#fff;box-shadow:0 30px 60px rgba(0,0,0,.25)}
-        /* === Date input pill (native date, click chắc chắn) === */
-        .dateLabel{font-size:10px;color:#64748b;font-weight:700;margin-bottom:4px}
-        .datePill{height:28px;border-radius:999px;border:1px solid #e5e7eb;background:#fff;padding:0 10px;font-size:12px;font-weight:800;color:#0f172a;outline:none;width:100%}
-        .datePill::-webkit-datetime-edit{padding:0}
-        .datePill:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.15)}
-      `}</style>
+    <SafeAreaView style={styles.safe}>
+      <Stack.Screen options={{ headerShown: false }} />
 
       {/* Header */}
-      <div style={{ position:'sticky', top:0, zIndex:5, padding:12 }}>
-        <div className="glass" style={{ padding:12, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-            <Link href="/(tabs)/habits/AddHabitModal">
-            <button className="btn" style={{ background:'linear-gradient(180deg,#1d4ed8,#2563eb)', width:40, height:40, borderRadius:12, display:'grid', placeItems:'center' }}>
+      <View style={[styles.card, styles.header]}>
+        <View style={styles.headerLeft}>
+          <Link href="/(tabs)/habits/AddHabitModal" asChild>
+            <Pressable style={[styles.iconBtn, { backgroundColor: '#2563eb' }]}>
               <ChevronLeft size={20} color="#fff" />
-            </button>
-            </Link>
-            <div>
-              <div style={{ fontSize:18, fontWeight:800 }}>Chi tiết thói quen</div>
-              
-              <div className="subtle" style={{ color:'#2563eb', fontWeight:700 }}>Quay lại</div>
-              
-            </div>
-          </div>
+            </Pressable>
+          </Link>
+          <View>
+            <Text style={styles.title}>Chi tiết thói quen</Text>
+            <Text style={[styles.small, { color: '#2563eb', fontWeight: '700' }]}>Quay lại</Text>
+          </View>
+        </View>
 
-          <div style={{ display:'flex', alignItems:'center', gap:6, position:'relative',
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <Pressable style={styles.iconGhost} onPress={() => setActionOpen(true)}>
+            <MoreVertical size={20} color="#0f172a" />
+          </Pressable>
+          <Link href="/(tabs)/habits" asChild>
+            <Pressable style={styles.iconGhost}>
+              <X size={18} color="#0f172a" />
+            </Pressable>
+          </Link>
+        </View>
+      </View>
 
-           
-           }}>
-            <button onClick={() => setActionOpen(v=>!v)} className="btn"
-              style={{ background:'#ffffffcc', border:'1px solid #e5e7eb', width:40, height:40, borderRadius:12, display:'grid', placeItems:'center' }}
-              aria-label="Mở menu">
-              <MoreVertical size={20} />
-            </button>
-            <Link href="/(tabs)/habits">
-            <button className="btn" style={{ background:'#ffffffcc', border:'1px solid #e5e7eb', width:40, height:40, borderRadius:12, display:'grid', placeItems:'center' }} aria-label="Đóng">
-              <X size={18} />
-            </button>
-            </Link>
-            {actionOpen && (
-              <div className="menu">
-                <button onClick={handleEdit}>Sửa</button>
-                <button onClick={handleDelete} style={{ color:'#dc2626' }}>Xóa</button>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+      {/* Action menu (modal) */}
+      <Modal visible={actionOpen} transparent animationType="fade" onRequestClose={() => setActionOpen(false)}>
+        <Pressable style={styles.overlay} onPress={() => setActionOpen(false)}>
+          <Pressable style={styles.menu} onPress={e => e.stopPropagation()}>
+            <TouchableOpacity style={styles.menuItem} onPress={() => setActionOpen(false)}>
+              <Text style={styles.menuText}>Sửa</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.menuItem} onPress={() => { setActionOpen(false); setConfirmOpen(true); }}>
+              <Text style={[styles.menuText, { color: '#dc2626' }]}>Xóa</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
-      {/* Content */}
-      <div style={{ flex:1, overflow:'auto', padding:'0 12px 16px',
-         overflowX: 'auto',
-          scrollbarWidth: 'none', // Firefox
-          msOverflowStyle: 'none', // IE, Edge
-       }}>
-        <div className="glass" style={{ padding:14, marginBottom:12 }}>
-          <div className="title">Tên thói quen</div>
-          <input className="input" value={habitName} onChange={e=>setHabitName(e.target.value)} placeholder="VD: Uống 2L nước" />
-        </div>
+      <ScrollView contentContainerStyle={{ paddingBottom: 16 }}>
+        {/* Tên thói quen */}
+        <View style={[styles.card, styles.section]}>
+          <Text style={styles.sectionTitle}>Tên thói quen</Text>
+          <TextInput
+            style={styles.input}
+            value={habitName}
+            onChangeText={setHabitName}
+            placeholder="VD: Uống 2L nước"
+            placeholderTextColor="#94a3b8"
+          />
+        </View>
 
-        {/* === Chọn ngày: native input type="date" kiểu pill, rất gọn === */}
-        <div className="glass" style={{ padding:12, marginBottom:12 }}>
-          <div className="row2" style={{display:'flex',justifyContent:'center',alignItems:'center',gap:10}}>
-            <div style={{ width:'100%' }}>
-              <div className="dateLabel"
-              style={{ marginLeft:10 }}
-              >Bắt đầu</div>
-              <input
-                type="date"
-                className="datePill"
-                value={startDate}
-                style={{ width: 'calc(100% - 20px)' }}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setStartDate(v);
-                  if (endDate && new Date(endDate) < new Date(v)) setEndDate(v);
-                }}
-              />
-            </div>
-            <div style={{ width:'100%' }}>
-              <div className="dateLabel"
-              style={{ marginLeft:10 }}
-              >Kết thúc</div>
-              <input
-                type="date"
-                className="datePill"
-                value={endDate}
-                min={startDate}
-                style={{ width: 'calc(100% - 20px)' }}
-                onChange={(e) => setEndDate(e.target.value)}
-              />
-            </div>
-          </div>
+        {/* Ngày bắt đầu / kết thúc */}
+        <View style={[styles.card, styles.section]}>
+          <Text style={styles.sectionTitle}>Thời gian</Text>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.label}>Bắt đầu</Text>
+              <Pressable style={styles.datePill} onPress={() => setShowStartPicker(true)}>
+                <Text style={styles.dateText}>{fmtDate(startDate)}</Text>
+              </Pressable>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.label}>Kết thúc</Text>
+              <Pressable style={styles.datePill} onPress={() => setShowEndPicker(true)}>
+                <Text style={styles.dateText}>{endDate ? fmtDate(endDate) : '—'}</Text>
+              </Pressable>
+            </View>
+          </View>
           {invalidRange && (
-            <div style={{ color:'#dc2626', fontSize:11, marginTop:6, fontWeight:700 }}>
-              Ngày kết thúc phải ≥ ngày bắt đầu.
-            </div>
+            <Text style={styles.error}>Ngày kết thúc phải ≥ ngày bắt đầu.</Text>
           )}
-        </div>
+
+          {showStartPicker && (
+            <DateTimePicker
+              value={startDate}
+              mode="date"
+              onChange={onPick('start')}
+              display={Platform.OS === 'ios' ? 'inline' : 'default'}
+            />
+          )}
+          {showEndPicker && (
+            <DateTimePicker
+              value={endDate ?? startDate}
+              minimumDate={startDate}
+              mode="date"
+              onChange={onPick('end')}
+              display={Platform.OS === 'ios' ? 'inline' : 'default'}
+            />
+          )}
+        </View>
 
         {/* Icon */}
-       <div
-  className="glass"
-  style={{
-    padding: 14,
-    marginTop: 12,
-    overflowY: 'auto',
-    scrollbarWidth: 'none', // Firefox
-    msOverflowStyle: 'none', // IE, Edge
-  }}
->
-  <style>
-    {`
-      .glass::-webkit-scrollbar {
-        display: none;
-      }
-    `}
-  </style>
-
-  <div className="title">Icon</div>
-  <div className="grid8">
-    {icons.map((icon, i) => (
-      <button
-        key={i}
-        onClick={() => setSelectedIcon(icon)}
-        className="btn"
-        style={{
-          width: 44,
-          height: 44,
-          borderRadius: 12,
-          fontSize: 20,
-          border:
-            selectedIcon === icon
-              ? `2px solid ${selectedColor}`
-              : '1px solid #e5e7eb',
-          background:
-            selectedIcon === icon ? `${selectedColor}20` : '#fff',
-        }}
-      >
-        {icon}
-      </button>
-    ))}
-  </div>
-</div>
-
-
-        {/* Color */}
-        <div className="glass" style={{ padding:14, marginTop:12, 
-        overflowY: 'auto',
-        scrollbarWidth: 'none', // Firefox
-        msOverflowStyle: 'none', // IE, Edge
-        }}>
-          <div className="title">Màu sắc</div>
-          <div className="grid10">
-            {colors.map((color,i)=>(
-              <button key={i} onClick={()=>setSelectedColor(color)} className="btn"
-                style={{
-                  width:34, height:34, borderRadius:'50%',
-                  border: selectedColor===color ? '3px solid #0f172a' : '1px solid #d1d5db',
-                  background:color
-                }} />
+        <View style={[styles.card, styles.section]}>
+          <Text style={styles.sectionTitle}>Icon</Text>
+          <View style={styles.wrapRow}>
+            {icons.map((icon, i) => (
+              <Pressable
+                key={i}
+                onPress={() => setSelectedIcon(icon)}
+                style={[
+                  styles.iconCell,
+                  { borderColor: selectedIcon === icon ? selectedColor : '#e5e7eb',
+                    backgroundColor: selectedIcon === icon ? '#00000008' : '#fff' }
+                ]}
+              >
+                <Text style={{ fontSize: 20 }}>{icon}</Text>
+              </Pressable>
             ))}
-          </div>
-        </div>
+          </View>
+        </View>
 
-        {/* Frequency */}
-        <div className="glass" style={{ padding:14, marginTop:12 }}>
-          <div className="title">Tần suất</div>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
-            {frequencies.map(f=>(
-              <button key={f.id} onClick={()=>setFrequency(f.id)} className={`seg btn ${frequency===f.id?'active':''}`}>
-                {f.label}
-              </button>
+        {/* Màu */}
+        <View style={[styles.card, styles.section]}>
+          <Text style={styles.sectionTitle}>Màu sắc</Text>
+          <View style={styles.wrapRow}>
+            {colors.map((c, i) => (
+              <Pressable
+                key={i}
+                onPress={() => setSelectedColor(c)}
+                style={[
+                  styles.colorDot,
+                  { backgroundColor: c, borderWidth: selectedColor === c ? 3 : 1 }
+                ]}
+              />
             ))}
-          </div>
-          {frequency==='custom' && (
-            <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:10 }}>
-              <input className="input" type="number" value={customFrequency} onChange={e=>setCustomFrequency(e.target.value)} min={1} max={30} style={{ width:88, height:36, padding:'8px 10px' }} />
-              <span className="subtle" style={{ fontSize:12 }}>lần/tuần</span>
-            </div>
+          </View>
+        </View>
+
+        {/* Tần suất */}
+        <View style={[styles.card, styles.section]}>
+          <Text style={styles.sectionTitle}>Tần suất</Text>
+          <View style={styles.segmentRow}>
+            {(frequencies as readonly {id: Freq; label: string}[]).map(f => (
+              <Pressable
+                key={f.id}
+                onPress={() => setFrequency(f.id)}
+                style={[
+                  styles.segment,
+                  frequency === f.id && styles.segmentActive
+                ]}
+              >
+                <Text style={[
+                  styles.segmentText,
+                  frequency === f.id && { color: '#2563eb' }
+                ]}>
+                  {f.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
+          {frequency === 'custom' && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 }}>
+              <TextInput
+                style={[styles.input, { width: 88, height: 40, paddingVertical: 8 }]}
+                value={customFrequency}
+                onChangeText={setCustomFrequency}
+                keyboardType="number-pad"
+              />
+              <Text style={styles.small}>lần/tuần</Text>
+            </View>
           )}
-        </div>
+        </View>
 
-        {/* Repeat type */}
-        <div className="glass" style={{ padding:14, marginTop:12 }}>
-          <div className="title">Loại thói quen</div>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
-            {repeatTypes.map(t=>{
-              const Icon = t.icon;
+        {/* Loại thói quen */}
+        <View style={[styles.card, styles.section]}>
+          <Text style={styles.sectionTitle}>Loại thói quen</Text>
+          <View style={styles.segmentRow}>
+            {repeatTypes.map(({ id, label, Icon }) => (
+              <Pressable
+                key={id}
+                onPress={() => setRepeatType(id as Repeat)}
+                style={[
+                  styles.segment,
+                  repeatType === id && styles.segmentActive,
+                  { flexDirection: 'row', gap: 6, justifyContent: 'center' }
+                ]}
+              >
+                <Icon size={16} color={repeatType === id ? '#2563eb' : '#475569'} />
+                <Text style={[
+                  styles.segmentText,
+                  repeatType === id && { color: '#2563eb' }
+                ]}>
+                  {label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+
+        {/* Danh mục */}
+        <View style={[styles.card, styles.section]}>
+          <Text style={styles.sectionTitle}>Danh mục</Text>
+          <View style={styles.wrapRow}>
+            {categories.map(cat => {
+              const active = selectedCategories.includes(cat.id);
               return (
-                <button key={t.id} onClick={()=>setRepeatType(t.id)} className={`seg btn ${repeatType===t.id?'active':''}`} style={{ display:'flex', gap:6, alignItems:'center', justifyContent:'center' }}>
-                  <Icon size={16} /> {t.label}
-                </button>
+                <Pressable
+                  key={cat.id}
+                  onPress={() => toggleCategory(cat.id)}
+                  style={[
+                    styles.chip,
+                    { borderColor: active ? cat.color : '#e5e7eb',
+                      backgroundColor: active ? '#00000008' : '#fff' }
+                  ]}
+                >
+                  <Text style={{ fontSize: 16 }}>{cat.icon}</Text>
+                  <Text numberOfLines={1} style={styles.chipText}>{cat.label}</Text>
+                </Pressable>
               );
             })}
-          </div>
-        </div>
+          </View>
+        </View>
 
-        {/* Categories */}
-        <div className="glass" style={{ padding:14, marginTop:12 }}>
-          <div className="title">Danh mục</div>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:8 }}>
-            {categories.map(cat=>(
-              <button key={cat.id} onClick={()=>toggleCategory(cat.id)}
-                className={`chip btn ${selectedCategories.includes(cat.id)?'active':''}`}
-                style={{ borderColor: selectedCategories.includes(cat.id)?cat.color:'#e5e7eb', background: selectedCategories.includes(cat.id)? `${cat.color}22` : '#fff' }}>
-                <span style={{ fontSize:16 }}>{cat.icon}</span>
-                <span style={{ minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{cat.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Reminder */}
-        <div className="glass" style={{ padding:14, marginTop:12 }}>
-          <div className="title">Nhắc nhở</div>
-          <button className="btn"
-            style={{
-              width:'100%', padding:12, borderRadius:12, border:'1px solid #e5e7eb', background:'#fff',
-              display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:14, color:'#475569'
-            }}>
-            <span>Tạo nhắc nhở mới</span><span>→</span>
-          </button>
-        </div>
-      </div>
+        {/* Nhắc nhở */}
+        <View style={[styles.card, styles.section]}>
+          <Text style={styles.sectionTitle}>Nhắc nhở</Text>
+          <Pressable style={styles.remindBtn}>
+            <Text style={styles.remindLeft}>Tạo nhắc nhở mới</Text>
+            <Text style={styles.remindArrow}>→</Text>
+          </Pressable>
+        </View>
+      </ScrollView>
 
       {/* Bottom actions */}
-      <div style={{ padding:12 }}>
-        <div className="glass" style={{ padding:10, display:'flex', gap:8 }}>
-          <Link href="/(tabs)/habits/AddHabitModal" className="btn" style={{textAlign:'center', flex:1, padding:10, background:'#f1f5f9', borderRadius:12, fontWeight:700, color:'#475569' }}>
-            Hủy
-          </Link>
-          <button
-            className="btn"
-            disabled={invalidRange}
-            style={{
-              flex:2, padding:10, background: invalidRange ? '#94a3b8' : '#2563eb',
-              color:'#fff', borderRadius:12, fontWeight:800,
-              boxShadow: invalidRange ? 'none' : '0 8px 18px rgba(37,99,235,.22)',
-              opacity: invalidRange ? .85 : 1
-            }}
-          >
-            Tạo thói quen
-          </button>
-        </div>
-      </div>
+      <View style={styles.bottomBar}>
+        <Link href="/(tabs)/habits/AddHabitModal" asChild>
+          <Pressable style={[styles.bottomBtn, { backgroundColor: '#f1f5f9' }]}>
+            <Text style={[styles.bottomText, { color: '#475569' }]}>Hủy</Text>
+          </Pressable>
+        </Link>
+        <Pressable
+          disabled={invalidRange}
+          style={[
+            styles.bottomBtn,
+            { flex: 2, backgroundColor: invalidRange ? '#94a3b8' : '#2563eb' }
+          ]}
+          onPress={() => {
+            // TODO: gọi API tạo thói quen
+            // router.replace('/(tabs)/habits');
+          }}
+        >
+          <Text style={[styles.bottomText, { color: '#fff' }]}>Tạo thói quen</Text>
+        </Pressable>
+      </View>
 
       {/* Confirm delete */}
-      {confirmOpen && (
-        <div className="overlay" onClick={()=>setConfirmOpen(false)}>
-          <div className="confirm" onClick={e=>e.stopPropagation()}>
-            <div style={{ fontSize:18, fontWeight:800, marginBottom:6 }}>Xóa thói quen “{habitName}”?</div>
-            <div className="subtle" style={{ marginBottom:16 }}>Hành động này không thể hoàn tác.</div>
-            <div style={{ display:'flex', justifyContent:'center', gap:12 }}>
-              <button className="btn" onClick={()=>setConfirmOpen(false)}
-                style={{ background:'#e5e7eb', color:'#0f172a', borderRadius:999, padding:'10px 16px', fontWeight:800 }}>
-                Hủy
-              </button>
-              <button className="btn" onClick={()=>{ setConfirmOpen(false); console.log('Delete habit'); }}
-                style={{ background:'#ef4444', color:'#fff', borderRadius:999, padding:'10px 16px', fontWeight:800 }}>
-                Xóa
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-    </>
+      <Modal visible={confirmOpen} transparent animationType="fade" onRequestClose={() => setConfirmOpen(false)}>
+        <Pressable style={styles.overlay} onPress={() => setConfirmOpen(false)}>
+          <View style={styles.confirmCard}>
+            <Text style={styles.confirmTitle}>Xóa thói quen “{habitName}”?</Text>
+            <Text style={styles.small}>Hành động này không thể hoàn tác.</Text>
+            <View style={styles.confirmRow}>
+              <Pressable style={styles.btnCancel} onPress={() => setConfirmOpen(false)}>
+                <Text style={styles.btnCancelText}>Hủy</Text>
+              </Pressable>
+              <Pressable
+                style={styles.btnDanger}
+                onPress={() => { setConfirmOpen(false); /* TODO: delete */ }}
+              >
+                <Text style={styles.btnDangerText}>Xóa</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Pressable>
+      </Modal>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: '#eef2ff' },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(148,163,184,0.2)',
+    shadowColor: '#0f172a',
+    shadowOpacity: 0.06,
+    shadowOffset: { width: 0, height: 12 },
+    shadowRadius: 16,
+    elevation: 4,
+  },
+  header: {
+    margin: 12, padding: 12,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+  },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  iconBtn: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  iconGhost: {
+    width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#ffffffcc', borderWidth: 1, borderColor: '#e5e7eb',
+  },
+  title: { fontSize: 18, fontWeight: '800', color: '#0f172a' },
+  small: { fontSize: 12, color: '#64748b' },
+
+  section: { padding: 14, marginHorizontal: 12, marginBottom: 12 },
+  sectionTitle: { fontSize: 16, fontWeight: '800', color: '#0f172a', marginBottom: 10 },
+
+  input: {
+    borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12,
+    paddingHorizontal: 12, paddingVertical: 12, fontSize: 14, backgroundColor: '#fff',
+  },
+
+  label: { fontSize: 10, color: '#64748b', fontWeight: '700', marginBottom: 4, marginLeft: 6 },
+  datePill: {
+    height: 36, borderRadius: 999, borderWidth: 1, borderColor: '#e5e7eb',
+    backgroundColor: '#fff', paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center',
+  },
+  dateText: { fontSize: 12, fontWeight: '800', color: '#0f172a' },
+  error: { color: '#dc2626', fontSize: 11, marginTop: 6, fontWeight: '700' },
+
+  wrapRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  iconCell: {
+    width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1,
+  },
+  colorDot: {
+    width: 34, height: 34, borderRadius: 17, borderColor: '#d1d5db',
+  },
+
+  segmentRow: { flexDirection: 'row', gap: 8 },
+  segment: {
+    flex: 1, paddingVertical: 10, borderRadius: 12,
+    borderWidth: 1, borderColor: '#e5e7eb', alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  segmentActive: { backgroundColor: '#eff6ff', borderColor: '#2563eb', borderWidth: 2 },
+  segmentText: { fontSize: 13, fontWeight: '700', color: '#475569' },
+
+  chip: {
+    paddingVertical: 10, paddingHorizontal: 12, borderRadius: 12,
+    borderWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 6,
+  },
+  chipText: { fontSize: 13, fontWeight: '600', color: '#0f172a', maxWidth: 120 },
+
+  remindBtn: {
+    width: '100%', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#e5e7eb',
+    backgroundColor: '#fff', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'
+  },
+  remindLeft: { fontSize: 14, color: '#475569' },
+  remindArrow: { fontSize: 14, color: '#475569', fontWeight: '700' },
+
+  bottomBar: {
+    padding: 12, flexDirection: 'row', gap: 8,
+  },
+  bottomBtn: { flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center' },
+  bottomText: { fontSize: 14, fontWeight: '800' },
+
+  overlay: {
+    flex: 1, backgroundColor: 'rgba(15,23,42,0.35)',
+    alignItems: 'center', justifyContent: 'center'
+  },
+  menu: {
+    width: 200, backgroundColor: '#fff', borderRadius: 12,
+    borderWidth: 1, borderColor: '#e5e7eb', overflow: 'hidden'
+  },
+  menuItem: { paddingVertical: 12, paddingHorizontal: 12 },
+  menuText: { fontSize: 13, color: '#0f172a' },
+
+  confirmCard: {
+    width: '92%', maxWidth: 420, backgroundColor: '#fff',
+    borderRadius: 22, padding: 22, borderWidth: 1, borderColor: '#e5e7eb',
+  },
+  confirmTitle: { fontSize: 18, fontWeight: '800', color: '#0f172a', marginBottom: 6 },
+  confirmRow: { flexDirection: 'row', justifyContent: 'center', gap: 12, marginTop: 16 },
+  btnCancel: { backgroundColor: '#e5e7eb', borderRadius: 999, paddingVertical: 10, paddingHorizontal: 16 },
+  btnCancelText: { color: '#0f172a', fontWeight: '800' },
+  btnDanger: { backgroundColor: '#ef4444', borderRadius: 999, paddingVertical: 10, paddingHorizontal: 16 },
+  btnDangerText: { color: '#fff', fontWeight: '800' },
+});

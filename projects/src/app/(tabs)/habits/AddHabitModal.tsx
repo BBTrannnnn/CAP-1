@@ -1,300 +1,234 @@
-import React, { useState } from 'react';
-import { X, Search, Plus } from 'lucide-react';
-import { Stack, Link } from "expo-router";
+// app/(tabs)/habits/AddHabitModal.tsx
+import React, { useMemo, useState } from 'react';
+import { Stack, Link, router } from 'expo-router';
+import {
+  View, Text, SafeAreaView, ScrollView, TextInput,
+  StyleSheet, Pressable, TouchableOpacity
+} from 'react-native';
+import { X, Search, Plus, Check } from 'lucide-react-native';
+
+type HabitItem = { icon: string; name: string; category: string; color: string };
+type Categories = Record<string, HabitItem[]>;
+
+function withAlpha(hex: string, alpha = 0.12) {
+  // hex #RRGGBB -> rgba(r,g,b,a)
+  const h = hex.replace('#', '');
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
 export default function AddHabitModal() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedHabit, setSelectedHabit] = useState(null);
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
 
-  const categories = {
-    'Sức khỏe': [
-      { icon: '🏃', name: 'Ăn uống lành mạnh', category: 'Healthy', color: '#10b981' },
-      { icon: '⭐', name: 'Tập thể dục', category: 'Fitness', color: '#f97316' },
-      { icon: '💧', name: 'Uống nước đủ', category: 'Health', color: '#a78bfa' }
-    ],
-    'Tinh thần': [
-      { icon: '💗', name: 'Thiền định', category: 'Mindful', color: '#ec4899' },
-      { icon: '📖', name: 'Viết nhật ký', category: 'Mindful', color: '#8b5cf6' },
-      { icon: '📚', name: 'Đọc sách', category: 'Learning', color: '#10b981' },
-      { icon: '🧘', name: 'Cảm ơn', category: 'Mindful', color: '#f59e0b' },
-      { icon: '✨', name: 'Học ngoại ngữ', category: 'Learning', color: '#a78bfa' }
-    ],
-    'Kiểm soát': [
-      { icon: '🚭', name: 'Không hút thuốc', category: 'Control', color: '#9ca3af' },
-      { icon: '🍷', name: 'Không uống rượu', category: 'Control', color: '#ec4899' },
-      { icon: '☕', name: 'Ít coffee', category: 'Control', color: '#f97316' },
-      { icon: '💰', name: 'Tiết kiệm tiền', category: 'Finance', color: '#10b981' },
-      { icon: '📱', name: 'Không xem điện thoại trước khi ngủ', category: 'Control', color: '#6b7280' }
-    ]
-  };
+  const categories: Categories = useMemo(
+    () => ({
+      'Sức khỏe': [
+        { icon: '🏃', name: 'Ăn uống lành mạnh', category: 'Healthy',  color: '#10b981' },
+        { icon: '⭐', name: 'Tập thể dục',       category: 'Fitness',  color: '#f97316' },
+        { icon: '💧', name: 'Uống nước đủ',      category: 'Health',   color: '#a78bfa' },
+      ],
+      'Tinh thần': [
+        { icon: '💗', name: 'Thiền định',        category: 'Mindful',  color: '#ec4899' },
+        { icon: '📖', name: 'Viết nhật ký',      category: 'Mindful',  color: '#8b5cf6' },
+        { icon: '📚', name: 'Đọc sách',          category: 'Learning', color: '#10b981' },
+        { icon: '🧘', name: 'Cảm ơn',            category: 'Mindful',  color: '#f59e0b' },
+        { icon: '✨', name: 'Học ngoại ngữ',     category: 'Learning', color: '#a78bfa' },
+      ],
+      'Kiểm soát': [
+        { icon: '🚭', name: 'Không hút thuốc',                 category: 'Control', color: '#9ca3af' },
+        { icon: '🍷', name: 'Không uống rượu',                 category: 'Control', color: '#ec4899' },
+        { icon: '☕', name: 'Ít coffee',                        category: 'Control', color: '#f97316' },
+        { icon: '💰', name: 'Tiết kiệm tiền',                  category: 'Finance', color: '#10b981' },
+        { icon: '📱', name: 'Không xem điện thoại trước khi ngủ', category: 'Control', color: '#6b7280' },
+      ],
+    }),
+    []
+  );
 
-  const filteredCategories = {};
-  Object.keys(categories).forEach(cat => {
-    const filtered = categories[cat].filter(habit => 
-      habit.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    if (filtered.length > 0) {
-      filteredCategories[cat] = filtered;
-    }
-  });
+  const filtered: Categories = useMemo(() => {
+    const f: Categories = {};
+    const q = searchTerm.trim().toLowerCase();
+    Object.keys(categories).forEach(cat => {
+      const items = categories[cat].filter(h => h.name.toLowerCase().includes(q));
+      if (items.length) f[cat] = items;
+    });
+    return f;
+  }, [categories, searchTerm]);
+
+  const canContinue = !!selectedKey;
 
   return (
-    <>
-    <Stack.Screen options={{ tabBarStyle: { display: 'none' } }} />
-    <div style={{
-      width: '100%',
-      maxWidth: '400px',
-      height: '100vh',
-      backgroundColor: 'white',
-      margin: '0 auto',
-      display: 'flex',
-      flexDirection: 'column',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-    }}>
+    <SafeAreaView style={styles.safe}>
+      <Stack.Screen options={{ headerShown: false }} />
+
       {/* Header */}
-      <div style={{
-        padding: '16px',
-        borderBottom: '1px solid #e5e5e5',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between'
-      }}>
-        <h2 style={{ fontSize: '18px', fontWeight: '600', margin: 0 }}>Tạo thói quen mới</h2>
-        <Link href="/(tabs)/habits">
-        <button style={{
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          padding: '4px',
-          color: '#666',
-          transition: 'color 0.2s'
-        }}
-        onMouseOver={(e) => e.currentTarget.style.color = '#2563eb'}
-        onMouseOut={(e) => e.currentTarget.style.color = '#666'}>
-          <X size={24} />
-        </button>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Tạo thói quen mới</Text>
+        <Link href="/(tabs)/habits" asChild>
+          <Pressable style={styles.iconBtn}>
+            <X size={20} color="#111827" />
+          </Pressable>
         </Link>
-      </div>
+      </View>
 
       {/* Search Bar */}
-      <div style={{ padding: '16px' }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          backgroundColor: '#f5f5f5',
-          padding: '10px 12px',
-          borderRadius: '8px',
-          transition: 'all 0.2s'
-        }}
-        onMouseOver={(e) => {
-          e.currentTarget.style.backgroundColor = '#efefef';
-        }}
-        onMouseOut={(e) => {
-          e.currentTarget.style.backgroundColor = '#f5f5f5';
-        }}>
-          <Search size={18} color="#999" />
-          <input
-            type="text"
+      <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
+        <View style={styles.searchBox}>
+          <Search size={18} color="#6b7280" />
+          <TextInput
             placeholder="Tìm kiếm thói quen..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            style={{
-              flex: 1,
-              border: 'none',
-              backgroundColor: 'transparent',
-              outline: 'none',
-              fontSize: '14px'
-            }}
+            onChangeText={setSearchTerm}
+            style={styles.searchInput}
+            placeholderTextColor="#9ca3af"
           />
-        </div>
-      </div>
+        </View>
+      </View>
 
-      {/* Scrollable Content */}
-      <div style={{
-        flex: 1,
-        overflow: 'auto',
-        padding: '0 16px'
-      }}>
-        {Object.keys(filteredCategories).length > 0 ? (
-          Object.keys(filteredCategories).map((categoryName) => (
-            <div key={categoryName} style={{ marginBottom: '24px' }}>
-              <h3 style={{
-                fontSize: '14px',
-                fontWeight: '600',
-                color: '#666',
-                marginBottom: '12px'
-              }}>
-                {categoryName}
-              </h3>
-              {filteredCategories[categoryName].map((habit, index) => (
-                <div
-                  key={index}
-                  onClick={() => setSelectedHabit(`${categoryName}-${index}`)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    padding: '12px',
-                    borderBottom: '1px solid #f5f5f5',
-                    cursor: 'pointer',
-                    borderRadius: '8px',
-                    backgroundColor: selectedHabit === `${categoryName}-${index}` ? '#f0fdf4' : 'transparent',
-                    transition: 'all 0.2s',
-                    marginBottom: '4px'
-                  }}
-                  onMouseOver={(e) => {
-                    if (selectedHabit !== `${categoryName}-${index}`) {
-                      e.currentTarget.style.backgroundColor = '#f9f9f9';
-                    }
-                  }}
-                  onMouseOut={(e) => {
-                    if (selectedHabit !== `${categoryName}-${index}`) {
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                    }
-                  }}>
-                  <div style={{
-                    width: '40px',
-                    height: '40px',
-                    borderRadius: '8px',
-                    backgroundColor: `${habit.color}20`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '20px',
-                    flexShrink: 0
-                  }}>
-                    {habit.icon}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '15px', fontWeight: '500', marginBottom: '2px' }}>
-                      {habit.name}
-                    </div>
-                    <div style={{ fontSize: '12px', color: '#999' }}>
-                      {habit.category}
-                    </div>
-                  </div>
-                  {selectedHabit === `${categoryName}-${index}` && (
-                    <div style={{
-                      width: '20px',
-                      height: '20px',
-                      borderRadius: '50%',
-                      backgroundColor: '#10b981',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'white',
-                      fontSize: '12px',
-                      fontWeight: 'bold'
-                    }}>
-                      ✓
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
+      {/* Content */}
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 16 }}>
+        {Object.keys(filtered).length ? (
+          Object.keys(filtered).map((cat) => (
+            <View key={cat} style={{ marginBottom: 20 }}>
+              <Text style={styles.sectionLabel}>{cat}</Text>
+
+              {filtered[cat].map((habit, idx) => {
+                const key = `${cat}-${idx}`;
+                const selected = selectedKey === key;
+                return (
+                  <Pressable
+                    key={key}
+                    onPress={() => setSelectedKey(key)}
+                    style={[
+                      styles.itemRow,
+                      selected && { backgroundColor: '#f0fdf4' }
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.iconSquare,
+                        { backgroundColor: withAlpha(habit.color, 0.12), borderColor: withAlpha(habit.color, 0.4) }
+                      ]}
+                    >
+                      <Text style={{ fontSize: 20 }}>{habit.icon}</Text>
+                    </View>
+
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.itemName} numberOfLines={1}>{habit.name}</Text>
+                      <Text style={styles.itemCat} numberOfLines={1}>{habit.category}</Text>
+                    </View>
+
+                    {selected && (
+                      <View style={styles.checkCircle}>
+                        <Check size={14} color="#fff" />
+                      </View>
+                    )}
+                  </Pressable>
+                );
+              })}
+            </View>
           ))
         ) : (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            height: '200px',
-            color: '#999',
-            fontSize: '14px'
-          }}>
-            Không tìm thấy thói quen
-          </div>
+          <View style={styles.emptyBox}>
+            <Text style={{ color: '#9ca3af' }}>Không tìm thấy thói quen</Text>
+          </View>
         )}
-      </div>
+      </ScrollView>
 
-      {/* Bottom Button */}
-      <div style={{
-        padding: '16px',
-        borderTop: '1px solid #e5e5e5',
-        display: 'flex',
-        gap: '8px'
-      }}>
-        <Link href="/(tabs)/habits" style={{
-          flex: 1,
-          padding: '12px',
-          backgroundColor: '#f5f5f5',
-          border: 'none',
-          borderRadius: '8px',
-          color: '#666',
-          fontSize: '14px',
-          fontWeight: '500',
-          cursor: 'pointer',
-          transition: 'all 0.2s',
-          textAlign:'center'
-        }}
-        onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#e5e5e5'}
-        onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
-        onClick={() => setSelectedHabit(null)}>
-          Hủy
+      {/* Bottom Actions */}
+      <View style={styles.bottomBar}>
+        <Link href="/(tabs)/habits" asChild>
+          <Pressable style={[styles.bottomBtn, { backgroundColor: '#f3f4f6' }]}>
+            <Text style={[styles.bottomText, { color: '#374151' }]}>Hủy</Text>
+          </Pressable>
         </Link>
-        <Link href="/(tabs)/habits/CreateHabitDetail" style={{
-          flex: 1,
-          padding: '12px',
-          backgroundColor: selectedHabit ? '#2563eb' : '#d1d5db',
-          border: 'none',
-          borderRadius: '8px',
-          color: 'white',
-          fontSize: '14px',
-          fontWeight: '500',
-          cursor: selectedHabit ? 'pointer' : 'not-allowed',
-          transition: 'all 0.2s',
-          textAlign:'center'
-        }}
-        onMouseOver={(e) => {
-          if (selectedHabit) {
-            e.currentTarget.style.backgroundColor = '#1d4ed8';
-          }
-        }}
-        onMouseOut={(e) => {
-          if (selectedHabit) {
-            e.currentTarget.style.backgroundColor = '#2563eb';
-          }
-        }}>
-          Tiếp tục
-        </Link>
-      </div>
+
+        <Pressable
+          onPress={() => canContinue && router.push('/(tabs)/habits/CreateHabitDetail')}
+          disabled={!canContinue}
+          style={[
+            styles.bottomBtn,
+            { backgroundColor: canContinue ? '#2563eb' : '#d1d5db' }
+          ]}
+        >
+          <Text style={[styles.bottomText, { color: '#fff' }]}>Tiếp tục</Text>
+        </Pressable>
+      </View>
 
       {/* Custom Habit Button */}
-      <div style={{
-        padding: '16px',
-        borderTop: '1px solid #e5e5e5'
-      }}>
-        <Link href="/(tabs)/habits/CreateHabitDetail">
-        <button style={{
-          width: '100%',
-          padding: '12px',
-          backgroundColor: 'transparent',
-          border: '2px dashed #2563eb',
-          borderRadius: '8px',
-          color: '#2563eb',
-          fontSize: '14px',
-          fontWeight: '500',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '8px',
-          transition: 'all 0.2s'
-        }}
-        onMouseOver={(e) => {
-          e.currentTarget.style.backgroundColor = '#eff6ff';
-          e.currentTarget.style.borderColor = '#1d4ed8';
-        }}
-        onMouseOut={(e) => {
-          e.currentTarget.style.backgroundColor = 'transparent';
-          e.currentTarget.style.borderColor = '#2563eb';
-        }}>
-          <Plus size={18} />
-          Tạo thói quen tùy chỉnh
-        </button>
+      <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
+        <Link href="/(tabs)/habits/CreateHabitDetail" asChild>
+          <TouchableOpacity style={styles.customBtn}>
+            <Plus size={18} color="#2563eb" />
+            <Text style={styles.customBtnText}>Tạo thói quen tùy chỉnh</Text>
+          </TouchableOpacity>
         </Link>
-      </div>
-    </div>
-    </>
+      </View>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: '#fff' },
+  header: {
+    paddingHorizontal: 16, paddingVertical: 12,
+    borderBottomWidth: 1, borderBottomColor: '#e5e7eb',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+  },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: '#111827' },
+  iconBtn: {
+    width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#F3F4F6',
+  },
+
+  searchBox: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: '#F5F5F5', paddingHorizontal: 12, paddingVertical: 10,
+    borderRadius: 10,
+  },
+  searchInput: { flex: 1, fontSize: 14, color: '#111827' },
+
+  sectionLabel: { fontSize: 13, fontWeight: '700', color: '#6b7280', marginBottom: 10 },
+  itemRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f3f4f6',
+    borderRadius: 10, paddingHorizontal: 4,
+  },
+  iconSquare: {
+    width: 40, height: 40, borderRadius: 10,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1,
+  },
+  itemName: { fontSize: 15, fontWeight: '600', color: '#0f172a' },
+  itemCat: { fontSize: 12, color: '#6b7280' },
+
+  checkCircle: {
+    width: 20, height: 20, borderRadius: 10, backgroundColor: '#10b981',
+    alignItems: 'center', justifyContent: 'center',
+  },
+
+  emptyBox: {
+    height: 200, alignItems: 'center', justifyContent: 'center',
+  },
+
+  bottomBar: {
+    flexDirection: 'row', gap: 8,
+    paddingHorizontal: 16, paddingVertical: 12,
+    borderTopWidth: 1, borderTopColor: '#e5e7eb',
+  },
+  bottomBtn: {
+    flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center',
+  },
+  bottomText: { fontSize: 14, fontWeight: '600' },
+
+  customBtn: {
+    width: '100%', paddingVertical: 12, borderRadius: 10,
+    borderWidth: 2, borderStyle: 'dashed', borderColor: '#2563eb',
+    alignItems: 'center', justifyContent: 'center',
+    flexDirection: 'row', gap: 8, backgroundColor: 'transparent',
+  },
+  customBtnText: { color: '#2563eb', fontSize: 14, fontWeight: '600' },
+});

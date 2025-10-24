@@ -1,9 +1,17 @@
+// app/(tabs)/habits/HabitStreak.tsx
 import React from 'react';
-import { ChevronLeft, Flame, Calendar, TrendingUp } from 'lucide-react';
-import { Link, Stack } from "expo-router";
+import { Stack, Link } from 'expo-router';
+import {
+  SafeAreaView, View, Text, ScrollView, StyleSheet, Pressable,
+  TouchableOpacity
+} from 'react-native';
+import { ChevronLeft, Flame, Calendar, TrendingUp } from 'lucide-react-native';
+
+type Status = 'completed' | 'failed' | 'skipped' | 'none';
+
 export default function HabitStreak() {
   const [selectedHabit, setSelectedHabit] = React.useState(1);
-  const [currentDate, setCurrentDate] = React.useState(new Date(2025, 9, 17)); // October 17, 2025
+  const [currentDate, setCurrentDate] = React.useState(new Date(2025, 9, 17)); // 17/10/2025
 
   const habits = [
     {
@@ -13,15 +21,10 @@ export default function HabitStreak() {
       tagColor: '#10b981',
       streak: 12,
       bestStreak: 25,
-      stats: {
-        completed: 24,
-        failed: 3,
-        skipped: 2,
-        total: 29
-      },
-      completedDates: [1, 2, 3, 4, 5, 8, 9, 10, 11, 12, 15, 17], // Day of month
+      stats: { completed: 24, failed: 3, skipped: 2, total: 29 },
+      completedDates: [1, 2, 3, 4, 5, 8, 9, 10, 11, 12, 15, 17],
       failedDates: [6, 13, 16],
-      skippedDates: [7, 14]
+      skippedDates: [7, 14],
     },
     {
       id: 2,
@@ -30,15 +33,10 @@ export default function HabitStreak() {
       tagColor: '#10b981',
       streak: 5,
       bestStreak: 18,
-      stats: {
-        completed: 18,
-        failed: 5,
-        skipped: 6,
-        total: 29
-      },
+      stats: { completed: 18, failed: 5, skipped: 6, total: 29 },
       completedDates: [1, 2, 4, 5, 8, 10, 11, 12, 15, 16, 17],
       failedDates: [3, 6, 9, 13, 14],
-      skippedDates: [7, 12, 18, 19, 20]
+      skippedDates: [7, 12, 18, 19, 20],
     },
     {
       id: 3,
@@ -47,450 +45,323 @@ export default function HabitStreak() {
       tagColor: '#10b981',
       streak: 20,
       bestStreak: 20,
-      stats: {
-        completed: 26,
-        failed: 1,
-        skipped: 2,
-        total: 29
-      },
+      stats: { completed: 26, failed: 1, skipped: 2, total: 29 },
       completedDates: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17],
       failedDates: [14],
-      skippedDates: [18, 19]
-    }
+      skippedDates: [18, 19],
+    },
   ];
 
-  const habit = habits.find(h => h.id === selectedHabit);
+  const habit = habits.find(h => h.id === selectedHabit)!;
 
-  // Get calendar days for current month
-  const getDaysInMonth = (date) => {
-    return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-  };
+  const getDaysInMonth = (date: Date) =>
+    new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
 
-  const getFirstDayOfMonth = (date) => {
-    return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
-  };
+  const getFirstDayOfMonth = (date: Date) =>
+    new Date(date.getFullYear(), date.getMonth(), 1).getDay(); // 0=CN
 
   const daysInMonth = getDaysInMonth(currentDate);
   const firstDay = getFirstDayOfMonth(currentDate);
-  const calendarDays = [];
 
-  // Add empty cells for days before month starts
-  for (let i = 0; i < firstDay; i++) {
-    calendarDays.push(null);
-  }
+  const calendarDays: (number | null)[] = [];
+  for (let i = 0; i < firstDay; i++) calendarDays.push(null);
+  for (let day = 1; day <= daysInMonth; day++) calendarDays.push(day);
 
-  // Add days of month
-  for (let i = 1; i <= daysInMonth; i++) {
-    calendarDays.push(i);
-  }
-
-  const getStatusForDay = (day) => {
-    if (!day) return null;
+  const getStatusForDay = (day: number | null): Status => {
+    if (!day) return 'none';
     if (habit.completedDates.includes(day)) return 'completed';
     if (habit.failedDates.includes(day)) return 'failed';
     if (habit.skippedDates.includes(day)) return 'skipped';
     return 'none';
   };
 
-  const getStatusColor = (status) => {
+  const getStatusColor = (status: Status) => {
     switch (status) {
-      case 'completed':
-        return habit.tagColor;
-      case 'failed':
-        return '#ef4444';
-      case 'skipped':
-        return '#f59e0b';
-      default:
-        return '#e5e5e5';
+      case 'completed': return habit.tagColor;
+      case 'failed':    return '#ef4444';
+      case 'skipped':   return '#f59e0b';
+      default:          return '#f3f4f6';
     }
   };
 
-  const getStatusLabel = (status) => {
+  const getStatusLabel = (status: Status) => {
     switch (status) {
-      case 'completed':
-        return '✓';
-      case 'failed':
-        return '✗';
-      case 'skipped':
-        return '-';
-      default:
-        return '';
+      case 'completed': return '✓';
+      case 'failed':    return '✗';
+      case 'skipped':   return '–';
+      default:          return '';
     }
   };
 
-  const monthNames = ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6',
-    'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'];
-  const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+  const monthNames = ['Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6','Tháng 7','Tháng 8','Tháng 9','Tháng 10','Tháng 11','Tháng 12'];
+  const dayNames   = ['CN','T2','T3','T4','T5','T6','T7'];
+
+  const changeMonth = (delta: number) => {
+    setCurrentDate(d => new Date(d.getFullYear(), d.getMonth() + delta, 1));
+  };
 
   return (
-    <>
-    <Stack.Screen options={{ tabBarStyle: { display: 'none' } }} />
-    
-    <div style={{
-      width: '100%',
-      height: '100vh',
-      overflow: 'auto',
-      backgroundColor: '#fff',
-      color: '#333'
-    }}>
-      <div style={{
-        maxWidth: '400px',
-        margin: '0 auto',
-        paddingBottom: '20px'
-      }}>
-        
-        {/* Header */}
-        <div style={{
-          backgroundColor: '#fff',
-          padding: '16px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          borderBottom: '1px solid #f0f0f0',
-          position: 'sticky',
-          top: 0,
-          zIndex: 10
-        }}>
-          <Link href="/(tabs)/habits">
-          <ChevronLeft size={24} style={{ cursor: 'pointer' }} />
-          </Link>
-          <div>
-            <div style={{ fontSize: '18px', fontWeight: '600' }}>Chuỗi Thành Công</div>
-            <div style={{ fontSize: '12px', color: '#999' }}>Theo dõi chuỗi ngày liên tiếp</div>
-          </div>
-        </div>
+    <SafeAreaView style={styles.safe}>
+      <Stack.Screen options={{ headerShown: false }} />
 
-        {/* Habit Selector */}
-        <div style={{
-          backgroundColor: '#fff',
-          padding: '16px',
-          margin: '8px 0',
-          display: 'flex',
-          gap: '8px',
-          overflowX: 'auto',
-          borderBottom: '1px solid #f0f0f0'
-        }}>
-          {habits.map((h) => (
-            <button
-              key={h.id}
-              onClick={() => setSelectedHabit(h.id)}
-              style={{
-                padding: '8px 12px',
-                border: selectedHabit === h.id ? `2px solid ${h.tagColor}` : '1px solid #e5e5e5',
-                backgroundColor: selectedHabit === h.id ? `${h.tagColor}08` : '#fff',
-                borderRadius: '8px',
-                color: selectedHabit === h.id ? h.tagColor : '#999',
-                fontSize: '13px',
-                fontWeight: '500',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                transition: 'all 0.2s'
-              }}
-            >
-              {h.title}
-            </button>
-          ))}
-        </div>
+      {/* Header */}
+      <View style={[styles.card, styles.header]}>
+        <Link href="/(tabs)/habits" asChild>
+          <Pressable style={styles.iconBtn}>
+            <ChevronLeft size={20} color="#fff" />
+          </Pressable>
+        </Link>
+        <View>
+          <Text style={styles.headerTitle}>Chuỗi Thành Công</Text>
+          <Text style={styles.headerSub}>Theo dõi chuỗi ngày liên tiếp</Text>
+        </View>
+      </View>
 
-        {habit && (
-          <>
-            {/* Main Streak Card */}
-            <div style={{
-              backgroundColor: '#fff',
-              padding: '24px',
-              margin: '8px 0',
-              borderRadius: '12px',
-              textAlign: 'center',
-              borderBottom: '1px solid #f0f0f0'
-            }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                marginBottom: '16px'
-              }}>
-                <Flame size={32} color={habit.tagColor} fill={habit.tagColor} />
-                <div style={{
-                  fontSize: '48px',
-                  fontWeight: '700',
-                  color: habit.tagColor
-                }}>
-                  {habit.streak}
-                </div>
-              </div>
-              <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '4px' }}>
-                Chuỗi Hiện Tại
-              </div>
-              <div style={{ fontSize: '13px', color: '#666', marginBottom: '16px' }}>
-                Chuỗi tốt nhất: {habit.bestStreak} ngày
-              </div>
+      <ScrollView contentContainerStyle={{ paddingBottom: 20 }}>
+        {/* Habit selector */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.hSelector}
+        >
+          {habits.map(h => {
+            const active = selectedHabit === h.id;
+            return (
+              <TouchableOpacity
+                key={h.id}
+                onPress={() => setSelectedHabit(h.id)}
+                style={[
+                  styles.hChip,
+                  { borderColor: active ? h.tagColor : '#e5e7eb',
+                    backgroundColor: active ? '#00000008' : '#fff' }
+                ]}
+              >
+                <Text style={[
+                  styles.hChipText,
+                  { color: active ? h.tagColor : '#6b7280' }
+                ]}>
+                  {h.title}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
 
-              {/* Stats Grid */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(2, 1fr)',
-                gap: '12px'
-              }}>
-                <div style={{
-                  backgroundColor: 'transparent',
-                  padding: '12px',
-                  borderRadius: '8px',
-                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
-                }}>
-                  <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>
-                    Hoàn Thành
-                  </div>
-                  <div style={{
-                    fontSize: '24px',
-                    fontWeight: '700',
-                    color: '#10b981'
-                  }}>
-                    {habit.stats.completed}
-                  </div>
-                </div>
+        {/* Main streak */}
+        <View style={[styles.card, styles.centerCard]}>
+          <View style={styles.streakRow}>
+            <Flame size={32} color={habit.tagColor} />
+            <Text style={[styles.streakNumber, { color: habit.tagColor }]}>{habit.streak}</Text>
+          </View>
+          <Text style={styles.streakLabel}>Chuỗi Hiện Tại</Text>
+          <Text style={styles.muted}>Chuỗi tốt nhất: {habit.bestStreak} ngày</Text>
 
-                <div style={{
-                  backgroundColor: 'transparent',
-                  padding: '12px',
-                  borderRadius: '8px',
-                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
-                }}>
-                  <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>
-                    Thất Bại
-                  </div>
-                  <div style={{
-                    fontSize: '24px',
-                    fontWeight: '700',
-                    color: '#ef4444'
-                  }}>
-                    {habit.stats.failed}
-                  </div>
-                </div>
+          <View style={styles.statsGrid}>
+            <View style={styles.statBox}>
+              <Text style={styles.statLabel}>Hoàn Thành</Text>
+              <Text style={[styles.statValue, { color: '#10b981' }]}>{habit.stats.completed}</Text>
+            </View>
+            <View style={styles.statBox}>
+              <Text style={styles.statLabel}>Thất Bại</Text>
+              <Text style={[styles.statValue, { color: '#ef4444' }]}>{habit.stats.failed}</Text>
+            </View>
+            <View style={styles.statBox}>
+              <Text style={styles.statLabel}>Bỏ Qua</Text>
+              <Text style={[styles.statValue, { color: '#f59e0b' }]}>{habit.stats.skipped}</Text>
+            </View>
+            <View style={styles.statBox}>
+              <Text style={styles.statLabel}>Tổng</Text>
+              <Text style={[styles.statValue, { color: '#6b7280' }]}>{habit.stats.total}</Text>
+            </View>
+          </View>
+        </View>
 
-                <div style={{
-                  backgroundColor: 'transparent',
-                  padding: '12px',
-                  borderRadius: '8px',
-                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
-                }}>
-                  <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>
-                    Bỏ Qua
-                  </div>
-                  <div style={{
-                    fontSize: '24px',
-                    fontWeight: '700',
-                    color: '#f59e0b'
-                  }}>
-                    {habit.stats.skipped}
-                  </div>
-                </div>
+        {/* Calendar */}
+        <View style={[styles.card, styles.section]}>
+          <View style={styles.rowBetween}>
+            <View style={styles.rowCenter}>
+              <Calendar size={16} color="#0f172a" />
+              <Text style={styles.monthTitle}>
+                {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
+              </Text>
+            </View>
+            <View style={styles.rowCenter}>
+              <Pressable style={styles.navBtn} onPress={() => changeMonth(-1)}>
+                <Text style={styles.navBtnText}>←</Text>
+              </Pressable>
+              <Pressable style={styles.navBtn} onPress={() => changeMonth(1)}>
+                <Text style={styles.navBtnText}>→</Text>
+              </Pressable>
+            </View>
+          </View>
 
-                <div style={{
-                  backgroundColor: 'transparent',
-                  padding: '12px',
-                  borderRadius: '8px',
-                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
-                }}>
-                  <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>
-                    Tổng
-                  </div>
-                  <div style={{
-                    fontSize: '24px',
-                    fontWeight: '700',
-                    color: '#6b7280'
-                  }}>
-                    {habit.stats.total}
-                  </div>
-                </div>
-              </div>
-            </div>
+          {/* Day headers */}
+          <View style={styles.weekRow}>
+            {dayNames.map((d) => (
+              <View key={d} style={styles.weekCell}>
+                <Text style={styles.weekText}>{d}</Text>
+              </View>
+            ))}
+          </View>
 
-            {/* Calendar View */}
-            <div style={{
-              backgroundColor: '#fff',
-              padding: '16px',
-              margin: '8px 0',
-              borderBottom: '1px solid #f0f0f0'
-            }}>
-              <div style={{
-                fontSize: '14px',
-                fontWeight: '600',
-                marginBottom: '16px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                justifyContent: 'space-between'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Calendar size={16} />
-                  {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
-                </div>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1))}
-                    style={{
-                      width: '32px',
-                      height: '32px',
-                      border: '1px solid #e5e5e5',
-                      borderRadius: '6px',
-                      backgroundColor: '#fff',
-                      cursor: 'pointer',
-                      fontSize: '16px',
-                      color: '#666'
-                    }}>←</button>
-                  <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1))}
-                    style={{
-                      width: '32px',
-                      height: '32px',
-                      border: '1px solid #e5e5e5',
-                      borderRadius: '6px',
-                      backgroundColor: '#fff',
-                      cursor: 'pointer',
-                      fontSize: '16px',
-                      color: '#666'
-                    }}>→</button>
-                </div>
-              </div>
+          {/* Grid */}
+          <View style={styles.gridWrap}>
+            {calendarDays.map((day, idx) => {
+              const status = getStatusForDay(day);
+              const color = getStatusColor(status);
+              const label = getStatusLabel(status);
+              const isDay = !!day;
 
-              {/* Day headers */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(7, 1fr)',
-                gap: '4px',
-                marginBottom: '8px'
-              }}>
-                {dayNames.map((day) => (
-                  <div key={day} style={{
-                    textAlign: 'center',
-                    fontSize: '11px',
-                    fontWeight: '600',
-                    color: '#999',
-                    padding: '4px'
-                  }}>
-                    {day}
-                  </div>
-                ))}
-              </div>
+              return (
+                <View key={idx} style={styles.dayCellWrap}>
+                  <View
+                    style={[
+                      styles.dayCircle,
+                      { backgroundColor: isDay ? color : 'transparent' },
+                      isDay && status === 'none' && { backgroundColor: '#f3f4f6' }
+                    ]}
+                  >
+                    {isDay && (
+                      <>
+                        <Text style={[
+                          styles.dayLabel,
+                          { color: status === 'none' ? '#6b7280' : '#fff' }
+                        ]}>
+                          {label}
+                        </Text>
+                        <Text style={[
+                          styles.dayNum,
+                          { color: status === 'none' ? '#6b7280' : '#fff' }
+                        ]}>
+                          {day}
+                        </Text>
+                      </>
+                    )}
+                  </View>
+                </View>
+              );
+            })}
+          </View>
 
-              {/* Calendar grid */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(7, 1fr)',
-                gap: '4px',
-                marginBottom: '16px'
-              }}>
-                {calendarDays.map((day, idx) => {
-                  const status = getStatusForDay(day);
-                  const color = getStatusColor(status);
-                  const label = getStatusLabel(status);
+          {/* Legend */}
+          <View style={styles.legend}>
+            <Text style={[styles.legendText, { color: '#10b981' }]}>✓ = Hoàn thành</Text>
+            <Text style={[styles.legendText, { color: '#ef4444' }]}>✗ = Thất bại</Text>
+            <Text style={[styles.legendText, { color: '#f59e0b' }]}>– = Bỏ qua</Text>
+            <Text style={[styles.legendText, { color: '#6b7280' }]}>Trắng = Chưa ghi nhận</Text>
+          </View>
+        </View>
 
-                  return (
-                    <div
-                      key={idx}
-                      title={day && `${day} ${monthNames[currentDate.getMonth()]}`}
-                      style={{
-                        width: '100%',
-                        aspectRatio: '1',
-                        borderRadius: '50%',
-                        backgroundColor: day ? (status === 'none' ? '#f5f5f5' : color) : 'transparent',
-                        boxShadow: day && status !== 'none' ? '0 2px 6px rgba(0, 0, 0, 0.15)' : 'none',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: day ? '12px' : '0',
-                        fontWeight: '600',
-                        color: day ? (status === 'none' ? '#999' : 'white') : 'transparent',
-                        cursor: day ? 'pointer' : 'default',
-                        transition: 'all 0.2s'
-                      }}
-                      onMouseOver={(e) => {
-                        if (day) e.currentTarget.style.transform = 'scale(1.05)';
-                      }}
-                      onMouseOut={(e) => {
-                        if (day) e.currentTarget.style.transform = 'scale(1)';
-                      }}
-                    >
-                      {day && (
-                        <div>
-                          <div style={{ fontSize: '14px' }}>{label}</div>
-                          <div style={{ fontSize: '10px', marginTop: '2px' }}>{day}</div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+        {/* Summary */}
+        <View style={[styles.card, styles.section]}>
+          <View style={styles.rowCenter}>
+            <TrendingUp size={16} color="#0f172a" />
+            <Text style={styles.sumTitle}>Thống Kê Tổng</Text>
+          </View>
 
-              {/* Legend */}
-              <div style={{
-                backgroundColor: '#f9f9f9',
-                padding: '12px',
-                borderRadius: '8px',
-                fontSize: '12px'
-              }}>
-                <div style={{ marginBottom: '4px', color: '#10b981', fontWeight: '600' }}>✓ = Hoàn thành</div>
-                <div style={{ marginBottom: '4px', color: '#ef4444', fontWeight: '600' }}>✗ = Thất bại</div>
-                <div style={{ marginBottom: '4px', color: '#f59e0b', fontWeight: '600' }}>- = Bỏ qua</div>
-                <div style={{ color: '#999', fontWeight: '600' }}>Trắng = Chưa ghi nhận</div>
-              </div>
-            </div>
-
-            {/* Statistics Summary */}
-            <div style={{
-              backgroundColor: 'white',
-              padding: '16px',
-              margin: '8px 0'
-            }}>
-              <div style={{
-                fontSize: '14px',
-                fontWeight: '600',
-                marginBottom: '12px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}>
-                <TrendingUp size={16} />
-                Thống Kê Tổng
-              </div>
-
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(2, 1fr)',
-                gap: '12px'
-              }}>
-                <div style={{
-                  backgroundColor: 'transparent',
-                  padding: '12px',
-                  borderRadius: '8px',
-                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
-                }}>
-                  <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>
-                    Tỷ Lệ Hoàn Thành
-                  </div>
-                  <div style={{ fontSize: '20px', fontWeight: '700', color: '#10b981' }}>
-                    {Math.round((habit.stats.completed / habit.stats.total) * 100)}%
-                  </div>
-                </div>
-
-                <div style={{
-                  backgroundColor: 'transparent',
-                  padding: '12px',
-                  borderRadius: '8px',
-                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
-                }}>
-                  <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>
-                    Tỷ Lệ Thất Bại
-                  </div>
-                  <div style={{ fontSize: '20px', fontWeight: '700', color: '#ef4444' }}>
-                    {Math.round((habit.stats.failed / habit.stats.total) * 100)}%
-                  </div>
-                </div>
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-    </>
+          <View style={styles.twoGrid}>
+            <View style={styles.statBox}>
+              <Text style={styles.statLabel}>Tỷ Lệ Hoàn Thành</Text>
+              <Text style={[styles.statValue, { color: '#10b981' }]}>
+                {Math.round((habit.stats.completed / habit.stats.total) * 100)}%
+              </Text>
+            </View>
+            <View style={styles.statBox}>
+              <Text style={styles.statLabel}>Tỷ Lệ Thất Bại</Text>
+              <Text style={[styles.statValue, { color: '#ef4444' }]}>
+                {Math.round((habit.stats.failed / habit.stats.total) * 100)}%
+              </Text>
+            </View>
+          </View>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
+
+const CELL_PCT = '14.2857%';
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: '#ffffff' },
+
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 8,
+    elevation: 2,
+  },
+
+  header: {
+    marginHorizontal: 12, marginTop: 8, padding: 12,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+  },
+  iconBtn: {
+    width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#2563eb',
+  },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: '#0f172a' },
+  headerSub: { fontSize: 12, color: '#9ca3af' },
+
+  hSelector: { paddingHorizontal: 12, paddingVertical: 8, gap: 8 },
+  hChip: {
+    paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8,
+    borderWidth: 1, marginRight: 8,
+  },
+  hChipText: { fontSize: 13, fontWeight: '600' },
+
+  centerCard: { marginHorizontal: 12, marginTop: 8, padding: 20, alignItems: 'center' },
+  streakRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
+  streakNumber: { fontSize: 44, fontWeight: '800' },
+  streakLabel: { fontSize: 16, fontWeight: '700', marginBottom: 4, color: '#0f172a' },
+  muted: { fontSize: 13, color: '#6b7280', marginBottom: 14 },
+
+  statsGrid: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'space-between',
+    width: '100%',
+  },
+  statBox: {
+    flexBasis: '48%',
+    backgroundColor: '#fff', borderRadius: 8, padding: 12,
+    shadowColor: '#000', shadowOpacity: 0.05, shadowOffset: { width: 0, height: 2 }, shadowRadius: 6, elevation: 1,
+  },
+  statLabel: { fontSize: 11, color: '#6b7280', marginBottom: 4 },
+  statValue: { fontSize: 22, fontWeight: '800' },
+
+  section: { marginHorizontal: 12, marginTop: 8, padding: 16 },
+  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  rowCenter: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  monthTitle: { marginLeft: 6, fontSize: 14, fontWeight: '700', color: '#0f172a' },
+
+  navBtn: {
+    width: 32, height: 32, borderRadius: 6,
+    borderWidth: 1, borderColor: '#e5e7eb',
+    alignItems: 'center', justifyContent: 'center', marginLeft: 8, backgroundColor: '#fff',
+  },
+  navBtnText: { fontSize: 16, color: '#374151', fontWeight: '700' },
+
+  weekRow: { flexDirection: 'row', marginTop: 10 },
+  weekCell: { width: CELL_PCT, alignItems: 'center', paddingVertical: 4 },
+  weekText: { fontSize: 11, color: '#6b7280', fontWeight: '700' },
+
+  gridWrap: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 8 },
+  dayCellWrap: { width: CELL_PCT, alignItems: 'center', marginVertical: 4 },
+  dayCircle: {
+    width: 40, aspectRatio: 1, borderRadius: 20,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  dayLabel: { fontSize: 14, fontWeight: '800' },
+  dayNum: { fontSize: 10, fontWeight: '700', marginTop: 1 },
+
+  legend: {
+    backgroundColor: '#f9fafb', borderRadius: 8, padding: 12, marginTop: 10,
+  },
+  legendText: { fontSize: 12, fontWeight: '700', marginBottom: 4 },
+
+  sumTitle: { marginLeft: 6, fontSize: 14, fontWeight: '700', color: '#0f172a' },
+  twoGrid: { flexDirection: 'row', gap: 12, justifyContent: 'space-between', marginTop: 10 },
+});
