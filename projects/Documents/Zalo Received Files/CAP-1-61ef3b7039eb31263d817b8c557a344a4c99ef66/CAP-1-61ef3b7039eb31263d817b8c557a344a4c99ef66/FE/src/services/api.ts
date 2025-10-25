@@ -2,7 +2,7 @@ import axios from "axios";
 
 // Tạo một instance axios chung
 const api = axios.create({
-  baseURL: "https://cap-1-1.onrender.com/api", // đổi lại theo port BE của bạn
+  baseURL: "https://cap-1-1.onrender.com", // đổi lại theo port BE của bạn
   headers: {
     "Content-Type": "application/json",
   },
