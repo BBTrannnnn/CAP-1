@@ -1,9 +1,11 @@
 import express from 'express';
 import {
+  // Habit
   getUserHabits,
   createHabit,
   updateHabit,
   deleteHabit,
+  // Tracking
   trackHabit,
   getHabitStats,
   getHabitCalendar,
@@ -14,7 +16,21 @@ import {
   updateHabitsOrder,
   createHabitFromTemplate,
   getSurveyQuestions,
-  addHabitSubTracking
+  addHabitSubTracking,
+   // Reminders
+  addHabitReminder,
+  updateHabitReminder,
+  deleteHabitReminder,
+  getHabitReminders,
+  getTodayReminders,
+  // Goals
+  addHabitGoal,
+  updateHabitGoal,
+  completeHabitGoal,
+  deleteHabitGoal,
+  getHabitGoals,
+  getUserGoalsOverview,
+  syncHabitGoals
 } from '../controllers/Habit_controller.js';
 import authenticateToken from "../../middlewares/auth.js";
 
@@ -48,6 +64,35 @@ router.get('/:habitId/stats', getHabitStats);
 
 // Get habit calendar (30 days tracking)
 router.get('/:habitId/calendar', getHabitCalendar);
+
+
+// ==================== Reminders ====================
+// Get all reminders for a habit
+router.get('/:habitId/reminders', getHabitReminders);
+// Add a reminder to a habit
+router.post('/:habitId/reminders', addHabitReminder);
+// Update a habit reminder
+router.put('/:habitId/reminders/:reminderId', updateHabitReminder);
+// Delete a habit reminder
+router.delete('/:habitId/reminders/:reminderId', deleteHabitReminder);
+// Get today's active reminders
+router.get('/reminders/today', getTodayReminders);
+// ==================== Goals ====================
+// Get all goals for a habit
+router.get('/:habitId/goals', getHabitGoals);
+// Add a goal to a habit
+router.post('/:habitId/goals', addHabitGoal);
+// Update a habit goal
+router.put('/:habitId/goals/:goalId', updateHabitGoal);
+// Complete a habit goal
+router.post('/:habitId/goals/:goalId/complete', completeHabitGoal);
+// Delete a habit goal
+router.delete('/:habitId/goals/:goalId', deleteHabitGoal);
+// Get user's goals overview
+router.get('/goals/overview', getUserGoalsOverview);
+// Sync habit goals (e.g., after bulk updates)
+router.post('/goals/sync', syncHabitGoals);
+
 
 // ==================== Templates & Suggestions ====================
 
