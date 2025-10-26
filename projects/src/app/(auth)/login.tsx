@@ -2,7 +2,7 @@ import { AntDesign, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-i
 import { Link, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Alert, Image, Platform } from 'react-native';
-import { Check } from 'lucide-react-native';
+import { Check } from '@tamagui/lucide-icons';
 import { Button, Card, Checkbox, Input, Label, Separator, Text, Theme, XStack, YStack, Spinner } from 'tamagui';
 
 // ⬇️ import API đã đóng gói

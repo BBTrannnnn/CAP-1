@@ -3,9 +3,14 @@ import React, { useMemo, useState } from 'react';
 import { Stack, Link, router } from 'expo-router';
 import {
   View, Text, SafeAreaView, ScrollView, TextInput,
-  StyleSheet, Pressable, TouchableOpacity
+  StyleSheet, Pressable, TouchableOpacity,
+  StyleProp, ViewStyle, TextStyle, ImageStyle,
 } from 'react-native';
-import { X, Search, Plus, Check } from 'lucide-react-native';
+import { X, Search, Plus, Check } from '@tamagui/lucide-icons';
+
+// Helper: flatten mọi style mảng -> object (an toàn web/DOM/SVG)
+const sx = (...styles: Array<StyleProp<ViewStyle | TextStyle | ImageStyle>>) =>
+  StyleSheet.flatten(styles.filter(Boolean));
 
 type HabitItem = { icon: string; name: string; category: string; color: string };
 type Categories = Record<string, HabitItem[]>;
@@ -38,11 +43,11 @@ export default function AddHabitModal() {
         { icon: '✨', name: 'Học ngoại ngữ',     category: 'Learning', color: '#a78bfa' },
       ],
       'Kiểm soát': [
-        { icon: '🚭', name: 'Không hút thuốc',                 category: 'Control', color: '#9ca3af' },
-        { icon: '🍷', name: 'Không uống rượu',                 category: 'Control', color: '#ec4899' },
-        { icon: '☕', name: 'Ít coffee',                        category: 'Control', color: '#f97316' },
-        { icon: '💰', name: 'Tiết kiệm tiền',                  category: 'Finance', color: '#10b981' },
-        { icon: '📱', name: 'Không xem điện thoại trước khi ngủ', category: 'Control', color: '#6b7280' },
+        { icon: '🚭', name: 'Không hút thuốc',                     category: 'Control', color: '#9ca3af' },
+        { icon: '🍷', name: 'Không uống rượu',                     category: 'Control', color: '#ec4899' },
+        { icon: '☕', name: 'Ít coffee',                            category: 'Control', color: '#f97316' },
+        { icon: '💰', name: 'Tiết kiệm tiền',                      category: 'Finance', color: '#10b981' },
+        { icon: '📱', name: 'Không xem điện thoại trước khi ngủ',  category: 'Control', color: '#6b7280' },
       ],
     }),
     []
@@ -102,16 +107,16 @@ export default function AddHabitModal() {
                   <Pressable
                     key={key}
                     onPress={() => setSelectedKey(key)}
-                    style={[
+                    style={sx(
                       styles.itemRow,
                       selected && { backgroundColor: '#f0fdf4' }
-                    ]}
+                    )}
                   >
                     <View
-                      style={[
+                      style={sx(
                         styles.iconSquare,
                         { backgroundColor: withAlpha(habit.color, 0.12), borderColor: withAlpha(habit.color, 0.4) }
-                      ]}
+                      )}
                     >
                       <Text style={{ fontSize: 20 }}>{habit.icon}</Text>
                     </View>
@@ -141,20 +146,20 @@ export default function AddHabitModal() {
       {/* Bottom Actions */}
       <View style={styles.bottomBar}>
         <Link href="/(tabs)/habits" asChild>
-          <Pressable style={[styles.bottomBtn, { backgroundColor: '#f3f4f6' }]}>
-            <Text style={[styles.bottomText, { color: '#374151' }]}>Hủy</Text>
+          <Pressable style={sx(styles.bottomBtn, { backgroundColor: '#f3f4f6' })}>
+            <Text style={sx(styles.bottomText, { color: '#374151' })}>Hủy</Text>
           </Pressable>
         </Link>
 
         <Pressable
           onPress={() => canContinue && router.push('/(tabs)/habits/CreateHabitDetail')}
           disabled={!canContinue}
-          style={[
+          style={sx(
             styles.bottomBtn,
             { backgroundColor: canContinue ? '#2563eb' : '#d1d5db' }
-          ]}
+          )}
         >
-          <Text style={[styles.bottomText, { color: '#fff' }]}>Tiếp tục</Text>
+          <Text style={sx(styles.bottomText, { color: '#fff' })}>Tiếp tục</Text>
         </Pressable>
       </View>
 

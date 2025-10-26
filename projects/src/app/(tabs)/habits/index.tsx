@@ -1,5 +1,4 @@
-// app/(tabs)/habits/index.tsx  (ví dụ)
-// React Native version — compatible with Expo Go (no web tags)
+// app/(tabs)/habits/index.tsx  (web-safe: no array styles reach DOM/SVG)
 import React, { useMemo, useState } from 'react';
 import { Stack, Link, router } from 'expo-router';
 import {
@@ -12,11 +11,21 @@ import {
   Modal,
   TextInput,
   SafeAreaView,
+  StyleProp,
+  ViewStyle,
+  TextStyle,
+  ImageStyle,
+  StyleSheet as RNStyleSheet,
 } from 'react-native';
 import {
   Home, TrendingUp, Moon, Users, User, Plus, BarChart3, ChevronLeft,
-  Check, X, Minus, MoreVertical
-} from 'lucide-react-native';
+  Check, X, Minus, MoreVertical,
+  AlignJustify
+} from '@tamagui/lucide-icons';
+
+// Helper: flatten mọi style mảng -> object (an toàn cho web/DOM/SVG)
+const sx = (...styles: Array<StyleProp<ViewStyle | TextStyle | ImageStyle>>) =>
+  RNStyleSheet.flatten(styles.filter(Boolean));
 
 type Habit = {
   id: number;
@@ -89,7 +98,6 @@ export default function FlowStateHabits() {
       )
     );
     closeEditModal();
-    // Nếu muốn tự chuyển sang trang chi tiết chỉnh sửa:
     // router.push('/(tabs)/habits/CreateHabitDetail');
   };
 
@@ -155,9 +163,9 @@ export default function FlowStateHabits() {
       <Stack.Screen options={{ headerShown: false }} />
 
       {/* Header */}
-      <View style={[styles.card, styles.header]}>
+      <View style={sx(styles.card, styles.header)}>
         <View style={styles.headerLeft}>
-          <Pressable style={[styles.iconBtn, { backgroundColor: '#2563eb' }]}>
+          <Pressable style={sx(styles.iconBtn, { backgroundColor: '#2563eb' })}>
             <ChevronLeft size={20} color="#fff" />
           </Pressable>
           <View>
@@ -168,12 +176,12 @@ export default function FlowStateHabits() {
 
         <View style={{ flexDirection: 'row', gap: 10 }}>
           <Link href="/(tabs)/habits/AddHabitModal" asChild>
-            <Pressable style={[styles.iconBtn, { backgroundColor: '#2563eb' }]}>
+            <Pressable style={sx(styles.iconBtn, { backgroundColor: '#2563eb' })}>
               <Plus size={20} color="#fff" />
             </Pressable>
           </Link>
           <Link href="/(tabs)/habits/HabitStreak" asChild>
-            <Pressable style={[styles.iconBtn, { backgroundColor: '#E5E7EB' }]}>
+            <Pressable style={sx(styles.iconBtn, { backgroundColor: '#E5E7EB' })}>
               <BarChart3 size={20} color="#0f172a" />
             </Pressable>
           </Link>
@@ -183,7 +191,7 @@ export default function FlowStateHabits() {
       <ScrollView contentContainerStyle={{ paddingBottom: 96 }}>
 
         {/* Progress Summary */}
-        <View style={[styles.card, { padding: 16, marginHorizontal: 10, marginTop: 8 }]}>
+        <View style={sx(styles.card, { padding: 16, marginHorizontal: 10, marginTop: 8 })}>
           <View style={styles.rowBetween}>
             <View style={styles.pill}>
               <TrendingUp size={16} color="#4338ca" />
@@ -196,14 +204,14 @@ export default function FlowStateHabits() {
             <View style={[styles.progressBar, { width: `${progressPercent}%` }]} />
           </View>
 
-          <View style={[styles.rowBetween, { marginTop: 8 }]}>
+          <View style={sx(styles.rowBetween, { marginTop: 8 })}>
             <Text style={styles.muted}>Mục tiêu: hoàn thành tất cả</Text>
             <Text style={styles.percent}>{progressPercent}%</Text>
           </View>
         </View>
 
         {/* Chart Section */}
-        <View style={[styles.card, { padding: 16, marginHorizontal: 10, marginTop: 12 }]}>
+        <View style={sx(styles.card, { padding: 16, marginHorizontal: 10, marginTop: 12 })}>
           <View style={styles.rowBetween}>
             <Text style={styles.sectionTitle}>Biểu đồ tiến bộ</Text>
             <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -211,12 +219,12 @@ export default function FlowStateHabits() {
                 <Pressable
                   key={v}
                   onPress={() => setChartView(v)}
-                  style={[
+                  style={sx(
                     styles.switchBtn,
                     chartView === v ? styles.switchActive : styles.switchIdle
-                  ]}
+                  )}
                 >
-                  <Text style={[styles.switchText, chartView === v && { color: '#fff' }]}>
+                  <Text style={sx(styles.switchText, chartView === v && { color: '#fff' })}>
                     {v === 'day' ? 'Ngày' : v === 'week' ? 'Tuần' : 'Tháng'}
                   </Text>
                 </Pressable>
@@ -246,7 +254,7 @@ export default function FlowStateHabits() {
         </View>
 
         {/* Habits List */}
-        <View style={[styles.card, { padding: 16, marginHorizontal: 10, marginTop: 12 }]}>
+        <View style={sx(styles.card, { padding: 16, marginHorizontal: 10, marginTop: 12 })}>
           <Text style={styles.sectionTitle}>Danh sách thói quen</Text>
 
           {habitList.map((habit) => {
@@ -261,18 +269,20 @@ export default function FlowStateHabits() {
               <View key={habit.id} style={{ marginBottom: 10 }}>
                 <Pressable
                   onPress={() => setActiveMenu(activeMenu === habit.id ? null : habit.id)}
-                  style={[
+                  style={sx(
                     styles.habitItem,
-                    status === 'success' ? { backgroundColor: '#f0fdf4' }
-                    : status === 'fail' ? { backgroundColor: '#fef2f2' }
-                    : { backgroundColor: '#ffffff' }
-                  ]}
+                    status === 'success'
+                      ? { backgroundColor: '#f0fdf4' }
+                      : status === 'fail'
+                      ? { backgroundColor: '#fef2f2' }
+                      : { backgroundColor: '#ffffff' }
+                  )}
                 >
                   <View
-                    style={[
+                    style={sx(
                       styles.statusDot,
                       { backgroundColor: s.bg, borderColor: s.border }
-                    ]}
+                    )}
                   >
                     {renderStatusIcon(status)}
                   </View>
@@ -280,7 +290,7 @@ export default function FlowStateHabits() {
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                       <Text numberOfLines={1} style={styles.habitTitle}>{habit.title}</Text>
-                      <View style={[styles.tag, { backgroundColor: bgTag }]}>
+                      <View style={sx(styles.tag, { backgroundColor: bgTag })}>
                         <Text style={styles.tagText}>{habit.tag}</Text>
                       </View>
                     </View>
@@ -302,21 +312,21 @@ export default function FlowStateHabits() {
                     <View style={{ flexDirection: 'row', gap: 8, marginBottom: 6 }}>
                       <TouchableOpacity
                         onPress={() => handleStatusChange(habit.id, 'success')}
-                        style={[styles.actionBtn, { backgroundColor: '#10b981' }]}
+                        style={sx(styles.actionBtn, { backgroundColor: '#10b981' })}
                       >
                         <Text style={styles.actionText}>Hoàn thành</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         onPress={() => handleStatusChange(habit.id, 'fail')}
-                        style={[styles.actionBtn, { backgroundColor: '#ef4444' }]}
+                        style={sx(styles.actionBtn, { backgroundColor: '#ef4444' })}
                       >
                         <Text style={styles.actionText}>Thất bại</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         onPress={() => handleStatusChange(habit.id, 'skip')}
-                        style={[styles.actionBtn, styles.skipBtn]}
+                        style={sx(styles.actionBtn, styles.skipBtn)}
                       >
-                        <Text style={[styles.actionText, { color: '#334155' }]}>Bỏ qua</Text>
+                        <Text style={sx(styles.actionText, { color: '#334155' })}>Bỏ qua</Text>
                       </TouchableOpacity>
                     </View>
 
@@ -339,26 +349,7 @@ export default function FlowStateHabits() {
         </View>
       </ScrollView>
 
-      {/* Bottom Navigation */}
-      <View style={styles.bottomNav}>
-        {[
-          { icon: Home, label: 'Trang chủ', active: false, href: '/(tabs)/home' },
-          { icon: TrendingUp, label: 'Thói quen', active: true, href: '/(tabs)/habits' },
-          { icon: Moon, label: 'Giấc ngủ', active: false, href: '/(tabs)/sleep' },
-          { icon: Users, label: 'Cộng đồng', active: false, href: '/(tabs)/community' },
-          { icon: User, label: 'Cá nhân', active: false, href: '/(tabs)/profile' }
-        ].map((item, index) => {
-          const Icon = item.icon;
-          return (
-            <Link key={index} href={item.href as any} asChild>
-              <Pressable style={styles.navBtn}>
-                <Icon size={22} color={item.active ? '#2563eb' : '#94a3b8'} />
-                <Text style={[styles.navLabel, { color: item.active ? '#2563eb' : '#94a3b8' }]}>{item.label}</Text>
-              </Pressable>
-            </Link>
-          );
-        })}
-      </View>
+      
 
       {/* MODAL chỉnh sửa */}
       <Modal visible={editOpen} transparent animationType="fade" onRequestClose={closeEditModal}>
@@ -394,13 +385,16 @@ export default function FlowStateHabits() {
                 <TouchableOpacity style={styles.btnGhost} onPress={closeEditModal}>
                   <Text style={styles.btnGhostText}>Hủy</Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.btnPrimary}
-                  onPress={saveEdit}
-                  // hoặc nếu muốn chuyển trang sau lưu:
-                  // onPress={() => { saveEdit(); router.push('/(tabs)/habits/CreateHabitDetail'); }}
-                >
-                  <Text style={styles.btnPrimaryText}>Chỉnh sửa</Text>
+                 <TouchableOpacity
+  style={styles.btnPrimary}
+  onPress={() => {
+    setEditOpen(false);             // đóng modal chỉnh sửa
+    router.replace('/(tabs)/habits/CreateHabitDetail'); // chuyển trang ngay sau đó
+  }}
+>
+  <Text style={styles.btnPrimaryText}>Chỉnh sửa</Text>
+
+
                 </TouchableOpacity>
               </View>
             </View>
@@ -411,7 +405,7 @@ export default function FlowStateHabits() {
       {/* MODAL xác nhận xóa */}
       <Modal visible={confirmOpen} transparent animationType="fade" onRequestClose={closeConfirm}>
         <Pressable style={styles.modalOverlay} onPress={closeConfirm}>
-          <Pressable style={[styles.modalCard, { padding: 22 }]} onPress={(e)=>e.stopPropagation()}>
+          <Pressable style={sx(styles.modalCard, { padding: 22 })} onPress={(e)=>e.stopPropagation()}>
             <Text style={styles.confirmTitle}>Xóa thói quen “{confirmName}”?</Text>
             <Text style={styles.confirmSub}>Hành động này không thể hoàn tác.</Text>
             <View style={styles.confirmActions}>
@@ -502,7 +496,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#4ade80',
   },
   barLabel: { fontSize: 11, color: '#64748b', fontWeight: '600' },
-  monthGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'flex-end', height: 160, paddingVertical: 6 },
+  monthGrid: { flexDirection: 'row', flexWrap: 'row', alignItems: 'flex-end', justifyContent: 'space-between' ,height: 160, paddingVertical: 6 },
   monthCell: { width: '8.3%', alignItems: 'center', gap: 6 },
 
   habitItem: {

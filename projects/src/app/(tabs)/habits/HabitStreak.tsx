@@ -3,9 +3,13 @@ import React from 'react';
 import { Stack, Link } from 'expo-router';
 import {
   SafeAreaView, View, Text, ScrollView, StyleSheet, Pressable,
-  TouchableOpacity
+  TouchableOpacity, StyleProp, ViewStyle, TextStyle, ImageStyle
 } from 'react-native';
-import { ChevronLeft, Flame, Calendar, TrendingUp } from 'lucide-react-native';
+import { ChevronLeft, Flame, Calendar, TrendingUp } from '@tamagui/lucide-icons';
+
+// Helper: flatten mọi style mảng -> object (an toàn web/DOM/SVG)
+const sx = (...styles: Array<StyleProp<ViewStyle | TextStyle | ImageStyle>>) =>
+  StyleSheet.flatten(styles.filter(Boolean));
 
 type Status = 'completed' | 'failed' | 'skipped' | 'none';
 
@@ -105,7 +109,7 @@ export default function HabitStreak() {
       <Stack.Screen options={{ headerShown: false }} />
 
       {/* Header */}
-      <View style={[styles.card, styles.header]}>
+      <View style={sx(styles.card, styles.header)}>
         <Link href="/(tabs)/habits" asChild>
           <Pressable style={styles.iconBtn}>
             <ChevronLeft size={20} color="#fff" />
@@ -130,16 +134,18 @@ export default function HabitStreak() {
               <TouchableOpacity
                 key={h.id}
                 onPress={() => setSelectedHabit(h.id)}
-                style={[
+                style={sx(
                   styles.hChip,
                   { borderColor: active ? h.tagColor : '#e5e7eb',
                     backgroundColor: active ? '#00000008' : '#fff' }
-                ]}
+                )}
               >
-                <Text style={[
-                  styles.hChipText,
-                  { color: active ? h.tagColor : '#6b7280' }
-                ]}>
+                <Text
+                  style={sx(
+                    styles.hChipText,
+                    { color: active ? h.tagColor : '#6b7280' }
+                  )}
+                >
                   {h.title}
                 </Text>
               </TouchableOpacity>
@@ -148,10 +154,10 @@ export default function HabitStreak() {
         </ScrollView>
 
         {/* Main streak */}
-        <View style={[styles.card, styles.centerCard]}>
+        <View style={sx(styles.card, styles.centerCard)}>
           <View style={styles.streakRow}>
             <Flame size={32} color={habit.tagColor} />
-            <Text style={[styles.streakNumber, { color: habit.tagColor }]}>{habit.streak}</Text>
+            <Text style={sx(styles.streakNumber, { color: habit.tagColor })}>{habit.streak}</Text>
           </View>
           <Text style={styles.streakLabel}>Chuỗi Hiện Tại</Text>
           <Text style={styles.muted}>Chuỗi tốt nhất: {habit.bestStreak} ngày</Text>
@@ -159,25 +165,25 @@ export default function HabitStreak() {
           <View style={styles.statsGrid}>
             <View style={styles.statBox}>
               <Text style={styles.statLabel}>Hoàn Thành</Text>
-              <Text style={[styles.statValue, { color: '#10b981' }]}>{habit.stats.completed}</Text>
+              <Text style={sx(styles.statValue, { color: '#10b981' })}>{habit.stats.completed}</Text>
             </View>
             <View style={styles.statBox}>
               <Text style={styles.statLabel}>Thất Bại</Text>
-              <Text style={[styles.statValue, { color: '#ef4444' }]}>{habit.stats.failed}</Text>
+              <Text style={sx(styles.statValue, { color: '#ef4444' })}>{habit.stats.failed}</Text>
             </View>
             <View style={styles.statBox}>
               <Text style={styles.statLabel}>Bỏ Qua</Text>
-              <Text style={[styles.statValue, { color: '#f59e0b' }]}>{habit.stats.skipped}</Text>
+              <Text style={sx(styles.statValue, { color: '#f59e0b' })}>{habit.stats.skipped}</Text>
             </View>
             <View style={styles.statBox}>
               <Text style={styles.statLabel}>Tổng</Text>
-              <Text style={[styles.statValue, { color: '#6b7280' }]}>{habit.stats.total}</Text>
+              <Text style={sx(styles.statValue, { color: '#6b7280' })}>{habit.stats.total}</Text>
             </View>
           </View>
         </View>
 
         {/* Calendar */}
-        <View style={[styles.card, styles.section]}>
+        <View style={sx(styles.card, styles.section)}>
           <View style={styles.rowBetween}>
             <View style={styles.rowCenter}>
               <Calendar size={16} color="#0f172a" />
@@ -215,24 +221,28 @@ export default function HabitStreak() {
               return (
                 <View key={idx} style={styles.dayCellWrap}>
                   <View
-                    style={[
+                    style={sx(
                       styles.dayCircle,
                       { backgroundColor: isDay ? color : 'transparent' },
                       isDay && status === 'none' && { backgroundColor: '#f3f4f6' }
-                    ]}
+                    )}
                   >
                     {isDay && (
                       <>
-                        <Text style={[
-                          styles.dayLabel,
-                          { color: status === 'none' ? '#6b7280' : '#fff' }
-                        ]}>
+                        <Text
+                          style={sx(
+                            styles.dayLabel,
+                            { color: status === 'none' ? '#6b7280' : '#fff' }
+                          )}
+                        >
                           {label}
                         </Text>
-                        <Text style={[
-                          styles.dayNum,
-                          { color: status === 'none' ? '#6b7280' : '#fff' }
-                        ]}>
+                        <Text
+                          style={sx(
+                            styles.dayNum,
+                            { color: status === 'none' ? '#6b7280' : '#fff' }
+                          )}
+                        >
                           {day}
                         </Text>
                       </>
@@ -245,15 +255,15 @@ export default function HabitStreak() {
 
           {/* Legend */}
           <View style={styles.legend}>
-            <Text style={[styles.legendText, { color: '#10b981' }]}>✓ = Hoàn thành</Text>
-            <Text style={[styles.legendText, { color: '#ef4444' }]}>✗ = Thất bại</Text>
-            <Text style={[styles.legendText, { color: '#f59e0b' }]}>– = Bỏ qua</Text>
-            <Text style={[styles.legendText, { color: '#6b7280' }]}>Trắng = Chưa ghi nhận</Text>
+            <Text style={sx(styles.legendText, { color: '#10b981' })}>✓ = Hoàn thành</Text>
+            <Text style={sx(styles.legendText, { color: '#ef4444' })}>✗ = Thất bại</Text>
+            <Text style={sx(styles.legendText, { color: '#f59e0b' })}>– = Bỏ qua</Text>
+            <Text style={sx(styles.legendText, { color: '#6b7280' })}>Trắng = Chưa ghi nhận</Text>
           </View>
         </View>
 
         {/* Summary */}
-        <View style={[styles.card, styles.section]}>
+        <View style={sx(styles.card, styles.section)}>
           <View style={styles.rowCenter}>
             <TrendingUp size={16} color="#0f172a" />
             <Text style={styles.sumTitle}>Thống Kê Tổng</Text>
@@ -262,13 +272,13 @@ export default function HabitStreak() {
           <View style={styles.twoGrid}>
             <View style={styles.statBox}>
               <Text style={styles.statLabel}>Tỷ Lệ Hoàn Thành</Text>
-              <Text style={[styles.statValue, { color: '#10b981' }]}>
+              <Text style={sx(styles.statValue, { color: '#10b981' })}>
                 {Math.round((habit.stats.completed / habit.stats.total) * 100)}%
               </Text>
             </View>
             <View style={styles.statBox}>
               <Text style={styles.statLabel}>Tỷ Lệ Thất Bại</Text>
-              <Text style={[styles.statValue, { color: '#ef4444' }]}>
+              <Text style={sx(styles.statValue, { color: '#ef4444' })}>
                 {Math.round((habit.stats.failed / habit.stats.total) * 100)}%
               </Text>
             </View>

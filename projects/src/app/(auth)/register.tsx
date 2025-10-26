@@ -19,7 +19,7 @@ import {
 } from 'tamagui';
 
 import { register as apiRegister, setBaseUrl } from './../../server/users';
-import { Check } from 'lucide-react-native';
+import { Check } from '@tamagui/lucide-icons';
 
 // Logo app
 const Logo = require('../../assets/images/FlowState.png');
