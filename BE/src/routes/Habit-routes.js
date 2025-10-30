@@ -7,6 +7,8 @@ import {
   deleteHabit,
   // Tracking
   trackHabit,
+
+  // History & Stats
   getHabitStats,
   getHabitCalendar,
   getHabitTemplates,
@@ -14,9 +16,23 @@ import {
   getWeeklyReport,
   getHabitInsights,
   updateHabitsOrder,
+  getHabitHistory,
+
+  // dashboard
+  getAllHabitsHistory,
+
+  // Templates & Suggestions
   createHabitFromTemplate,
   getSurveyQuestions,
+
+
+  // Sub-tracking
+  getHabitSubTrackings,
+  updateHabitSubTracking,
   addHabitSubTracking,
+  deleteHabitSubTracking,
+
+
    // Reminders
   addHabitReminder,
   updateHabitReminder,
@@ -59,11 +75,26 @@ router.post('/:habitId/track', trackHabit);
 // Add sub-tracking entry for habits with quantity
 router.post('/:habitId/subtrack', addHabitSubTracking);
 
+// Get sub-tracking entries for a habit
+router.get('/:habitId/subtrack', getHabitSubTrackings);
+// Update sub-tracking entry
+router.put('/:habitId/subtrack/:subId', updateHabitSubTracking);
+// Delete sub-tracking entry
+router.delete('/:habitId/subtrack/:subId', deleteHabitSubTracking);
+
+
+// ==================== History & Stats ====================
+
+// Get habit history
+router.get('/:habitId/history', getHabitHistory);
 // Get habit statistics
 router.get('/:habitId/stats', getHabitStats);
 
 // Get habit calendar (30 days tracking)
 router.get('/:habitId/calendar', getHabitCalendar);
+
+// ==================== Dashboard - All Habits History ====================
+router.get('/history/all', getAllHabitsHistory);
 
 
 // ==================== Reminders ====================
@@ -77,6 +108,8 @@ router.put('/:habitId/reminders/:reminderId', updateHabitReminder);
 router.delete('/:habitId/reminders/:reminderId', deleteHabitReminder);
 // Get today's active reminders
 router.get('/reminders/today', getTodayReminders);
+
+
 // ==================== Goals ====================
 // Get all goals for a habit
 router.get('/:habitId/goals', getHabitGoals);
