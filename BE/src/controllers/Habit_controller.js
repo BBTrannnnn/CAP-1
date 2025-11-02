@@ -198,7 +198,7 @@ const deleteHabit = asyncHandler(async (req, res) => {
 const trackHabit = asyncHandler(async (req, res) => {
   const { habitId } = req.params;
   const userId = req.user.id;
-  const { status, notes, date } = req.body;
+  const { status, notes, date ,mood} = req.body;
 
   const habit = await Habit.findOne({ _id: habitId, userId, isActive: true });
   if (!habit) {
@@ -244,8 +244,9 @@ const trackHabit = asyncHandler(async (req, res) => {
       {
         status,
         completedAt: status === 'completed' ? new Date() : null,
-        completedCount: status === 'completed' ? 1 : 0, // ✅ Check mode luôn là 1 hoặc 0
-        notes: notes || ''
+        completedCount: status === 'completed' ? 1 : 0, 
+        notes: notes || '',
+        mood: mood || null
       },
       { upsert: true, new: true }
     );
@@ -265,6 +266,7 @@ const trackHabit = asyncHandler(async (req, res) => {
         {
           status,
           notes,
+          mood,
           completedAt: status === 'completed' ? new Date() : null,
           completedCount: status === 'completed' ? 1 : 0
         },
@@ -275,11 +277,15 @@ const trackHabit = asyncHandler(async (req, res) => {
 
       return res.json({
         success: true,
-        message: `Habit ${status} updated successfully`,
+        message: `Habit marked as ${status}`,
         tracking: existingTracking
       });
     }
-    throw error;
+    res.status(500).json({
+      success: false,
+      message: 'Error tracking habit',
+      error: error.message
+    });
   }
 });
 
