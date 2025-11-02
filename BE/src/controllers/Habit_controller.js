@@ -397,11 +397,11 @@ const addHabitSubTracking = async (req, res) => {
     const userId = req.user.id;
     const {
       quantity = 1,
-      time,           // "08:30" hoặc null
-      date,           // "2025-01-25" hoặc null
-      startTime,      // Legacy support hoặc ISO string
-      endTime,        // ISO string hoặc "HH:mm"
-      note
+      date,           
+      startTime,     
+      endTime,        
+      note,
+      mood
     } = req.body;
 
     const habit = await Habit.findOne({ _id: habitId, userId, isActive: true });
@@ -426,15 +426,20 @@ const addHabitSubTracking = async (req, res) => {
       });
     }
 
-    // 📅 SMART DATE/TIME HANDLING
-    let trackingDate, actualStartTime, actualEndTime;
+    // ✅ Validate startTime - BẮT BUỘC
+    if (!startTime) {
+      return res.status(400).json({
+        success: false,
+        message: 'startTime is required (format: HH:mm, e.g., 08:30)'
+      });
+    }
 
+    // 📅 Xác định ngày tracking
+    let trackingDate = date ? new Date(date) : new Date();
+    trackingDate.setHours(0, 0, 0, 0);
+
+    // Validate date (nếu có)
     if (date) {
-      // ===== TRƯỜNG HỢP 1: Có date (tracking ngày khác) =====
-      trackingDate = new Date(date);
-      trackingDate.setHours(0, 0, 0, 0);
-
-      // Validate date không quá xa
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const daysDiff = Math.floor((today - trackingDate) / (1000 * 60 * 60 * 24));
@@ -452,73 +457,42 @@ const addHabitSubTracking = async (req, res) => {
           message: 'Cannot track future dates'
         });
       }
-
-      // Parse time nếu có, không thì dùng hiện tại
-      if (time) {
-        const [hours, minutes] = time.split(':').map(Number);
-        if (isNaN(hours) || isNaN(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
-          return res.status(400).json({
-            success: false,
-            message: 'Invalid time format. Use HH:mm (e.g., 08:30)'
-          });
-        }
-        actualStartTime = new Date(trackingDate);
-        actualStartTime.setHours(hours, minutes, 0, 0);
-      } else {
-        // Không có time thì set giờ hiện tại
-        actualStartTime = new Date(trackingDate);
-        const now = new Date();
-        actualStartTime.setHours(now.getHours(), now.getMinutes(), 0, 0);
-      }
-
-    } else {
-      // ===== TRƯỜNG HỢP 2: Không có date (tracking hôm nay) =====
-      trackingDate = new Date();
-      trackingDate.setHours(0, 0, 0, 0);
-
-      if (time) {
-        // Có time → parse và gán vào hôm nay
-        const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
-        if (!timeRegex.test(time)) {
-          return res.status(400).json({
-            success: false,
-            message: 'Invalid time format. Use HH:mm (e.g., 08:30)'
-          });
-        }
-
-        const [hours, minutes] = time.split(':').map(Number);
-        actualStartTime = new Date();
-        actualStartTime.setHours(hours, minutes, 0, 0);
-
-        // ⚠️ Validate: time không được trong tương lai
-        if (actualStartTime > new Date()) {
-          return res.status(400).json({
-            success: false,
-            message: 'Cannot track future time'
-          });
-        }
-
-      } else if (startTime) {
-        // Legacy support: dùng startTime ISO string
-        actualStartTime = new Date(startTime);
-      } else {
-        // Không có gì → dùng thời gian hiện tại
-        actualStartTime = new Date();
-      }
     }
 
-    // 🕐 Parse endTime - Hỗ trợ cả ISO string và HH:mm format
+    // 🕐 Parse startTime
+    const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+    if (!timeRegex.test(startTime)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid startTime format. Use HH:mm (e.g., 08:30)'
+      });
+    }
+
+    const [startH, startM] = startTime.split(':').map(Number);
+    const actualStartTime = new Date(trackingDate);
+    actualStartTime.setHours(startH, startM, 0, 0);
+
+    // ⚠️ Validate: không track tương lai
+    if (actualStartTime > new Date()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot track future time'
+      });
+    }
+
+    // 🕐 Parse endTime (nếu có)
+    let actualEndTime = null;
     if (endTime) {
-      // Kiểm tra nếu là HH:mm format
-      const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
-      if (timeRegex.test(endTime)) {
-        const [hours, minutes] = endTime.split(':').map(Number);
-        actualEndTime = new Date(trackingDate);
-        actualEndTime.setHours(hours, minutes, 0, 0);
-      } else {
-        // ISO string format
-        actualEndTime = new Date(endTime);
+      if (!timeRegex.test(endTime)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid endTime format. Use HH:mm (e.g., 09:30)'
+        });
       }
+
+      const [endH, endM] = endTime.split(':').map(Number);
+      actualEndTime = new Date(trackingDate);
+      actualEndTime.setHours(endH, endM, 0, 0);
 
       // ⚠️ Validate: endTime phải sau startTime
       if (actualEndTime <= actualStartTime) {
@@ -528,10 +502,8 @@ const addHabitSubTracking = async (req, res) => {
         });
       }
 
-      // 🎯 LOGIC VALIDATION MỚI: Kiểm tra thời gian có hợp lý với quantity không
+      // 🎯 Validation: kiểm tra thời gian có hợp lý với quantity không
       const durationMinutes = (actualEndTime - actualStartTime) / (1000 * 60);
-
-      // Định nghĩa các ngưỡng hợp lý dựa trên habit type
       const validationRules = getValidationRules(habit, quantity, durationMinutes);
 
       if (!validationRules.isValid) {
@@ -582,9 +554,10 @@ const addHabitSubTracking = async (req, res) => {
       habitId,
       userId,
       startTime: actualStartTime,
-      endTime: actualEndTime || null,
+      endTime: actualEndTime,
       quantity,
-      note
+      note,
+      mood
     });
 
     // 📊 Cập nhật tiến độ
@@ -619,7 +592,7 @@ const addHabitSubTracking = async (req, res) => {
       message: `Đã ghi nhận ${quantity} ${unitLabel}${!isToday ? ' cho ngày ' + trackingDate.toISOString().split('T')[0] : ''}`,
       tracking: {
         date: trackingDate.toISOString().split('T')[0],
-        time: actualStartTime.toTimeString().slice(0, 5),
+        startTime: actualStartTime.toTimeString().slice(0, 5),
         endTime: actualEndTime ? actualEndTime.toTimeString().slice(0, 5) : null,
         duration: actualEndTime ? `${Math.round((actualEndTime - actualStartTime) / 60000)} phút` : null,
         isToday,
