@@ -150,13 +150,94 @@ const updateHabit = asyncHandler(async (req, res) => {
     'isActive',
   ];
 
+  const body = req.body || {};
   const updates = {};
   allowedUpdates.forEach(field => {
-    if (req.body[field] !== undefined) {
-      updates[field] = req.body[field];
+    if (body[field] !== undefined) {
+      updates[field] = body[field];
     }
   });
 
+  // Determine resulting trackingMode after update
+  const resultingTrackingMode = updates.trackingMode || habit.trackingMode || 'check';
+  if (!['check', 'count'].includes(resultingTrackingMode)) {
+    return res.status(400).json({
+      success: false,
+      message: 'trackingMode must be "check" or "count"'
+    });
+  }
+
+  // Frequency/customFrequency consistency
+  if (updates.frequency) {
+    const freq = updates.frequency;
+    if (!['daily', 'weekly', 'monthly', 'custom'].includes(freq)) {
+      return res.status(400).json({ success: false, message: 'frequency must be one of daily, weekly, monthly, custom' });
+    }
+    if (freq !== 'custom') {
+      // Clear customFrequency if switching away from custom
+      updates.customFrequency = undefined;
+    } else {
+      // Require customFrequency when using custom
+      if (body.customFrequency === undefined && habit.customFrequency === undefined) {
+        return res.status(400).json({ success: false, message: 'customFrequency is required when frequency is custom' });
+      }
+    }
+  } else if (updates.customFrequency !== undefined) {
+    // If client sends customFrequency without setting frequency to custom, ensure current or updated is custom
+    const effFreq = updates.frequency || habit.frequency;
+    if (effFreq !== 'custom') {
+      return res.status(400).json({ success: false, message: 'customFrequency can only be set when frequency is custom' });
+    }
+  }
+
+  // Date validations
+  if (updates.startDate && updates.endDate) {
+    const s = new Date(updates.startDate);
+    const e = new Date(updates.endDate);
+    if (!isNaN(s) && !isNaN(e) && s > e) {
+      return res.status(400).json({ success: false, message: 'startDate must be before or equal to endDate' });
+    }
+  }
+
+  // Enforce rules based on trackingMode
+  if (resultingTrackingMode === 'check') {
+    // Disallow targetCount/unit when in check mode
+    if (body.targetCount !== undefined || body.unit !== undefined) {
+      return res.status(400).json({
+        success: false,
+        message: 'targetCount and unit are not allowed for check trackingMode'
+      });
+    }
+    // Normalize: ensure DB fields are reset for check mode
+    updates.targetCount = 1;
+    updates.unit = '';
+  } else if (resultingTrackingMode === 'count') {
+    // Require positive targetCount if changing to or already in count mode and client tries to set it
+    const tc = body.targetCount !== undefined ? body.targetCount : habit.targetCount;
+    if (tc === undefined || tc === null || Number(tc) <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'targetCount must be a positive number for count trackingMode'
+      });
+    }
+    updates.targetCount = Number(tc);
+
+    // Validate unit (allow some common values but keep flexible)
+    const allowedUnits = ['times', 'reps', 'pages', 'ml', 'km', 'minute', 'phút', 'lần', 'custom', ''];
+    const effUnit = body.unit !== undefined ? String(body.unit) : (habit.unit || '');
+    if (effUnit === '') {
+      // unit is optional; keep empty allowed but client can provide
+      updates.unit = '';
+    } else {
+      updates.unit = effUnit;
+      // If you want strict list, uncomment below:
+      // if (!allowedUnits.includes(effUnit)) {
+      //   return res.status(400).json({ success: false, message: `unit must be one of: ${allowedUnits.join(', ')}` });
+      // }
+    }
+  }
+
+  // Apply update
   const updatedHabit = await Habit.findByIdAndUpdate(
     habitId,
     updates,
@@ -289,6 +370,392 @@ const trackHabit = asyncHandler(async (req, res) => {
   }
 });
 
+const getHabitTrackings = asyncHandler(async (req, res) => {
+  const { habitId } = req.params;
+  const userId = req.user.id;
+  const { date, from, to, status, limit = 30, page = 1 } = req.query;
+
+  // Verify habit exists
+  const habit = await Habit.findOne({ _id: habitId, userId, isActive: true });
+  if (!habit) {
+    return res.status(404).json({
+      success: false,
+      message: 'Habit not found'
+    });
+  }
+
+  // Build query
+  let query = { userId, habitId };
+
+  // Filter by specific date
+  if (date) {
+    const filterDate = new Date(date);
+    filterDate.setHours(0, 0, 0, 0);
+    query.date = filterDate;
+  }
+  // Filter by date range
+  else if (from || to) {
+    query.date = {};
+    if (from) {
+      const fromDate = new Date(from);
+      fromDate.setHours(0, 0, 0, 0);
+      query.date.$gte = fromDate;
+    }
+    if (to) {
+      const toDate = new Date(to);
+      toDate.setHours(23, 59, 59, 999);
+      query.date.$lte = toDate;
+    }
+  }
+
+  // Filter by status
+  if (status) {
+    query.status = status;
+  }
+
+  // Pagination
+  const skip = (parseInt(page) - 1) * parseInt(limit);
+
+  // Get tracking records
+  const trackings = await HabitTracking.find(query)
+    .sort({ date: -1 })
+    .limit(parseInt(limit))
+    .skip(skip)
+    .lean();
+
+  const total = await HabitTracking.countDocuments(query);
+
+  // Format response based on tracking mode
+  const formatted = trackings.map(t => {
+    const base = {
+      id: t._id,
+      date: new Date(t.date).toISOString().split('T')[0],
+      status: t.status,
+      notes: t.notes || '',
+      mood: t.mood || null,
+      completedAt: t.completedAt,
+      createdAt: t.createdAt
+    };
+
+    // Thêm thông tin count cho COUNT mode
+    if (habit.trackingMode === 'count') {
+      base.completedCount = t.completedCount;
+      base.targetCount = t.targetCount;
+      base.progress = `${t.completedCount}/${t.targetCount}`;
+      base.progressPercentage = Math.round((t.completedCount / t.targetCount) * 100);
+    }
+
+    return base;
+  });
+
+  // Calculate statistics
+  const stats = {
+    total: total,
+    completed: trackings.filter(t => t.status === 'completed').length,
+    inProgress: trackings.filter(t => t.status === 'in-progress').length,
+    skipped: trackings.filter(t => t.status === 'skipped').length,
+    failed: trackings.filter(t => t.status === 'failed').length,
+    pending: trackings.filter(t => t.status === 'pending').length
+  };
+
+  // Add completion rate
+  if (stats.total > 0) {
+    stats.completionRate = Math.round((stats.completed / stats.total) * 100);
+  }
+
+  res.json({
+    success: true,
+    habit: {
+      id: habit._id,
+      name: habit.name,
+      trackingMode: habit.trackingMode,
+      unit: habit.unit || 'lần',
+      targetCount: habit.targetCount
+    },
+    pagination: {
+      page: parseInt(page),
+      limit: parseInt(limit),
+      total,
+      pages: Math.ceil(total / parseInt(limit)),
+      hasNextPage: parseInt(page) < Math.ceil(total / parseInt(limit)),
+      hasPrevPage: parseInt(page) > 1
+    },
+    stats,
+    filters: {
+      date: date || null,
+      from: from || null,
+      to: to || null,
+      status: status || null
+    },
+    trackings: formatted
+  });
+});
+
+const updateHabitTracking = asyncHandler(async (req, res) => {
+  const { habitId, trackingId } = req.params;
+  const userId = req.user.id;
+  const { status, notes, mood, completedAt } = req.body;
+
+  // 1. Verify habit exists and is CHECK mode
+  const habit = await Habit.findOne({ _id: habitId, userId, isActive: true });
+  if (!habit) {
+    return res.status(404).json({
+      success: false,
+      message: 'Habit not found'
+    });
+  }
+
+  // ⚠️ CHỈ CHO CHECK MODE
+  if (habit.trackingMode === 'count') {
+    return res.status(400).json({
+      success: false,
+      message: 'This endpoint is for check mode only. Use sub-tracking endpoints for count mode.'
+    });
+  }
+
+  // 2. Find tracking record
+  const tracking = await HabitTracking.findOne({
+    _id: trackingId,
+    habitId,
+    userId
+  });
+
+  if (!tracking) {
+    return res.status(404).json({
+      success: false,
+      message: 'Tracking record not found'
+    });
+  }
+
+  // 3. Validate status
+  const allowedStatuses = ['completed', 'skipped', 'failed'];
+  if (status && !allowedStatuses.includes(status)) {
+    return res.status(400).json({
+      success: false,
+      message: `Invalid status. Must be one of: ${allowedStatuses.join(', ')}`
+    });
+  }
+
+  // 4. Update fields
+  if (status !== undefined) {
+    tracking.status = status;
+    
+    // Nếu chuyển sang completed → set completedAt và completedCount
+    if (status === 'completed') {
+      tracking.completedCount = 1;
+      tracking.completedAt = completedAt ? new Date(completedAt) : new Date();
+    } 
+    // Nếu chuyển sang skipped/failed → xóa completedAt và reset count
+    else {
+      tracking.completedCount = 0;
+      tracking.completedAt = null;
+    }
+  }
+
+  // 5. Update completedAt nếu có (và status là completed)
+  if (completedAt && tracking.status === 'completed') {
+    const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+    if (!timeRegex.test(completedAt)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid time format. Use HH:mm (e.g., 14:30)'
+      });
+    }
+    
+    const [hours, minutes] = completedAt.split(':').map(Number);
+    const completedDate = new Date(tracking.date);
+    completedDate.setHours(hours, minutes, 0, 0);
+    
+    // Validate không set thời gian tương lai
+    if (completedDate > new Date()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot set future time'
+      });
+    }
+    
+    tracking.completedAt = completedDate;
+  }
+
+  // 6. Update notes
+  if (notes !== undefined) {
+    tracking.notes = notes;
+  }
+
+  // 7. Update mood
+  if (mood !== undefined) {
+    tracking.mood = mood;
+  }
+
+  // 8. Save
+  await tracking.save();
+  await updateHabitStats(habitId, userId);
+
+  // 9. Format response
+  res.json({
+    success: true,
+    message: 'Tracking updated successfully',
+    tracking: {
+      id: tracking._id,
+      date: tracking.date.toISOString().split('T')[0],
+      status: tracking.status,
+      completedAt: tracking.completedAt 
+        ? tracking.completedAt.toTimeString().slice(0, 5) 
+        : null,
+      notes: tracking.notes,
+      mood: tracking.mood,
+      updatedAt: tracking.updatedAt
+    }
+  });
+});
+
+
+// ============================================
+// XÓA TRACKING - CHECK MODE
+// ============================================
+const deleteHabitTracking = asyncHandler(async (req, res) => {
+  const { habitId, trackingId } = req.params;
+  const userId = req.user.id;
+
+  // 1. Verify habit exists and is CHECK mode
+  const habit = await Habit.findOne({ _id: habitId, userId, isActive: true });
+  if (!habit) {
+    return res.status(404).json({
+      success: false,
+      message: 'Habit not found'
+    });
+  }
+
+  // ⚠️ CHỈ CHO CHECK MODE
+  if (habit.trackingMode === 'count') {
+    return res.status(400).json({
+      success: false,
+      message: 'This endpoint is for check mode only. Use sub-tracking endpoints for count mode.'
+    });
+  }
+
+  // 2. Find and delete tracking
+  const tracking = await HabitTracking.findOne({
+    _id: trackingId,
+    habitId,
+    userId
+  });
+
+  if (!tracking) {
+    return res.status(404).json({
+      success: false,
+      message: 'Tracking record not found'
+    });
+  }
+
+  // Lưu thông tin trước khi xóa (để log)
+  const deletedInfo = {
+    date: tracking.date.toISOString().split('T')[0],
+    status: tracking.status,
+    notes: tracking.notes,
+    mood: tracking.mood
+  };
+
+  // 3. Delete the tracking
+  await HabitTracking.findByIdAndDelete(trackingId);
+
+  // 4. Update habit stats
+  await updateHabitStats(habitId, userId);
+
+  // 5. Response
+  res.json({
+    success: true,
+    message: 'Tracking deleted successfully',
+    deleted: deletedInfo
+  });
+});
+
+
+// ============================================
+// XÓA CẢ NGÀY - COUNT MODE (Bonus)
+// ============================================
+const deleteHabitTrackingDay = asyncHandler(async (req, res) => {
+  const { habitId, date } = req.params; // date format: YYYY-MM-DD
+  const userId = req.user.id;
+
+  // 1. Verify habit exists and is COUNT mode
+  const habit = await Habit.findOne({ _id: habitId, userId, isActive: true });
+  if (!habit) {
+    return res.status(404).json({
+      success: false,
+      message: 'Habit not found'
+    });
+  }
+
+  // ⚠️ CHỈ CHO COUNT MODE
+  if (habit.trackingMode === 'check') {
+    return res.status(400).json({
+      success: false,
+      message: 'This endpoint is for count mode only.'
+    });
+  }
+
+  // 2. Parse date
+  const trackingDate = new Date(date);
+  trackingDate.setHours(0, 0, 0, 0);
+  
+  const nextDay = new Date(trackingDate);
+  nextDay.setDate(nextDay.getDate() + 1);
+
+  // 3. Find parent tracking
+  const habitTracking = await HabitTracking.findOne({
+    habitId,
+    userId,
+    date: trackingDate
+  });
+
+  if (!habitTracking) {
+    return res.status(404).json({
+      success: false,
+      message: 'No tracking found for this date'
+    });
+  }
+
+  // 4. Count sub-trackings trước khi xóa
+  const subCount = await HabitSubTracking.countDocuments({
+    habitId,
+    userId,
+    startTime: {
+      $gte: trackingDate,
+      $lt: nextDay
+    }
+  });
+
+  // 5. Delete all sub-trackings of this day
+  await HabitSubTracking.deleteMany({
+    habitId,
+    userId,
+    startTime: {
+      $gte: trackingDate,
+      $lt: nextDay
+    }
+  });
+
+  // 6. Delete parent tracking
+  await HabitTracking.findByIdAndDelete(habitTracking._id);
+
+  // 7. Update stats
+  await updateHabitStats(habitId, userId);
+
+  // 8. Response
+  res.json({
+    success: true,
+    message: 'Tracking day deleted successfully',
+    deleted: {
+      date: date,
+      subTrackingsDeleted: subCount,
+      totalQuantity: habitTracking.completedCount
+    }
+  });
+});
+
+
+
 
 const getHabitSubTrackings = asyncHandler(async (req, res) => {
   const { habitId } = req.params;
@@ -397,9 +864,9 @@ const addHabitSubTracking = async (req, res) => {
     const userId = req.user.id;
     const {
       quantity = 1,
-      date,           
-      startTime,     
-      endTime,        
+      date,
+      startTime,  // ✅ Bỏ default value, bắt buộc phải truyền vào
+      endTime,
       note,
       mood
     } = req.body;
@@ -418,19 +885,28 @@ const addHabitSubTracking = async (req, res) => {
       });
     }
 
-    // ✅ Validate quantity
-    if (quantity < 1) {
-      return res.status(400).json({
-        success: false,
-        message: 'Quantity must be at least 1'
-      });
-    }
-
     // ✅ Validate startTime - BẮT BUỘC
     if (!startTime) {
       return res.status(400).json({
         success: false,
         message: 'startTime is required (format: HH:mm, e.g., 08:30)'
+      });
+    }
+
+    // 🕐 Validate startTime format
+    const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+    if (!timeRegex.test(startTime)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid startTime format. Use HH:mm (e.g., 08:30)'
+      });
+    }
+
+    // ✅ Validate quantity
+    if (quantity < 1) {
+      return res.status(400).json({
+        success: false,
+        message: 'Quantity must be at least 1'
       });
     }
 
@@ -460,14 +936,6 @@ const addHabitSubTracking = async (req, res) => {
     }
 
     // 🕐 Parse startTime
-    const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
-    if (!timeRegex.test(startTime)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid startTime format. Use HH:mm (e.g., 08:30)'
-      });
-    }
-
     const [startH, startM] = startTime.split(':').map(Number);
     const actualStartTime = new Date(trackingDate);
     actualStartTime.setHours(startH, startM, 0, 0);
@@ -616,7 +1084,7 @@ const addHabitSubTracking = async (req, res) => {
 const updateHabitSubTracking = asyncHandler(async (req, res) => {
   const { habitId, subId } = req.params;
   const userId = req.user.id;
-  const { quantity, time, endTime, note } = req.body;
+  const { quantity, startTime, endTime, note, mood } = req.body;
 
   // Verify habit
   const habit = await Habit.findOne({ _id: habitId, userId, isActive: true });
@@ -663,7 +1131,10 @@ const updateHabitSubTracking = asyncHandler(async (req, res) => {
   const oldQuantity = subTracking.quantity;
   let quantityChanged = false;
 
-  // Update fields
+  // Validate time format regex
+  const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+  // Update quantity
   if (quantity !== undefined && quantity > 0) {
     if (quantity !== oldQuantity) {
       subTracking.quantity = quantity;
@@ -671,48 +1142,65 @@ const updateHabitSubTracking = asyncHandler(async (req, res) => {
     }
   }
 
-  if (time !== undefined) {
-    const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
-    if (!timeRegex.test(time)) {
+  // Update startTime
+  if (startTime !== undefined) {
+    if (!timeRegex.test(startTime)) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid time format. Use HH:mm'
+        message: 'Invalid startTime format. Use HH:mm (e.g., 08:30)'
       });
     }
-    const [hours, minutes] = time.split(':').map(Number);
+    const [hours, minutes] = startTime.split(':').map(Number);
     const newStartTime = new Date(trackingDate);
     newStartTime.setHours(hours, minutes, 0, 0);
+    
+    // Validate không track tương lai
+    if (newStartTime > new Date()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot set future time'
+      });
+    }
+    
     subTracking.startTime = newStartTime;
   }
 
+  // Update endTime
   if (endTime !== undefined) {
     if (endTime === null || endTime === '') {
       subTracking.endTime = null;
     } else {
-      const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
-      if (timeRegex.test(endTime)) {
-        const [hours, minutes] = endTime.split(':').map(Number);
-        const newEndTime = new Date(trackingDate);
-        newEndTime.setHours(hours, minutes, 0, 0);
-
-        if (newEndTime <= subTracking.startTime) {
-          return res.status(400).json({
-            success: false,
-            message: 'End time must be after start time'
-          });
-        }
-        subTracking.endTime = newEndTime;
-      } else {
+      if (!timeRegex.test(endTime)) {
         return res.status(400).json({
           success: false,
-          message: 'Invalid endTime format. Use HH:mm'
+          message: 'Invalid endTime format. Use HH:mm (e.g., 09:30)'
         });
       }
+      
+      const [hours, minutes] = endTime.split(':').map(Number);
+      const newEndTime = new Date(trackingDate);
+      newEndTime.setHours(hours, minutes, 0, 0);
+
+      // Validate endTime phải sau startTime
+      if (newEndTime <= subTracking.startTime) {
+        return res.status(400).json({
+          success: false,
+          message: 'End time must be after start time'
+        });
+      }
+      
+      subTracking.endTime = newEndTime;
     }
   }
 
+  // Update note
   if (note !== undefined) {
     subTracking.note = note;
+  }
+
+  // Update mood
+  if (mood !== undefined) {
+    subTracking.mood = mood;
   }
 
   await subTracking.save();
@@ -736,6 +1224,7 @@ const updateHabitSubTracking = asyncHandler(async (req, res) => {
     await updateHabitStats(habitId, userId);
   }
 
+  // Calculate duration
   const duration = subTracking.endTime
     ? Math.round((subTracking.endTime - subTracking.startTime) / 60000)
     : null;
@@ -746,11 +1235,12 @@ const updateHabitSubTracking = asyncHandler(async (req, res) => {
     subTracking: {
       id: subTracking._id,
       date: trackingDate.toISOString().split('T')[0],
-      time: subTracking.startTime.toTimeString().slice(0, 5),
+      startTime: subTracking.startTime.toTimeString().slice(0, 5),
       endTime: subTracking.endTime ? subTracking.endTime.toTimeString().slice(0, 5) : null,
       duration: duration ? `${duration} phút` : null,
       quantity: subTracking.quantity,
-      note: subTracking.note
+      note: subTracking.note,
+      mood: subTracking.mood
     },
     tracking: {
       progress: `${habitTracking.completedCount}/${habitTracking.targetCount}`,
@@ -1453,23 +1943,6 @@ const createHabitFromTemplate = asyncHandler(async (req, res) => {
     success: true,
     habit: newHabit,
     message: 'Habit created successfully from template'
-  });
-});
-const getSurveyQuestions = asyncHandler(async (req, res) => {
-  res.json({
-    success: true,
-    questions: surveyQuestions,
-    totalQuestions: surveyQuestions.length,
-    categories: [
-      'health',
-      'productivity',
-      'learning',
-      'mindful',
-      'finance',
-      'digital',
-      'social',
-      'fitness'
-    ]
   });
 });
 
@@ -2413,7 +2886,14 @@ export {
   createHabit,
   updateHabit,
   deleteHabit,
+
+  // Tracking
   trackHabit,
+  getHabitTrackings,
+  updateHabitTracking,
+  deleteHabitTracking,
+  deleteHabitTrackingDay,
+
 
 
   // History & Stats
@@ -2431,7 +2911,6 @@ export {
 
   // Templates & Suggestions
   createHabitFromTemplate,
-  getSurveyQuestions,
 
   // Sub-tracking
   addHabitSubTracking,

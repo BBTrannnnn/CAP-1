@@ -7,6 +7,10 @@ import {
   deleteHabit,
   // Tracking
   trackHabit,
+  getHabitTrackings,
+  updateHabitTracking,
+  deleteHabitTracking,
+  deleteHabitTrackingDay,
 
   // History & Stats
   getHabitStats,
@@ -23,7 +27,6 @@ import {
 
   // Templates & Suggestions
   createHabitFromTemplate,
-  getSurveyQuestions,
 
 
   // Sub-tracking
@@ -70,8 +73,23 @@ router.delete('/:habitId', deleteHabit);
 
 // ==================== Tracking Operations ====================
 
+// Get habit trackings
+router.get('/:habitId/trackings', getHabitTrackings);
+
 // Track habit completion
 router.post('/:habitId/track', trackHabit);
+
+// Update habit tracking entry
+router.put('/:habitId/trackings/:trackingId', updateHabitTracking);
+
+// Delete habit tracking entry
+router.delete('/:habitId/trackings/:trackingId', deleteHabitTracking);  
+
+// Delete habit tracking for a specific day
+router.delete('/:habitId/trackingsday/:date', deleteHabitTrackingDay);
+
+
+// =====================Sub-Tracking Operations
 // Add sub-tracking entry for habits with quantity
 router.post('/:habitId/subtrack', addHabitSubTracking);
 
@@ -133,8 +151,7 @@ router.post('/goals/sync', syncHabitGoals);
 router.get('/templates', getHabitTemplates);
 // Create habit from template
 router.post('/templates/:templateId', createHabitFromTemplate);
-// Get survey questions for personalized habit suggestions
-router.get('/questions', getSurveyQuestions);
+
 
 // ==================== Dashboard & Reports ====================
 

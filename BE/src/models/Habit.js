@@ -42,7 +42,7 @@ const habitSchema = new mongoose.Schema({
     isActive: { type: Boolean, default: true },
     startDate: { type: Date, default: Date.now },
     endDate: { type: Date },
-    targetDays: { type: Number, default: 21 },
+    targetDays: { type: Number},
     currentStreak: { type: Number, default: 0 },
     longestStreak: { type: Number, default: 0 },
     totalCompletions: { type: Number, default: 0 },
