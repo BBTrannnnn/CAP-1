@@ -19,7 +19,7 @@ const habitSchema = new mongoose.Schema({
     },
 
     // Frequency & Schedule
-    frequency: { type: String, enum: ['daily', 'weekly', 'monthly'], default: 'daily' },
+    frequency: { type: String, enum: ['daily', 'weekly', 'monthly',], default: 'daily' },
     customFrequency: {
         times: { type: Number, default: 1 },
         period: { type: String, enum: ['day', 'week', 'month'], default: 'day' }
@@ -42,7 +42,7 @@ const habitSchema = new mongoose.Schema({
     isActive: { type: Boolean, default: true },
     startDate: { type: Date, default: Date.now },
     endDate: { type: Date },
-    targetDays: { type: Number, default: 21 },
+    targetDays: { type: Number},
     currentStreak: { type: Number, default: 0 },
     longestStreak: { type: Number, default: 0 },
     totalCompletions: { type: Number, default: 0 },
