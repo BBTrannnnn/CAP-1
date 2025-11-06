@@ -1084,7 +1084,9 @@ const addHabitSubTracking = async (req, res) => {
 const updateHabitSubTracking = asyncHandler(async (req, res) => {
   const { habitId, subId } = req.params;
   const userId = req.user.id;
-  const { quantity, startTime, endTime, note, mood } = req.body;
+  const { quantity, startTime, time, endTime, note, mood } = req.body;
+  
+  const actualStartTime = startTime || time;
 
   // Verify habit
   const habit = await Habit.findOne({ _id: habitId, userId, isActive: true });
@@ -1142,15 +1144,15 @@ const updateHabitSubTracking = asyncHandler(async (req, res) => {
     }
   }
 
-  // Update startTime
-  if (startTime !== undefined) {
-    if (!timeRegex.test(startTime)) {
+  // Update startTime (support both 'time' and 'startTime')
+  if (actualStartTime !== undefined) {
+    if (!timeRegex.test(actualStartTime)) {
       return res.status(400).json({
         success: false,
         message: 'Invalid startTime format. Use HH:mm (e.g., 08:30)'
       });
     }
-    const [hours, minutes] = startTime.split(':').map(Number);
+    const [hours, minutes] = actualStartTime.split(':').map(Number);
     const newStartTime = new Date(trackingDate);
     newStartTime.setHours(hours, minutes, 0, 0);
     
@@ -2343,7 +2345,7 @@ async function updateHabitStats(habitId, userId) {
 }
 
 // ==================== REMINDERS OPERATIONS ====================
-// Get all reminders for a habit
+
 
 const getHabitReminders = asyncHandler(async (req, res) => {
   const { habitId } = req.params;
