@@ -42,7 +42,7 @@ const habitSchema = new mongoose.Schema({
     isActive: { type: Boolean, default: true },
     startDate: { type: Date, default: Date.now },
     endDate: { type: Date },
-    targetDays: { type: Number},
+    targetDays: { type: Number },
     currentStreak: { type: Number, default: 0 },
     longestStreak: { type: Number, default: 0 },
     totalCompletions: { type: Number, default: 0 },
@@ -136,16 +136,71 @@ const habitTemplateSchema = new mongoose.Schema({
         required: true,
         enum: ['health', 'fitness', 'learning', 'mindful', 'finance', 'digital', 'social', 'control', 'sleep', 'energy']
     },
-    defaultIcon: { type: String, default: '🎯' },
-    defaultColor: { type: String, default: '#3B82F6' },
-    suggestedFrequency: { type: String, enum: ['daily', 'weekly', 'monthly'], default: 'daily' },
-    difficulty: { type: String, enum: ['easy', 'medium', 'hard'], default: 'medium' },
-    estimatedTime: { type: Number },
-    tips: [String],
-    commonObstacles: [String],
-    benefits: [String],
-    isPopular: { type: Boolean, default: false },
-    usageCount: { type: Number, default: 0 }
+    icon: {
+        type: String,
+    },
+    color: {
+        type: String,
+    },
+    frequency: {
+        type: String,
+        enum: ['daily', 'weekly', 'monthly'],
+        default: 'daily',
+        alias: 'suggestedFrequency'
+    },
+    trackingMode: {
+        type: String,
+        enum: ['check', 'count'],
+        default: 'check'
+    },
+    targetCount: {
+        type: Number,
+        default: 1,
+        min: 1
+    },
+    unit: {
+        type: String,
+        maxlength: 20
+    },
+
+    // Habit Type
+    habitType: {
+        type: String,
+        enum: ['build', 'quit'],
+        default: 'build'
+    },
+
+    // Difficulty
+    difficulty: {
+        type: String,
+        enum: ['easy', 'medium', 'hard'],
+        default: 'medium'
+    },
+
+    // Guidance
+    tips: [{
+        type: String,
+        maxlength: 200
+    }],
+    commonObstacles: [{
+        type: String,
+        maxlength: 200
+    }],
+    benefits: [{
+        type: String,
+        maxlength: 200
+    }],
+
+    // Popularity & Usage
+    isPopular: {
+        type: Boolean,
+        default: false
+    },
+    usageCount: {
+        type: Number,
+        default: 0,
+        min: 0
+    }
 }, { timestamps: true });
 
 

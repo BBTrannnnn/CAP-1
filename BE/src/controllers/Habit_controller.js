@@ -865,7 +865,7 @@ const addHabitSubTracking = async (req, res) => {
     const {
       quantity = 1,
       date,
-      startTime,  // ✅ Bỏ default value, bắt buộc phải truyền vào
+      startTime,
       endTime,
       note,
       mood
@@ -876,7 +876,6 @@ const addHabitSubTracking = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Habit not found' });
     }
 
-    // ⚠️ CHỈ CHO COUNT MODE
     if (habit.trackingMode === 'check') {
       return res.status(400).json({
         success: false,
@@ -885,7 +884,6 @@ const addHabitSubTracking = async (req, res) => {
       });
     }
 
-    // ✅ Validate startTime - BẮT BUỘC
     if (!startTime) {
       return res.status(400).json({
         success: false,
@@ -893,7 +891,6 @@ const addHabitSubTracking = async (req, res) => {
       });
     }
 
-    // 🕐 Validate startTime format
     const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
     if (!timeRegex.test(startTime)) {
       return res.status(400).json({
@@ -902,7 +899,6 @@ const addHabitSubTracking = async (req, res) => {
       });
     }
 
-    // ✅ Validate quantity
     if (quantity < 1) {
       return res.status(400).json({
         success: false,
@@ -910,11 +906,24 @@ const addHabitSubTracking = async (req, res) => {
       });
     }
 
-    // 📅 Xác định ngày tracking
-    let trackingDate = date ? new Date(date) : new Date();
+    // ✅ Helper function format date local
+    const formatLocalDate = (date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    // Xác định ngày tracking
+    let trackingDate;
+    if (date) {
+      trackingDate = new Date(date);
+    } else {
+      trackingDate = new Date();
+    }
     trackingDate.setHours(0, 0, 0, 0);
 
-    // Validate date (nếu có)
+    // Validate date
     if (date) {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -935,20 +944,22 @@ const addHabitSubTracking = async (req, res) => {
       }
     }
 
-    // 🕐 Parse startTime
+    // Parse startTime
     const [startH, startM] = startTime.split(':').map(Number);
     const actualStartTime = new Date(trackingDate);
     actualStartTime.setHours(startH, startM, 0, 0);
 
-    // ⚠️ Validate: không track tương lai
-    if (actualStartTime > new Date()) {
+    // Validate: không track tương lai
+    const now = new Date();
+    
+    if (actualStartTime > now) {
       return res.status(400).json({
         success: false,
         message: 'Cannot track future time'
       });
     }
 
-    // 🕐 Parse endTime (nếu có)
+    // Parse endTime
     let actualEndTime = null;
     if (endTime) {
       if (!timeRegex.test(endTime)) {
@@ -962,7 +973,6 @@ const addHabitSubTracking = async (req, res) => {
       actualEndTime = new Date(trackingDate);
       actualEndTime.setHours(endH, endM, 0, 0);
 
-      // ⚠️ Validate: endTime phải sau startTime
       if (actualEndTime <= actualStartTime) {
         return res.status(400).json({
           success: false,
@@ -970,7 +980,6 @@ const addHabitSubTracking = async (req, res) => {
         });
       }
 
-      // 🎯 Validation: kiểm tra thời gian có hợp lý với quantity không
       const durationMinutes = (actualEndTime - actualStartTime) / (1000 * 60);
       const validationRules = getValidationRules(habit, quantity, durationMinutes);
 
@@ -988,7 +997,7 @@ const addHabitSubTracking = async (req, res) => {
       }
     }
 
-    // 🔍 Tìm hoặc tạo tracking record cho ngày đó
+    // Tìm hoặc tạo tracking record
     let habitTracking = await HabitTracking.findOne({
       habitId,
       userId,
@@ -1006,7 +1015,6 @@ const addHabitSubTracking = async (req, res) => {
       });
     }
 
-    // ⚠️ Không cho track nếu đã completed (trừ khi admin override)
     if (habitTracking.status === 'completed' && !req.body.override) {
       return res.status(400).json({
         success: false,
@@ -1016,7 +1024,7 @@ const addHabitSubTracking = async (req, res) => {
       });
     }
 
-    // 🕒 Tạo sub tracking
+    // Tạo sub tracking
     const sub = await HabitSubTracking.create({
       habitTrackingId: habitTracking._id,
       habitId,
@@ -1028,7 +1036,7 @@ const addHabitSubTracking = async (req, res) => {
       mood
     });
 
-    // 📊 Cập nhật tiến độ
+    // Cập nhật tiến độ
     const newCompletedCount = Math.min(
       habitTracking.completedCount + quantity,
       habitTracking.targetCount
@@ -1048,20 +1056,24 @@ const addHabitSubTracking = async (req, res) => {
 
     await habitTracking.save();
 
-    // 🔄 Cập nhật stats của habit
+    // Cập nhật stats
     await updateHabitStats(habitId, userId);
 
     const unitLabel = habit.unit ? habit.unit : 'lần';
     const progress = `${habitTracking.completedCount}/${habitTracking.targetCount}`;
-    const isToday = trackingDate.getTime() === new Date().setHours(0, 0, 0, 0);
+    
+    // So sánh với hôm nay
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const isToday = trackingDate.getTime() === today.getTime();
 
     res.status(201).json({
       success: true,
-      message: `Đã ghi nhận ${quantity} ${unitLabel}${!isToday ? ' cho ngày ' + trackingDate.toISOString().split('T')[0] : ''}`,
+      message: `Đã ghi nhận ${quantity} ${unitLabel}${!isToday ? ' cho ngày ' + formatLocalDate(trackingDate) : ''}`,
       tracking: {
-        date: trackingDate.toISOString().split('T')[0],
-        startTime: actualStartTime.toTimeString().slice(0, 5),
-        endTime: actualEndTime ? actualEndTime.toTimeString().slice(0, 5) : null,
+        date: formatLocalDate(trackingDate), // ✅ FIX: Dùng format local
+        startTime: `${String(startH).padStart(2, '0')}:${String(startM).padStart(2, '0')}`,
+        endTime: endTime || null,
         duration: actualEndTime ? `${Math.round((actualEndTime - actualStartTime) / 60000)} phút` : null,
         isToday,
         progress,
@@ -1087,6 +1099,14 @@ const updateHabitSubTracking = asyncHandler(async (req, res) => {
   const { quantity, startTime, time, endTime, note, mood } = req.body;
   
   const actualStartTime = startTime || time;
+
+  // ✅ Helper function format date local
+  const formatLocalDate = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
 
   // Verify habit
   const habit = await Habit.findOne({ _id: habitId, userId, isActive: true });
@@ -1236,7 +1256,7 @@ const updateHabitSubTracking = asyncHandler(async (req, res) => {
     message: 'Sub-tracking updated successfully',
     subTracking: {
       id: subTracking._id,
-      date: trackingDate.toISOString().split('T')[0],
+      date: formatLocalDate(trackingDate), // ✅ FIX: Dùng formatLocalDate
       startTime: subTracking.startTime.toTimeString().slice(0, 5),
       endTime: subTracking.endTime ? subTracking.endTime.toTimeString().slice(0, 5) : null,
       duration: duration ? `${duration} phút` : null,
@@ -1418,13 +1438,17 @@ function calculateHistoryStats(trackings, habit) {
 
   let averageProgress = 0;
   if (habit && habit.trackingMode === 'count') {
-    const percents = trackings.map(t => t.targetCount > 0 ? (t.completedCount / t.targetCount) * 100 : 0);
-    averageProgress = percents.length ? Math.round(percents.reduce((a, b) => a + b, 0) / percents.length) : 0;
+    const percents = trackings.map(t => 
+      t.targetCount > 0 ? (t.completedCount / t.targetCount) * 100 : 0
+    );
+    averageProgress = percents.length 
+      ? Math.round(percents.reduce((a, b) => a + b, 0) / percents.length) 
+      : 0;
   } else {
     averageProgress = completionRate;
   }
 
-  // Compute longest consecutive completed streak (by date)
+  // Early return if no trackings
   if (total === 0) {
     return {
       total,
@@ -1434,10 +1458,12 @@ function calculateHistoryStats(trackings, habit) {
       pending,
       completionRate,
       averageProgress,
-      longestStreak: 0
+      currentStreak: 0,
+      bestStreak: 0
     };
   }
 
+  // Prepare sorted dates
   const completedDates = trackings
     .filter(t => t.status === 'completed')
     .map(t => {
@@ -1445,27 +1471,64 @@ function calculateHistoryStats(trackings, habit) {
       d.setHours(0, 0, 0, 0);
       return d.getTime();
     })
-    .sort((a, b) => b - a);
+    .sort((a, b) => a - b); // Sort ascending (oldest to newest)
 
-  let longestStreak = 0;
-  let tempStreak = 0;
-  let last = null;
-
-  for (const time of completedDates) {
-    if (last === null) {
-      tempStreak = 1;
-    } else {
-      const diffDays = Math.floor((last - time) / (1000 * 60 * 60 * 24));
-      if (diffDays === 1) {
-        tempStreak++;
-      } else {
-        longestStreak = Math.max(longestStreak, tempStreak);
-        tempStreak = 1;
-      }
-    }
-    last = time;
+  if (completedDates.length === 0) {
+    return {
+      total,
+      completed,
+      skipped,
+      failed,
+      pending,
+      completionRate,
+      averageProgress,
+      currentStreak: 0,
+      bestStreak: 0
+    };
   }
-  longestStreak = Math.max(longestStreak, tempStreak);
+
+  // === CALCULATE CURRENT STREAK ===
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayTime = today.getTime();
+
+  let currentStreak = 0;
+  let checkDate = todayTime;
+
+  // Count backwards from today
+  while (true) {
+    if (completedDates.includes(checkDate)) {
+      currentStreak++;
+      checkDate -= 24 * 60 * 60 * 1000; // Go back 1 day
+    } else {
+      // If today has no record, check yesterday
+      if (currentStreak === 0 && checkDate === todayTime) {
+        checkDate -= 24 * 60 * 60 * 1000;
+        continue;
+      }
+      break;
+    }
+  }
+
+  // === CALCULATE BEST STREAK ===
+  let bestStreak = 0;
+  let tempStreak = 1;
+
+  for (let i = 1; i < completedDates.length; i++) {
+    const diffDays = Math.round(
+      (completedDates[i] - completedDates[i - 1]) / (1000 * 60 * 60 * 24)
+    );
+
+    if (diffDays === 1) {
+      // Consecutive day
+      tempStreak++;
+    } else {
+      // Break in streak
+      bestStreak = Math.max(bestStreak, tempStreak);
+      tempStreak = 1;
+    }
+  }
+  bestStreak = Math.max(bestStreak, tempStreak);
 
   return {
     total,
@@ -1475,7 +1538,8 @@ function calculateHistoryStats(trackings, habit) {
     pending,
     completionRate,
     averageProgress,
-    longestStreak
+    currentStreak,
+    bestStreak
   };
 }
 
@@ -1526,7 +1590,15 @@ function groupTrackingData(trackings, groupBy, habit) {
 
 const getHabitStats = asyncHandler(async (req, res) => {
   const { habitId } = req.params;
+  const { month, year } = req.query;
   const userId = req.user.id;
+
+  const formatLocalDate = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
 
   const habit = await Habit.findOne({ _id: habitId, userId });
   if (!habit) {
@@ -1536,32 +1608,163 @@ const getHabitStats = asyncHandler(async (req, res) => {
     });
   }
 
-  // Get tracking history
-  const trackingHistory = await HabitTracking.find({ userId, habitId })
-    .sort({ date: -1 })
-    .limit(30);
+  // Get ALL tracking history
+  const allTracking = await HabitTracking.find({ 
+    userId, 
+    habitId 
+  }).sort({ date: -1 });
 
-  // Calculate weekly completion rate
-  const weekAgo = new Date();
-  weekAgo.setDate(weekAgo.getDate() - 7);
-  weekAgo.setHours(0, 0, 0, 0);
+  const stats = calculateHistoryStats(allTracking, habit);
 
-  const weeklyTracking = await HabitTracking.find({
+  let calendarMonth, calendarYear;
+  
+  if (month && year) {
+    calendarMonth = parseInt(month);
+    calendarYear = parseInt(year);
+  } else {
+    const now = new Date();
+    calendarMonth = now.getMonth() + 1;
+    calendarYear = now.getFullYear();
+  }
+  
+  const startOfMonth = new Date(calendarYear, calendarMonth - 1, 1);
+  startOfMonth.setHours(0, 0, 0, 0);
+  
+  const endOfMonth = new Date(calendarYear, calendarMonth, 0);
+  endOfMonth.setHours(23, 59, 59, 999);
+  
+  const monthTracking = await HabitTracking.find({
     userId,
     habitId,
-    date: { $gte: weekAgo }
-  });
+    date: { $gte: startOfMonth, $lte: endOfMonth }
+  }).sort({ date: 1 });
 
-  const weeklyCompletions = weeklyTracking.filter(t => t.status === 'completed').length;
-  const weeklyCompletionRate = weeklyTracking.length > 0 ? (weeklyCompletions / weeklyTracking.length) * 100 : 0;
+  // Generate calendar grid
+  const calendar = [];
+  const currentDate = new Date(startOfMonth);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  while (currentDate <= endOfMonth) {
+    const dayTracking = monthTracking.find(t => {
+      const trackDate = new Date(t.date);
+      return formatLocalDate(trackDate) === formatLocalDate(currentDate);
+    });
+
+    const isToday = currentDate.getTime() === today.getTime();
+    const isFuture = currentDate > today;
+
+    // ✅ Build calendar day
+    const calendarDay = {
+      date: formatLocalDate(currentDate),
+      day: currentDate.getDate(),
+      dayOfWeek: currentDate.getDay(),
+      isToday,
+      isFuture
+    };
+
+    // ✅ Logic khác nhau cho CHECK vs COUNT mode
+    if (habit.trackingMode === 'check') {
+      // === CHECK MODE ===
+      if (isFuture) {
+        // Ngày tương lai - không hiển thị gì
+        calendarDay.status = null;
+      } else if (!dayTracking) {
+        // Không có tracking record
+        if (isToday) {
+          calendarDay.status = 'pending'; // Hôm nay chưa làm
+        } else {
+          calendarDay.status = 'failed'; // Ngày qua không làm = thất bại
+        }
+      } else {
+        // Có tracking record
+        calendarDay.status = dayTracking.status;
+        calendarDay.completedAt = dayTracking.completedAt;
+        calendarDay.notes = dayTracking.notes;
+        calendarDay.mood = dayTracking.mood;
+      }
+    } 
+    else if (habit.trackingMode === 'count') {
+      // === COUNT MODE ===
+      if (isFuture) {
+        // Ngày tương lai
+        calendarDay.status = null;
+        calendarDay.progress = null;
+      } else if (!dayTracking) {
+        // Không có tracking record
+        if (isToday) {
+          calendarDay.status = 'pending'; // Hôm nay chưa bắt đầu
+          calendarDay.progress = { completed: 0, target: habit.targetCount || 0, percentage: 0 };
+        } else {
+          calendarDay.status = 'failed'; // Ngày qua không làm = thất bại
+          calendarDay.progress = { completed: 0, target: habit.targetCount || 0, percentage: 0 };
+        }
+      } else {
+        // Có tracking record
+        calendarDay.status = dayTracking.status;
+        calendarDay.progress = {
+          completed: dayTracking.completedCount || 0,
+          target: dayTracking.targetCount || habit.targetCount || 0,
+          percentage: dayTracking.targetCount > 0 
+            ? Math.round((dayTracking.completedCount / dayTracking.targetCount) * 100)
+            : 0
+        };
+        calendarDay.completedAt = dayTracking.completedAt;
+        calendarDay.notes = dayTracking.notes;
+        calendarDay.mood = dayTracking.mood;
+      }
+    }
+
+    calendar.push(calendarDay);
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+
+  // ✅ Stats với logic đúng cho từng mode
+  const statsData = {
+    completed: stats.completed,
+    failed: stats.failed,
+    skipped: stats.skipped,
+    total: stats.total,
+    completionRate: stats.completionRate,
+    averageProgress: stats.averageProgress
+  };
+
+  // Thêm pending và in-progress cho COUNT mode
+  if (habit.trackingMode === 'count') {
+    statsData.pending = allTracking.filter(t => t.status === 'pending').length;
+    statsData.inProgress = allTracking.filter(t => t.status === 'in-progress').length;
+  } else {
+    // CHECK mode chỉ có pending
+    statsData.pending = allTracking.filter(t => t.status === 'pending').length;
+  }
 
   res.json({
     success: true,
-    habit: {
-      ...habit.toObject(),
-      weeklyCompletionRate: Math.round(weeklyCompletionRate)
-    },
-    trackingHistory
+    data: {
+      habit: {
+        id: habit._id,
+        name: habit.name,
+        icon: habit.icon,
+        color: habit.color,
+        frequency: habit.frequency,
+        trackingMode: habit.trackingMode,
+        ...(habit.trackingMode === 'count' && {
+          targetCount: habit.targetCount,
+          unit: habit.unit
+        })
+      },
+      streaks: {
+        current: stats.currentStreak,
+        best: stats.bestStreak
+      },
+      stats: statsData,
+      calendar: {
+        month: calendarMonth,
+        year: calendarYear,
+        monthName: new Date(calendarYear, calendarMonth - 1).toLocaleString('vi-VN', { month: 'long' }),
+        days: calendar
+      }
+    }
   });
 });
 
@@ -1570,7 +1773,14 @@ const getHabitStats = asyncHandler(async (req, res) => {
 const getHabitCalendar = asyncHandler(async (req, res) => {
   const { habitId } = req.params;
   const userId = req.user.id;
-  const { days = 30 } = req.query;
+  const { days = 30, month, year } = req.query;
+
+  const formatLocalDate = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
 
   const habit = await Habit.findOne({ _id: habitId, userId });
   if (!habit) {
@@ -1580,35 +1790,98 @@ const getHabitCalendar = asyncHandler(async (req, res) => {
     });
   }
 
-  // Get tracking data for specified days
-  const startDate = new Date();
-  startDate.setDate(startDate.getDate() - parseInt(days));
-  startDate.setHours(0, 0, 0, 0);
+  let startDate, endDate;
+
+  // Option 1: Get by month/year (cho calendar view)
+  if (month && year) {
+    startDate = new Date(year, month - 1, 1);
+    startDate.setHours(0, 0, 0, 0);
+    
+    endDate = new Date(year, month, 0);
+    endDate.setHours(23, 59, 59, 999);
+  } 
+  // Option 2: Get last N days
+  else {
+    startDate = new Date();
+    startDate.setDate(startDate.getDate() - parseInt(days) + 1);
+    startDate.setHours(0, 0, 0, 0);
+    
+    endDate = new Date();
+    endDate.setHours(23, 59, 59, 999);
+  }
 
   const trackingData = await HabitTracking.find({
     userId,
     habitId,
-    date: { $gte: startDate }
+    date: { $gte: startDate, $lte: endDate }
   }).sort({ date: 1 });
 
   // Generate calendar array
   const calendar = [];
-  for (let i = parseInt(days) - 1; i >= 0; i--) {
-    const date = new Date();
-    date.setDate(date.getDate() - i);
-    date.setHours(0, 0, 0, 0);
-
-    const dayTracking = trackingData.find(t =>
-      t.date.getTime() === date.getTime()
-    );
-
-    calendar.push({
-      date: date.toISOString().split('T')[0],
-      status: dayTracking ? dayTracking.status : 'pending',
-      notes: dayTracking?.notes || '',
-      mood: dayTracking?.mood || null,
-      completedAt: dayTracking?.completedAt || null
+  const currentDate = new Date(startDate);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  while (currentDate <= endDate) {
+    const dayTracking = trackingData.find(t => {
+      const trackDate = new Date(t.date);
+      return formatLocalDate(trackDate) === formatLocalDate(currentDate);
     });
+
+    const isToday = currentDate.getTime() === today.getTime();
+    const isFuture = currentDate > today;
+
+    // ✅ Build calendar day
+    const calendarDay = {
+      date: formatLocalDate(currentDate),
+      dayOfWeek: currentDate.getDay(),
+      isToday,
+      isFuture
+    };
+
+    // ✅ Logic khác nhau cho CHECK vs COUNT mode
+    if (habit.trackingMode === 'check') {
+      // === CHECK MODE ===
+      if (isFuture) {
+        calendarDay.status = null;
+      } else if (!dayTracking) {
+        calendarDay.status = isToday ? 'pending' : 'failed';
+      } else {
+        calendarDay.status = dayTracking.status;
+        calendarDay.completedAt = dayTracking.completedAt;
+        calendarDay.notes = dayTracking.notes;
+        calendarDay.mood = dayTracking.mood;
+      }
+    } 
+    else if (habit.trackingMode === 'count') {
+      // === COUNT MODE ===
+      if (isFuture) {
+        calendarDay.status = null;
+        calendarDay.progress = null;
+      } else if (!dayTracking) {
+        calendarDay.status = isToday ? 'pending' : 'failed';
+        calendarDay.progress = {
+          completed: 0,
+          target: habit.targetCount || 0,
+          percentage: 0
+        };
+      } else {
+        calendarDay.status = dayTracking.status;
+        calendarDay.progress = {
+          completed: dayTracking.completedCount || 0,
+          target: dayTracking.targetCount || habit.targetCount || 0,
+          percentage: dayTracking.targetCount > 0 
+            ? Math.round((dayTracking.completedCount / dayTracking.targetCount) * 100)
+            : 0
+        };
+        calendarDay.completedAt = dayTracking.completedAt;
+        calendarDay.notes = dayTracking.notes;
+        calendarDay.mood = dayTracking.mood;
+      }
+    }
+
+    calendar.push(calendarDay);
+    currentDate.setDate(currentDate.getDate() + 1);
   }
 
   res.json({
@@ -1617,7 +1890,17 @@ const getHabitCalendar = asyncHandler(async (req, res) => {
       id: habit._id,
       name: habit.name,
       icon: habit.icon,
-      color: habit.color
+      color: habit.color,
+      trackingMode: habit.trackingMode,
+      ...(habit.trackingMode === 'count' && {
+        targetCount: habit.targetCount,
+        unit: habit.unit
+      })
+    },
+    period: {
+      start: formatLocalDate(startDate),
+      end: formatLocalDate(endDate),
+      totalDays: calendar.length
     },
     calendar
   });
@@ -1865,37 +2148,58 @@ const getAllHabitsHistory = asyncHandler(async (req, res) => {
 
 // ==================== Templates & Suggestions ====================
 
+
+
 // @desc    Get habit templates
 const getHabitTemplates = asyncHandler(async (req, res) => {
   const userId = req.user.id;
-  const { category, difficulty } = req.query;
+  const { category, difficulty, search, popular } = req.query;
 
   // Get user analysis to suggest relevant templates
   const userAnalysis = await UserAnalysis.findOne({ userId });
 
   let query = {};
 
+  // Filter by category
   if (category) {
     query.category = category;
-  } else if (userAnalysis) {
-    // Suggest templates based on user's top categories
+  } else if (userAnalysis && !search) {
+    // Suggest templates based on user's top categories (if no search)
     const topCategories = Object.entries(userAnalysis.categoryScores)
       .sort(([, a], [, b]) => b - a)
       .slice(0, 3)
       .map(([cat]) => cat);
-    query.category = { $in: topCategories };
+    
+    if (topCategories.length > 0) {
+      query.category = { $in: topCategories };
+    }
   }
 
+  // Filter by difficulty
   if (difficulty) {
     query.difficulty = difficulty;
   }
 
+  // Filter by popular
+  if (popular === 'true') {
+    query.isPopular = true;
+  }
+
+  // Search by name or description
+  if (search) {
+    query.$or = [
+      { name: { $regex: search, $options: 'i' } },
+      { description: { $regex: search, $options: 'i' } }
+    ];
+  }
+
   const templates = await HabitTemplate.find(query)
     .sort({ isPopular: -1, usageCount: -1 })
-    .limit(20);
+    .limit(50);
 
   res.json({
     success: true,
+    count: templates.length,
     templates,
     userAnalysis: userAnalysis ? {
       topCategories: Object.entries(userAnalysis.categoryScores)
@@ -1906,10 +2210,11 @@ const getHabitTemplates = asyncHandler(async (req, res) => {
   });
 });
 
+
 const createHabitFromTemplate = asyncHandler(async (req, res) => {
   const userId = req.user.id;
   const { templateId } = req.params;
-  const customizations = req.body?.customizations || {};
+  const customizations = req.body?.customizations || req.body || {};
 
   // Lấy template
   const template = await HabitTemplate.findById(templateId);
@@ -1919,34 +2224,97 @@ const createHabitFromTemplate = asyncHandler(async (req, res) => {
     throw new Error('Template not found');
   }
 
-  // Tạo habit mới từ template
-  const newHabit = await Habit.create({
+  // Prepare habit data
+  const habitData = {
     userId,
-    name: customizations?.name || template.name,
-    description: customizations?.description || template.description,
+    // Basic Info
+    name: customizations.name || template.name,
+    description: customizations.description || template.description,
     category: template.category,
-    icon: customizations?.icon || template.defaultIcon,
-    color: customizations?.color || template.defaultColor,
-    frequency: customizations?.frequency || template.suggestedFrequency,
-    habitType: customizations?.habitType || 'build',
+    icon: customizations.icon || template.icon,
+    color: customizations.color || template.color,
+    
+    // Frequency & Tracking
+    frequency: customizations.frequency || template.frequency,
+    trackingMode: template.trackingMode,
+    targetCount: customizations.targetCount || template.targetCount,
+    unit: template.unit,
+    
+    // Habit Settings
+    habitType: template.habitType,
+    startDate: customizations.startDate ? new Date(customizations.startDate) : new Date(),
+    
+    // Custom Frequency (nếu frequency = 'custom')
+    customFrequency: customizations.customFrequency,
+    
+    // Status
     isActive: true,
-    startDate: customizations?.startDate || Date.now(),
-    customFrequency: customizations?.customFrequency,
     isFromSuggestion: false,
-    suggestionId: null
-  });
+    
+    // Metadata
+    templateId: template._id
+  };
+
+  // Validate custom frequency nếu cần
+  if (habitData.frequency === 'custom' && !habitData.customFrequency) {
+    res.status(400);
+    throw new Error('Custom frequency is required when frequency is set to custom');
+  }
+
+  // Tạo habit mới
+  const newHabit = await Habit.create(habitData);
 
   // Cập nhật usageCount của template
   await HabitTemplate.findByIdAndUpdate(templateId, {
     $inc: { usageCount: 1 }
   });
 
+  // Populate để trả về đầy đủ thông tin
+  const populatedHabit = await Habit.findById(newHabit._id);
+
   res.status(201).json({
     success: true,
-    habit: newHabit,
+    habit: populatedHabit,
     message: 'Habit created successfully from template'
   });
 });
+
+
+
+const getTemplateById = asyncHandler(async (req, res) => {
+  const { templateId } = req.params;
+
+  const template = await HabitTemplate.findById(templateId);
+
+  if (!template) {
+    res.status(404);
+    throw new Error('Template not found');
+  }
+
+  res.json({
+    success: true,
+    template
+  });
+});
+
+const getTemplatesByCategory = asyncHandler(async (req, res) => {
+  const { category } = req.params;
+
+  const templates = await HabitTemplate.find({ category })
+    .sort({ isPopular: -1, usageCount: -1 });
+
+  res.json({
+    success: true,
+    count: templates.length,
+    category,
+    templates
+  });
+});
+
+
+
+
+
 
 // ==================== Dashboard & Reports ====================
 
@@ -2902,7 +3270,6 @@ export {
   getHabitStats,
   getHabitHistory,
   getHabitCalendar,
-  getHabitTemplates,
   getTodayOverview,
   getWeeklyReport,
   getHabitInsights,
@@ -2913,6 +3280,9 @@ export {
 
   // Templates & Suggestions
   createHabitFromTemplate,
+  getHabitTemplates,
+  getTemplateById,
+  getTemplatesByCategory,
 
   // Sub-tracking
   addHabitSubTracking,
