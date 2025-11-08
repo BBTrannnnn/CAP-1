@@ -15,7 +15,7 @@ import {
   // History & Stats
   getHabitStats,
   getHabitCalendar,
-  getHabitTemplates,
+
   getTodayOverview,
   getWeeklyReport,
   getHabitInsights,
@@ -27,6 +27,9 @@ import {
 
   // Templates & Suggestions
   createHabitFromTemplate,
+  getTemplateById,
+  getTemplatesByCategory,
+  getHabitTemplates,
 
 
   // Sub-tracking
@@ -151,6 +154,10 @@ router.post('/goals/sync', syncHabitGoals);
 router.get('/templates', getHabitTemplates);
 // Create habit from template
 router.post('/templates/:templateId', createHabitFromTemplate);
+// Get template by ID
+router.get('/templates/:templateId', getTemplateById);
+// Get templates by category
+router.get('/templates/category/:category', getTemplatesByCategory);
 
 
 // ==================== Dashboard & Reports ====================
