@@ -1,0 +1,21 @@
+{
+  "maxWords": 1000,
+  "maxLen": 50,
+  "embeddingDim": 64,
+  "lstmUnits": 128,
+  "epochs": 20,
+  "batchSize": 64,
+  "validationSplit": 0.2,
+  "learningRate": 0.0008,
+  "categories": [
+    "stress",
+    "fear",
+    "anxiety",
+    "sadness",
+    "happy",
+    "neutral",
+    "confusion"
+  ],
+  "totalSamples": 1260,
+  "trainedAt": "2025-11-07T07:05:46.982Z"
+}

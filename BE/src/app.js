@@ -8,10 +8,7 @@ import SurveyRoutes from './routes/Survey-routes.js';
 import HabitRoutes from './routes/Habit-routes.js';
 import sleepRoutes from './routes/Sleep-routes.js';
 import sleepContentRoutes from './routes/SleepContent-routes.js';
-import aiRoutes from './routes/AI-routes.js';
-import aiHabit_routes from './routes/aiHabit_routes.js';
-
-
+import dreamRoutes from './routes/Dream-routes.js';
 
 
 
@@ -23,6 +20,8 @@ connectDB();
 app.use(cors());
 app.use(express.json());
 
+// Serve static audio files
+app.use('/audio', express.static('public/audio'));
 
 app.use('/api/users', userRoutes);
 app.use('/api/survey', SurveyRoutes);
@@ -30,8 +29,7 @@ app.use('/api/survey', SurveyRoutes);
 app.use('/api/habits', HabitRoutes);
 app.use('/api/sleep', sleepRoutes);
 app.use('/api/sleep-content', sleepContentRoutes);
-app.use('/api/ai', aiRoutes);
-app.use('/api/ai-habits', aiHabit_routes);
+app.use('/api/dreams', dreamRoutes);
 
 
 app.use(errorHandler);

@@ -7,16 +7,16 @@
     "dev": "nodemon src/app.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "seed:data": "node src/Script/seedData.js",
+    "seed:audio": "node src/Script/seedAudioContent.js",
     "generateTraindata": "node src/Script/generateTraindata.js",
     "trainModel": "node src/Script/trainModel.js"
-
-
   },
   "type": "module",
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@tensorflow/tfjs": "^4.22.0",
     "@types/react": "^19.1.12",
     "axios": "^1.11.0",
     "bcryptjs": "^3.0.2",

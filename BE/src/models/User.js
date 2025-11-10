@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
-
+import crypto from 'crypto';
+import * as CryptoJS from 'crypto-js';
 
 
 
@@ -61,20 +62,6 @@ const userSchema = new mongoose.Schema({
     isActive: {
         type: Boolean,
         default: true
-    },
-    dateOfBirth: {
-    type: Date,
-    default: null
-    },
-    gender: {
-    type: String,
-    enum: ['male', 'female', 'other'],
-    default: null
-    },
-    address: {
-    type: String,
-    default: null,
-    trim: true
     },
     //OTP cho việc reset password
     resetOTP: { type: String },
