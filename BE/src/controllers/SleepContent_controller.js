@@ -138,38 +138,6 @@ export const listFavorites = async (req, res, next) => {
   } catch (e) { next(e); }
 };
 
-// Admin: create content
-export const createSleepContent = async (req, res, next) => {
-  try {
-    const payload = req.body;
-    const doc = new SleepContent(payload);
-    await doc.save();
-    res.status(201).json({ success: true, data: doc });
-  } catch (e) { next(e); }
-};
-
-// Admin: update
-export const updateSleepContent = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    if (!mongoose.isValidObjectId(id)) return res.status(400).json({ success: false, message: 'Invalid id' });
-    const updated = await SleepContent.findByIdAndUpdate(id, { $set: req.body }, { new: true });
-    if (!updated) return res.status(404).json({ success: false, message: 'Not found' });
-    res.json({ success: true, data: updated });
-  } catch (e) { next(e); }
-};
-
-// Admin: delete (soft)
-export const deleteSleepContent = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    if (!mongoose.isValidObjectId(id)) return res.status(400).json({ success: false, message: 'Invalid id' });
-    const updated = await SleepContent.findByIdAndUpdate(id, { $set: { active: false } }, { new: true });
-    if (!updated) return res.status(404).json({ success: false, message: 'Not found' });
-    res.json({ success: true, data: updated });
-  } catch (e) { next(e); }
-};
-
 // Track play: increment playCount and record user story history
 export const recordPlay = async (req, res, next) => {
   try {

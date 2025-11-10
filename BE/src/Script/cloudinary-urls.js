@@ -1,14 +1,11 @@
-// ============================================
-// HƯỚNG DẪN: 
-// 1. Upload 7 files MP3 lên Cloudinary
-// 2. Copy URLs từ Cloudinary và paste vào đây
-// 3. Run: npm run seed:audio
-// ============================================
+//url từu cloudinary
+//npm run seed:audio
+
 
 export const CLOUDINARY_URLS = {
-  // Thay URLs này sau khi upload lên Cloudinary
-  rain: 'https://res.cloudinary.com/https://res.cloudinary.com/do9hvdwpt/video/upload/v1762748332/640649__barkenov__rain-leak-into-a-bucket_kd8qot.wav/video/upload/v1234567890/rain.mp3',
-  ocean: 'https://res.cloudinary.https://res.cloudinary.com/do9hvdwpt/video/upload/v1762748344/827529__yevgverh__ocean_coast_03_092025_0659am_tv6zvo.wav/YOUR_CLOUD_NAME/video/upload/v1234567890/ocean.mp3',
+  // URLs từ Cloudinary
+  rain: 'https://res.cloudinary.com/do9hvdwpt/video/upload/v1762748332/640649__barkenov__rain-leak-into-a-bucket_kd8qot.wav',
+  ocean: 'https://res.cloudinary.com/do9hvdwpt/video/upload/v1762748344/827529__yevgverh__ocean_coast_03_092025_0659am_tv6zvo.wav',
   forest: 'https://res.cloudinary.com/do9hvdwpt/video/upload/v1762748376/513237__klankbeeld__calm-forest-april-nl-kampina-02-200401_0141_cogj01.flac',
   whitenoise: 'https://res.cloudinary.com/do9hvdwpt/video/upload/v1762748418/791940__hear-no-elvis__white-noise-16-hours_n3zhoq.wav',
   
@@ -17,6 +14,6 @@ export const CLOUDINARY_URLS = {
   storyHoChiMinh: 'https://res.cloudinary.com/do9hvdwpt/video/upload/v1762748303/Nghe_Truy%E1%BB%87n_B%C3%A1c_H%E1%BB%93_Ng%E1%BB%A7_Ngon_Nh%E1%BA%A5t_2024_-_Gs_Ho%C3%A0ng_Ch%C3%AD_B%E1%BA%A3o_K%E1%BB%83_Chuy%E1%BB%87n_B%C3%A1c_H%E1%BB%93_C%E1%BA%A3m_%C4%90%E1%BB%99ng_Nh%E1%BA%A5t_WErnjshmSco_otyjet.mp3',
 };
 
-// Để dùng localhost (development)
-export const USE_LOCALHOST = false; // Đổi thành true nếu muốn test local
+//localhost 
+export const USE_LOCALHOST = false; //true nếu muốn test local
 export const LOCALHOST_BASE = 'http://localhost:5000/audio';

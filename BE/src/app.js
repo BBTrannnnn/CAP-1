@@ -20,9 +20,6 @@ connectDB();
 app.use(cors());
 app.use(express.json());
 
-// Serve static audio files
-app.use('/audio', express.static('public/audio'));
-
 app.use('/api/users', userRoutes);
 app.use('/api/survey', SurveyRoutes);
 
