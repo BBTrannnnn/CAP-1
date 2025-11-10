@@ -9,6 +9,7 @@ import HabitRoutes from './routes/Habit-routes.js';
 import sleepRoutes from './routes/Sleep-routes.js';
 import sleepContentRoutes from './routes/SleepContent-routes.js';
 import dreamRoutes from './routes/Dream-routes.js';
+import aiHabitRoutes from './routes/aiHabit_routes.js'
 
 
 
@@ -26,6 +27,7 @@ app.use('/api/survey', SurveyRoutes);
 app.use('/api/habits', HabitRoutes);
 app.use('/api/sleep', sleepRoutes);
 app.use('/api/sleep-content', sleepContentRoutes);
+app.use('/api/ai-habit/',aiHabitRoutes)
 app.use('/api/dreams', dreamRoutes);
 
 

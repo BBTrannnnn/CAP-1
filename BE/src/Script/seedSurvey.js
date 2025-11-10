@@ -1646,7 +1646,9 @@ const habitSuggestions = [
     category: 'health',
     difficulty: 'easy',
     frequency: 'daily',
-    trackingMode: 'check',
+    trackingMode: 'count', // Đã thay đổi
+    targetCount: 10,       // Đã thêm
+    unit: 'phút',          // Đã thêm
     icon: '🏃',
     color: '#F59E0B',
     tags: ['morning', 'exercise', 'energy'],
@@ -1660,7 +1662,9 @@ const habitSuggestions = [
     category: 'health',
     difficulty: 'medium',
     frequency: 'daily',
-    trackingMode: 'check',
+    trackingMode: 'count', // Đã thay đổi
+    targetCount: 1,       // Đã thêm
+    unit: 'lần',          // Đã thêm
     icon: '😴',
     color: '#6366F1',
     tags: ['sleep', 'health', 'routine'],
@@ -1690,7 +1694,9 @@ const habitSuggestions = [
     category: 'health',
     difficulty: 'easy',
     frequency: 'daily',
-    trackingMode: 'check',
+    trackingMode: 'count', // Đã thay đổi
+    targetCount: 1,       // Đã thêm
+    unit: 'bữa',          // Đã thêm
     icon: '🍳',
     color: '#F59E0B',
     tags: ['nutrition', 'energy', 'morning'],
@@ -1736,7 +1742,9 @@ const habitSuggestions = [
     category: 'productivity',
     difficulty: 'easy',
     frequency: 'daily',
-    trackingMode: 'check',
+    trackingMode: 'count', // Đã thay đổi
+    targetCount: 5,       // Đã thêm
+    unit: 'mục',          // Đã thêm
     icon: '✅',
     color: '#10B981',
     tags: ['planning', 'organization', 'productivity'],
@@ -1750,7 +1758,9 @@ const habitSuggestions = [
     category: 'productivity',
     difficulty: 'easy',
     frequency: 'daily',
-    trackingMode: 'check',
+    trackingMode: 'count', // Đã thay đổi
+    targetCount: 1,       // Đã thêm
+    unit: 'lần',          // Đã thêm
     icon: '🗂️',
     color: '#8B5CF6',
     tags: ['organization', 'workspace', 'productivity'],
@@ -1763,8 +1773,10 @@ const habitSuggestions = [
     description: 'Hoàn thành việc quan trọng nhất buổi sáng',
     category: 'productivity',
     difficulty: 'medium',
+    trackingMode: 'count', // Đã thay đổi
+    targetCount: 1,       // Đã thêm
+    unit: 'việc',         // Đã thêm
     frequency: 'daily',
-    trackingMode: 'check',
     icon: '🎯',
     color: '#EF4444',
     tags: ['priority', 'productivity', 'focus'],
@@ -1927,8 +1939,10 @@ const habitSuggestions = [
     description: 'Thực hành thiền để giảm stress',
     category: 'mindful',
     difficulty: 'medium',
+    trackingMode: 'count', // Đã thay đổi
+    targetCount: 10,      // Đã thêm
+    unit: 'phút',         // Đã thêm
     frequency: 'daily',
-    trackingMode: 'check',
     icon: '🧘',
     color: '#8B5CF6',
     tags: ['meditation', 'mindfulness', 'stress-relief'],
@@ -1957,8 +1971,10 @@ const habitSuggestions = [
     description: 'Bắt đầu ngày với yoga',
     category: 'mindful',
     difficulty: 'easy',
+    trackingMode: 'count', // Đã thay đổi
+    targetCount: 10,      // Đã thêm
+    unit: 'phút',         // Đã thêm
     frequency: 'daily',
-    trackingMode: 'check',
     icon: '🧘‍♀️',
     color: '#EC4899',
     tags: ['yoga', 'flexibility', 'mindfulness'],
@@ -1987,8 +2003,10 @@ const habitSuggestions = [
     description: 'Dành thời gian ra ngoài trời',
     category: 'mindful',
     difficulty: 'easy',
+    trackingMode: 'count', // Đã thay đổi
+    targetCount: 15,      // Đã thêm
+    unit: 'phút',         // Đã thêm
     frequency: 'daily',
-    trackingMode: 'check',
     icon: '🌳',
     color: '#22C55E',
     tags: ['nature', 'outdoor', 'wellness'],
@@ -2045,8 +2063,10 @@ const habitSuggestions = [
     description: 'Ghi chép tất cả khoản chi tiêu',
     category: 'finance',
     difficulty: 'easy',
+    trackingMode: 'count', // Đã thay đổi
+    targetCount: 1,       // Đã thêm
+    unit: 'lần',          // Đã thêm
     frequency: 'daily',
-    trackingMode: 'check',
     icon: '💰',
     color: '#22C55E',
     tags: ['finance', 'budgeting', 'tracking'],
@@ -2161,8 +2181,10 @@ const habitSuggestions = [
     description: 'Giữ hộp thư sạch sẽ',
     category: 'digital',
     difficulty: 'easy',
+    trackingMode: 'count', // Đã thay đổi
+    targetCount: 10,      // Đã thêm
+    unit: 'email',        // Đã thêm
     frequency: 'daily',
-    trackingMode: 'check',
     icon: '📧',
     color: '#3B82F6',
     tags: ['organization', 'productivity', 'digital'],
@@ -2291,8 +2313,10 @@ const habitSuggestions = [
     description: 'Chủ động quan tâm bạn bè',
     category: 'social',
     difficulty: 'easy',
+    trackingMode: 'count', // Đã thay đổi
+    targetCount: 3,       // Đã thêm
+    unit: 'người',        // Đã thêm
     frequency: 'daily',
-    trackingMode: 'check',
     icon: '💬',
     color: '#3B82F6',
     tags: ['communication', 'friendship', 'care'],
@@ -2463,8 +2487,10 @@ const habitSuggestions = [
     description: 'Thay bằng nước lọc hoặc trà',
     category: 'control',
     difficulty: 'medium',
+    trackingMode: 'count', // Đã thay đổi
+    targetCount: 0,       // Đã thêm (mục tiêu là không uống)
+    unit: 'chai/lon',     // Đã thêm
     frequency: 'daily',
-    trackingMode: 'check',
     icon: '🚫',
     color: '#EF4444',
     tags: ['quit', 'health', 'sugar'],

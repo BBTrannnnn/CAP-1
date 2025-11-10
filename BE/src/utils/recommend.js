@@ -17,165 +17,259 @@ class HabitRecommendationEngine {
       social: 0.8,
       sleep: 1.1,
       energy: 0.9,
+      control: 0.9
     };
 
-    this.trainedModel = {};
+    // Load trained model nếu có
+    this.trainedModel = null;
     try {
-      const modelData = fs.readFileSync('src/Script/trained_model.json', 'utf8');
+      const modelPath = './src/Script/trained_model.json';
+      const modelData = fs.readFileSync(modelPath, 'utf8');
       this.trainedModel = JSON.parse(modelData);
-      console.log('🧠 Đã tải trained_model.json thành công');
+      console.log('🧠 Loaded trained_model.json successfully');
     } catch (err) {
-      console.warn('⚠️ Không tìm thấy trained_model.json → dùng rule-based logic');
+      console.warn('⚠️ trained_model.json not found → using rule-based logic only');
     }
+
+    // Organize habits by category
+    this.habitsByCategory = {};
+    this.habitSuggestions.forEach(habit => {
+      const cat = habit.category;
+      if (!this.habitsByCategory[cat]) {
+        this.habitsByCategory[cat] = [];
+      }
+      this.habitsByCategory[cat].push(habit);
+    });
   }
 
   /**
    * ================================
-   * 1️⃣ Phân tích câu trả lời người dùng
+   * 1️⃣ Tính điểm theo category
    * ================================
    */
-  analyzeAnswers(answers) {
+  calculateCategoryScores(answers) {
     const categoryScores = {};
-    const weakAreas = {};
+    const categoryAnswers = {};
 
-    // Gom điểm theo category
+    // Group answers by category
     Object.entries(answers).forEach(([questionId, value]) => {
       const category = questionId.split('_')[0];
-      if (!categoryScores[category]) categoryScores[category] = [];
-      categoryScores[category].push(value);
+      if (!categoryAnswers[category]) {
+        categoryAnswers[category] = [];
+      }
+      categoryAnswers[category].push(value);
     });
 
-    // Tính trung bình và xác định điểm yếu
-    const result = {};
-    Object.entries(categoryScores).forEach(([category, values]) => {
+    // Calculate average scores
+    Object.entries(categoryAnswers).forEach(([category, values]) => {
       const avg = values.reduce((a, b) => a + b, 0) / values.length;
-      result[category] = Number(avg.toFixed(2));
+      categoryScores[category] = parseFloat(avg.toFixed(2));
+    });
 
-      if (avg <= 2) {
-        weakAreas[category] = {
+    return categoryScores;
+  }
+
+  /**
+   * ================================
+   * 2️⃣ Tìm weak areas
+   * ================================
+   */
+  findWeakAreas(categoryScores) {
+    const weakAreas = [];
+
+    Object.entries(categoryScores).forEach(([category, score]) => {
+      if (score <= 2.5) {
+        weakAreas.push({
           category,
-          score: avg,
-          priority: this.weights[category] || 1,
-        };
+          score,
+          priority: (this.weights[category] || 1) * (3 - score) // Điểm thấp hơn = priority cao hơn
+        });
       }
     });
 
-    const sortedWeak = Object.values(weakAreas).sort((a, b) => b.priority - a.priority);
-    return { categoryScores: result, weakAreas: sortedWeak };
+    // Sort by priority (highest first)
+    return weakAreas.sort((a, b) => b.priority - a.priority).slice(0, 3);
   }
 
   /**
    * ================================
-   * 2️⃣ Xác định persona
+   * 3️⃣ Xác định persona
    * ================================
    */
   determinePersona(categoryScores) {
-    const personaScores = {
-      'health-focused': 0,
-      'productivity-driven': 0,
-      'knowledge-seeker': 0,
-      'mindful-seeker': 0,
-      'finance-conscious': 0,
-      'balanced-lifestyle': 0,
-      'fitness-driven': 0,
-      'community-oriented': 0,
+    const personaMap = {
+      health: 'health-focused',
+      productivity: 'productivity-driven',
+      learning: 'knowledge-seeker',
+      mindful: 'mindful-seeker',
+      finance: 'finance-conscious',
+      digital: 'balanced-lifestyle',
+      social: 'social-connector',
+      fitness: 'fitness-enthusiast',
+      sleep: 'rest-prioritizer',
+      energy: 'energy-optimizer',
+      control: 'discipline-master'
     };
 
-    if (categoryScores.health <= 2 || categoryScores.fitness <= 2)
-      personaScores['health-focused'] += 30;
+    // Tìm category có điểm CAO NHẤT
+    const sortedByScore = Object.entries(categoryScores)
+      .filter(([cat]) => personaMap[cat])
+      .sort((a, b) => b[1] - a[1]);
 
-    if (categoryScores.productivity <= 2)
-      personaScores['productivity-driven'] += 30;
+    if (sortedByScore.length === 0) {
+      return 'balanced-lifestyle';
+    }
 
-    if (categoryScores.learning <= 2)
-      personaScores['knowledge-seeker'] += 30;
+    const highestCategory = sortedByScore[0][0];
+    const highestScore = sortedByScore[0][1];
 
-    if (categoryScores.mindful <= 2)
-      personaScores['mindful-seeker'] += 30;
+    // Nếu điểm cao nhất >= 3.0 → persona theo category đó
+    if (highestScore >= 3.0) {
+      return personaMap[highestCategory];
+    }
 
-    if (categoryScores.finance <= 2)
-      personaScores['finance-conscious'] += 30;
+    // Nếu nhiều category < 3.0 → balanced-lifestyle
+    const lowCount = Object.values(categoryScores).filter(v => v < 3.0).length;
+    if (lowCount >= 6) {
+      return 'balanced-lifestyle';
+    }
 
-    if (categoryScores.social <= 2)
-      personaScores['community-oriented'] += 25;
-
-    const mediumCount = Object.values(categoryScores).filter(
-      (v) => v > 2 && v < 3.5
-    ).length;
-
-    if (mediumCount >= 5) personaScores['balanced-lifestyle'] += 25;
-
-    if (categoryScores.fitness <= 2)
-      personaScores['fitness-driven'] += 20;
-
-    return Object.entries(personaScores).sort(([, a], [, b]) => b - a)[0][0];
+    return personaMap[highestCategory];
   }
 
   /**
    * ================================
-   * 3️⃣ Tìm habit phù hợp (Rule-based)
+   * 4️⃣ Weighted Habit Selection
    * ================================
    */
-  findMatchingHabits(answers, categoryScores) {
-    const matchingHabits = [];
+  selectHabitsWithWeight(categoryScore, habits, numHabits, alreadySelected = []) {
+    if (!habits || habits.length === 0) return [];
 
-    this.habitSuggestions.forEach((habit) => {
-      let score = 0;
-      let matchedConditions = 0;
+    // Calculate weight for each habit
+    const weighted = habits.map(habit => {
+      // Base weight: Điểm thấp = weight cao
+      const scoreWeight = (4.0 - categoryScore) * 10;
 
-      Object.entries(habit.triggerConditions).forEach(([questionId, targetValues]) => {
-        if (answers[questionId] && targetValues.includes(answers[questionId])) {
-          matchedConditions++;
-          score += 10;
-        }
-      });
+      // Priority weight
+      const priorityWeight = (habit.priority || 2) * 5;
 
-      const category = habit.category;
-      const userScore = categoryScores[category] ?? 3;
+      // Diversity penalty
+      const sameCategory = alreadySelected.filter(h => h.category === habit.category).length;
+      const diversityPenalty = sameCategory * 5;
 
-      if (userScore <= 2) score += 20;
-      else if (userScore <= 2.5) score += 10;
+      // ✅ Tracking mode bonus - ưu tiên count hơn check
+      const trackingModeBonus = habit.trackingMode === 'count' ? 15 : 0;
 
-      const diffBonus = { easy: 15, medium: 10, hard: 5 };
-      score += diffBonus[habit.difficulty] || 0;
+      // Random factor
+      const randomFactor = Math.random() * 3;
 
-      if (matchedConditions > 0)
-        matchingHabits.push({ ...habit, score, matchedConditions });
+      return {
+        ...habit,
+        weight: scoreWeight + priorityWeight - diversityPenalty + trackingModeBonus + randomFactor
+      };
     });
 
-    return matchingHabits.sort((a, b) => b.score - a.score);
+    // Sort by weight and return top N
+    return weighted
+      .sort((a, b) => b.weight - a.weight)
+      .slice(0, numHabits);
   }
 
   /**
    * ================================
-   * 4️⃣ Đa dạng danh mục thói quen
+   * 5️⃣ Generate Habit Recommendations
    * ================================
    */
-  diversifyRecommendations(habits, max = 5) {
-    const selected = [];
-    const count = {};
+  generateHabitRecommendations(categoryScores, weakAreas, persona, maxHabits = 5) {
+    const recommendedHabits = [];
 
-    for (const h of habits) {
-      const c = h.category;
-      if ((count[c] || 0) < 2) {
-        selected.push(h);
-        count[c] = (count[c] || 0) + 1;
-      }
-      if (selected.length >= max) break;
+    // 1️⃣ Lấy 2 habits từ PERSONA (điểm mạnh)
+    const highestCategory = Object.entries(categoryScores)
+      .sort((a, b) => b[1] - a[1])[0];
+
+    if (highestCategory && this.habitsByCategory[highestCategory[0]]) {
+      const personaHabits = this.selectHabitsWithWeight(
+        highestCategory[1],
+        this.habitsByCategory[highestCategory[0]],
+        2,
+        recommendedHabits
+      );
+      recommendedHabits.push(...personaHabits);
     }
 
-    if (selected.length < max) {
-      for (const h of habits) {
-        if (!selected.includes(h)) selected.push(h);
-        if (selected.length >= max) break;
+    // 2️⃣ Lấy habits từ WEAK AREAS
+    weakAreas.forEach((weakArea, index) => {
+      if (recommendedHabits.length >= maxHabits) return;
+
+      const category = weakArea.category;
+      const numHabits = index === 0 ? 2 : 1; // Category yếu nhất lấy 2, còn lại 1
+
+      if (this.habitsByCategory[category]) {
+        const weakHabits = this.selectHabitsWithWeight(
+          weakArea.score,
+          this.habitsByCategory[category],
+          numHabits,
+          recommendedHabits
+        );
+        recommendedHabits.push(...weakHabits);
+      }
+    });
+
+    // 3️⃣ Fallback: Nếu vẫn thiếu habits
+    if (recommendedHabits.length < 3) {
+      const allCategories = Object.keys(this.habitsByCategory);
+      
+      for (const cat of allCategories) {
+        if (recommendedHabits.length >= maxHabits) break;
+        
+        const remaining = this.habitsByCategory[cat].filter(
+          h => !recommendedHabits.some(r => r.name === h.name)
+        );
+        
+        if (remaining.length > 0) {
+          recommendedHabits.push(remaining[0]);
+        }
       }
     }
-    return selected;
+
+    // 4️⃣ Remove duplicates và format output
+    const uniqueHabits = [];
+    const seen = new Set();
+
+    for (const habit of recommendedHabits) {
+      if (!seen.has(habit.name)) {
+        seen.add(habit.name);
+        
+        // ✅ Format habit với đầy đủ thông tin tracking
+        uniqueHabits.push({
+          _id: habit._id,
+          name: habit.name,
+          description: habit.description,
+          category: habit.category,
+          difficulty: habit.difficulty,
+          frequency: habit.frequency,
+          icon: habit.icon,
+          color: habit.color,
+          tags: habit.tags,
+          
+          // ✅ Tracking info
+          trackingMode: habit.trackingMode || 'check', // check hoặc count
+          targetCount: habit.targetCount || null,      // Số lần nếu là count
+          unit: habit.unit || null,                     // Đơn vị: lần, phút, ly, km...
+          
+          // Metadata
+          targetPersonas: habit.targetPersonas,
+          requiredScore: habit.requiredScore
+        });
+      }
+    }
+
+    return uniqueHabits.slice(0, maxHabits);
   }
 
   /**
    * ================================
-   * 5️⃣ Sinh insights cá nhân
+   * 6️⃣ Generate Insights
    * ================================
    */
   generateInsights(categoryScores, weakAreas) {
@@ -188,48 +282,72 @@ class HabitRecommendationEngine {
       digital: 'Giảm thời gian màn hình sẽ giúp bạn tập trung và ngủ ngon hơn.',
       social: 'Tăng cường kết nối với bạn bè, gia đình giúp bạn cân bằng cảm xúc.',
       fitness: 'Hãy vận động nhẹ nhàng mỗi ngày để duy trì năng lượng.',
+      sleep: 'Giấc ngủ chất lượng là nền tảng cho một ngày năng động.',
+      energy: 'Hãy chú ý đến nguồn năng lượng và nghỉ ngơi hợp lý.',
+      control: 'Tự chủ và kỷ luật sẽ giúp bạn đạt được mục tiêu.'
     };
 
-    return weakAreas.map((a) => ({
-      category: a.category,
-      message: messages[a.category],
-      priority: a.priority,
+    return weakAreas.map(area => ({
+      category: area.category,
+      message: messages[area.category] || `Cần cải thiện ${area.category}`,
+      priority: area.priority
     }));
   }
 
   /**
    * ================================
-   * 6️⃣ Hàm chính: Gợi ý thói quen
+   * 7️⃣ Main Recommendation Function
    * ================================
    */
   recommend(answers, maxHabits = 5) {
-    const { categoryScores, weakAreas } = this.analyzeAnswers(answers);
+    // 1. Calculate scores
+    const categoryScores = this.calculateCategoryScores(answers);
+
+    // 2. Find weak areas
+    const weakAreas = this.findWeakAreas(categoryScores);
+
+    // 3. Determine persona
     const persona = this.determinePersona(categoryScores);
 
-    let recommendations = this.findMatchingHabits(answers, categoryScores);
-    let selectedHabits = this.diversifyRecommendations(recommendations, maxHabits);
+    // 4. Generate habit recommendations
+    const habits = this.generateHabitRecommendations(
+      categoryScores,
+      weakAreas,
+      persona,
+      maxHabits
+    );
 
-    // ✅ Kết hợp với AI model
-    if (this.trainedModel[persona]) {
-      const aiHabits = this.trainedModel[persona].topHabits.map((name) => ({
-        name,
-        source: 'ai-model',
-        score: 100,
-        category: 'general',
-      }));
-      selectedHabits = [...selectedHabits, ...aiHabits];
-    }
-
+    // 5. Generate insights
     const insights = this.generateInsights(categoryScores, weakAreas);
 
+    // 6. Return recommendations
     return {
       persona,
       categoryScores,
       weakAreas,
       insights,
-      habits: selectedHabits.slice(0, maxHabits),
-      timestamp: new Date().toISOString(),
+      habits,
+      timestamp: new Date().toISOString()
     };
+  }
+
+  /**
+   * ================================
+   * Helper Methods for Controller
+   * ================================
+   */
+  getPersona(answers) {
+    const categoryScores = this.calculateCategoryScores(answers);
+    return this.determinePersona(categoryScores);
+  }
+
+  calculateScores(answers) {
+    return this.calculateCategoryScores(answers);
+  }
+
+  findWeakAreasFromAnswers(answers) {
+    const categoryScores = this.calculateCategoryScores(answers);
+    return this.findWeakAreas(categoryScores);
   }
 }
 
