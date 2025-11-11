@@ -7,11 +7,12 @@ import Dream from '../models/Dream.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// LOAD MODEL & CONFIG 
+//LOAD MODEL, CONFIG 
 let model = null;
 let tokenizer = null;
 let config = null;
 
+//Load từ trained model
 async function loadModel() {
   if (model) return;
   
@@ -28,18 +29,39 @@ async function loadModel() {
     const tokenizerPath = path.join(modelDir, 'tokenizer.json');
     tokenizer = JSON.parse(fs.readFileSync(tokenizerPath, 'utf8'));
     
-    // Load model with custom IOHandler
-    const modelPath = path.join(modelDir, 'model.json');
-    const weightsPath = path.join(modelDir, 'weights.bin');
+    // Load model using loadGraphModel for Keras models
+    const modelJsonPath = path.join(modelDir, 'model.json');
+    const handler = tf.io.withSaveHandler(async (artifacts) => {
+      return { modelArtifactsInfo: { dateSaved: new Date(), modelTopologyType: 'JSON' } };
+    });
     
-    const modelJSON = JSON.parse(fs.readFileSync(modelPath, 'utf8'));
-    const weightsBuffer = fs.readFileSync(weightsPath);
-    
-    // Custom IOHandler object
-    const customIOHandler = {
-      load: async () => ({
-        modelTopology: modelJSON.modelTopology,
-        weightSpecs: modelJSON.weightsManifest[0].weights,
+    // Create custom loader
+    handler.load = async () => {
+      const modelJSON = JSON.parse(fs.readFileSync(modelJsonPath, 'utf8'));
+      const weightsManifest = modelJSON.weightsManifest[0];
+      const weightPath = path.join(modelDir, weightsManifest.paths[0]);
+      const weightsBuffer = fs.readFileSync(weightPath);
+      
+      // Fix InputLayer batch_shape to inputShape
+      const topology = JSON.parse(JSON.stringify(modelJSON.modelTopology));
+      if (topology.model_config && topology.model_config.config && topology.model_config.config.layers) {
+        topology.model_config.config.layers.forEach(layer => {
+          if (layer.class_name === 'InputLayer' && layer.config.batch_shape) {
+            layer.config.inputShape = layer.config.batch_shape.slice(1);
+            delete layer.config.batch_shape;
+          }
+        });
+      }
+      
+      // Fix weight specs - remove "sequential/" prefix from Keras 3 models
+      const weightSpecs = weightsManifest.weights.map(spec => ({
+        ...spec,
+        name: spec.name.replace(/^sequential\//, '')
+      }));
+      
+      return {
+        modelTopology: topology,
+        weightSpecs: weightSpecs,
         weightData: weightsBuffer.buffer.slice(
           weightsBuffer.byteOffset,
           weightsBuffer.byteOffset + weightsBuffer.byteLength
@@ -47,10 +69,10 @@ async function loadModel() {
         format: modelJSON.format,
         generatedBy: modelJSON.generatedBy,
         convertedBy: modelJSON.convertedBy
-      })
+      };
     };
     
-    model = await tf.loadLayersModel(customIOHandler);
+    model = await tf.loadLayersModel(handler);
     
     console.log('Dream analysis model loaded successfully');
   } catch (error) {
@@ -59,18 +81,25 @@ async function loadModel() {
   }
 }
 
-// HELPER: TOKENIZE & PREDICT
+//TOKENIZE, PREDICT
 function preprocessText(text) {
-  const words = text.toLowerCase().match(/\S+/g) || [];
-  const sequence = words.map(word => tokenizer.wordIndex[word] || 0).filter(idx => idx !== 0);
-  
-  // Pad sequence
-  const maxLen = tokenizer.maxLen;
-  if (sequence.length > maxLen) {
-    return sequence.slice(0, maxLen);
-  } else {
-    return [...sequence, ...Array(maxLen - sequence.length).fill(0)];
+  //check xem tokenizer đã load 
+  if (!tokenizer || !tokenizer.word_index) {
+    throw new Error('Tokenizer not loaded');
   }
+  
+  const vocabSize = 2000; // Model chỉ có 2000 từ
+  const maxLen = 50;
+  const words = text.toLowerCase().match(/\S+/g) || [];
+  const sequence = [];
+  for (const word of words) {
+    let idx = tokenizer.word_index[word];
+    if (!idx || idx >= vocabSize) idx = 1; // <OOV> token
+    sequence.push(idx);
+  }
+  while (sequence.length < maxLen) sequence.push(0);
+  if (sequence.length > maxLen) sequence.length = maxLen;
+  return sequence;
 }
 
 async function predictCategory(dreamText) {
@@ -115,23 +144,26 @@ function detectLanguage(text) {
   if (vietnameseChars.test(text)) {
     return 'vi';
   }
-  
-  // Check for Vietnamese words
-  const vietnameseWords = /\b(tôi|mơ|giấc|thấy|bị|đang|của|là|có|không|này|được|với|cho|trong|về|và|một|các|những|ngày|người)\b/i;
-  
+
+  // Check for Vietnamese words (có dấu và không dấu)
+  const vietnameseWords = /\b(tôi|toi|mơ|mo|giấc|giac|thấy|thay|bị|bi|đang|dang|của|cua|là|la|có|co|không|khong|này|nay|được|duoc|với|voi|cho|trong|ve|và|va|một|mot|các|cac|những|nhung|ngày|ngay|người|nguoi|buồn|buon|vui|minh|bay|sợ|so|lo|hạnh phúc|hanh phuc)\b/i;
+
   // Check for English indicators
   const englishWords = /\b(I|dreamed|dream|was|were|about|the|and|in|on|at|my|your|their|feeling|felt)\b/;
-  
+
   // Count matches
   const vietnameseMatches = (text.match(vietnameseWords) || []).length;
   const englishMatches = (text.match(englishWords) || []).length;
-  
+
+  // If Vietnamese words (có dấu hoặc không dấu) dominate, return Vietnamese
+  if (vietnameseMatches > englishMatches) {
+    return 'vi';
+  }
   // If English words dominate, return English
   if (englishMatches > vietnameseMatches) {
     return 'en';
   }
-  
-  // Default to Vietnamese if has Vietnamese words, else English
+  // Default: nếu có từ tiếng Việt thì trả về 'vi', ngược lại 'en'
   return vietnameseMatches > 0 ? 'vi' : 'en';
 }
 
@@ -552,10 +584,10 @@ function generateTips(category) {
   return shuffled.slice(0, numTips).join('\n\n');
 }
 
-// CONTROLLER: ANALYZE DREAM
+//ANALYZE DREAM
 export const analyzeDream = async (req, res, next) => {
   try {
-    const { dreamText } = req.body;
+    const dreamText = req.body.dreamText || req.body.dream;
     const userId = req.user._id;
     
     // Validate
@@ -617,7 +649,7 @@ export const analyzeDream = async (req, res, next) => {
   }
 };
 
-// CONTROLLER: GET DREAM HISTORY
+//GET DREAM HISTORY
 export const getDreamHistory = async (req, res, next) => {
   try {
     const userId = req.user._id;
@@ -650,7 +682,7 @@ export const getDreamHistory = async (req, res, next) => {
   }
 };
 
-// CONTROLLER: GET DREAM STATS
+//GET DREAM STATS
 export const getDreamStats = async (req, res, next) => {
   try {
     const userId = req.user._id;
@@ -703,7 +735,7 @@ export const getDreamStats = async (req, res, next) => {
 };
 
 
-// CONTROLLER: GET SINGLE DREAM
+//GET SINGLE DREAM
 export const getDream = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -728,7 +760,7 @@ export const getDream = async (req, res, next) => {
 };
 
 
-// CONTROLLER: DELETE DREAM
+//DELETE DREAM
 export const deleteDream = async (req, res, next) => {
   try {
     const { id } = req.params;

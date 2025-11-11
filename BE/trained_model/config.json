@@ -1,12 +1,4 @@
 {
-  "maxWords": 1000,
-  "maxLen": 50,
-  "embeddingDim": 64,
-  "lstmUnits": 128,
-  "epochs": 20,
-  "batchSize": 64,
-  "validationSplit": 0.2,
-  "learningRate": 0.0008,
   "categories": [
     "stress",
     "fear",
@@ -16,6 +8,8 @@
     "neutral",
     "confusion"
   ],
-  "totalSamples": 1260,
-  "trainedAt": "2025-11-07T07:05:46.982Z"
+  "vocab_size": 14266,
+  "max_len": 50,
+  "embedding_dim": 128,
+  "lstm_units": 64
 }

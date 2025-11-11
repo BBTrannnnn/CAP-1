@@ -53,11 +53,11 @@ const dreamSchema = new mongoose.Schema({
   toObject: { virtuals: true },
 });
 
-// Indexes for performance
+//Indexes for performance
 dreamSchema.index({ userId: 1, analyzedAt: -1 });
 dreamSchema.index({ userId: 1, category: 1 });
 
-// Virtual for formatted date
+//Virtual for formatted date
 dreamSchema.virtual('formattedDate').get(function() {
   return this.analyzedAt.toLocaleDateString('vi-VN', {
     year: 'numeric',
