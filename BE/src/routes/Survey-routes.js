@@ -30,7 +30,7 @@ router.get('/session', authenticateToken, getUserSurveySession);
 // 2. Submit câu trả lời
 router.post('/submit', authenticateToken, submitSurveyAnswers);
 
-// 3. Lấy kết quả + recommendations
+// Ket qyuao khảo sát
 router.get('/results', authenticateToken, getUserSurveyResults);
 
 // 4. Reset session hiện tại (tạo lại câu hỏi mới)
