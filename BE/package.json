@@ -9,7 +9,6 @@
     "seed:data": "node src/Script/seedData.js",
     "prepare":"node src/Script/prepareHabitDataset.js",
     "seed:audio": "node src/Script/seedAudioContent.js",
-    "generateTraindata": "node src/Script/generateTraindata.js",
     "trainModel": "node src/Script/trainModel.js"
   },
   "type": "module",
