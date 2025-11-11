@@ -30,6 +30,7 @@ import {
   getTemplateById,
   getTemplatesByCategory,
   getHabitTemplates,
+  addHabitsFromRecommendations,
 
 
   // Sub-tracking
@@ -158,6 +159,9 @@ router.post('/templates/:templateId', createHabitFromTemplate);
 router.get('/templates/:templateId', getTemplateById);
 // Get templates by category
 router.get('/templates/category/:category', getTemplatesByCategory);
+
+// Add habits from recommendations
+router.post('/recommendations', addHabitsFromRecommendations);
 
 
 // ==================== Dashboard & Reports ====================

@@ -1,6 +1,6 @@
 import asyncHandler from 'express-async-handler';
 import { Habit, HabitTracking, HabitTemplate, HabitSubTracking, HabitGoal, HabitReminder } from '../models/Habit.js';
-import { UserAnalysis } from '../models/Survey.js';
+import { UserAnalysis,HabitSuggestion } from '../models/Survey.js';
 
 // ==================== CRUD Operations ====================
 
@@ -2436,7 +2436,7 @@ const getWeeklyReport = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Get habit insights and recommendations
+// @desc    Get habit  recommendations
 
 const getHabitInsights = asyncHandler(async (req, res) => {
   const userId = req.user.id;
@@ -2523,6 +2523,157 @@ const getHabitInsights = asyncHandler(async (req, res) => {
       message: 'Failed to get habit insights'
     });
   }
+});
+
+//    Add habits from recommendations
+const addHabitsFromRecommendations = asyncHandler(async (req, res) => {
+  const userId = req.user.id;
+  const { habitIds, customizations } = req.body;
+
+  // Validate input
+  if (!Array.isArray(habitIds) || habitIds.length === 0) {
+    return res.status(400).json({
+      success: false,
+      message: 'habitIds must be a non-empty array'
+    });
+  }
+
+  // Giới hạn tối đa 10 thói quen cùng lúc
+  if (habitIds.length > 10) {
+    return res.status(400).json({
+      success: false,
+      message: 'Cannot add more than 10 habits at once'
+    });
+  }
+
+  // Lấy các habit suggestions
+  const suggestions = await HabitSuggestion.find({
+    _id: { $in: habitIds }
+  });
+
+  if (suggestions.length === 0) {
+    return res.status(404).json({
+      success: false,
+      message: 'No valid habit suggestions found'
+    });
+  }
+
+  // Kiểm tra xem user đã có những thói quen này chưa
+  const existingHabits = await Habit.find({
+    userId,
+    suggestionId: { $in: habitIds },
+    isActive: true
+  });
+
+  const existingIds = existingHabits.map(h => h.suggestionId?.toString());
+  const duplicates = suggestions.filter(s => existingIds.includes(s._id.toString()));
+
+  // Lấy số thứ tự hiện tại để sắp xếp
+  const habitCount = await Habit.countDocuments({ userId, isActive: true });
+
+  // Tạo các habits mới
+  const newHabits = [];
+  const errors = [];
+
+  for (let i = 0; i < suggestions.length; i++) {
+    const suggestion = suggestions[i];
+    
+    // Skip nếu đã tồn tại
+    if (existingIds.includes(suggestion._id.toString())) {
+      continue;
+    }
+
+    try {
+      // Lấy customization cho từng habit (nếu có)
+      const custom = customizations?.[suggestion._id.toString()] || {};
+
+      // Map category từ suggestion sang habit category
+      const categoryMap = {
+        'health': 'health',
+        'fitness': 'fitness',
+        'learning': 'learning',
+        'mindfulness': 'mindful',
+        'productivity': 'learning',
+        'social': 'social',
+        'sleep': 'sleep'
+      };
+
+      const habitData = {
+        userId,
+        name: custom.name || suggestion.name,
+        description: custom.description || suggestion.description,
+        
+        // UI Elements
+        icon: custom.icon || suggestion.icon || '🎯',
+        color: custom.color || suggestion.color || '#3B82F6',
+        
+        // Category - map từ suggestion category
+        category: categoryMap[suggestion.category] || 'health',
+        
+        // Frequency
+        frequency: custom.frequency || suggestion.frequency || 'daily',
+        customFrequency: custom.customFrequency,
+        
+        // Tracking Mode
+        trackingMode: suggestion.trackingMode || 'check',
+        targetCount: suggestion.targetCount || 1,
+        unit: suggestion.unit || '',
+        
+        // Type
+        habitType: suggestion.habitType || 'build',
+        
+        // Dates
+        startDate: custom.startDate ? new Date(custom.startDate) : new Date(),
+        endDate: custom.endDate ? new Date(custom.endDate) : undefined,
+        
+        // Metadata
+        isFromSuggestion: true,
+        suggestionId: suggestion._id,
+        order: habitCount + newHabits.length,
+        
+        // Status
+        isActive: true
+      };
+
+      const newHabit = await Habit.create(habitData);
+      newHabits.push(newHabit);
+
+      // Cập nhật usage count của suggestion (nếu có)
+      if (suggestion.usageCount !== undefined) {
+        await HabitSuggestion.findByIdAndUpdate(suggestion._id, {
+          $inc: { usageCount: 1 }
+        });
+      }
+
+    } catch (error) {
+      errors.push({
+        suggestionId: suggestion._id,
+        name: suggestion.name,
+        reason: error.message
+      });
+    }
+  }
+
+  // Response
+  const statusCode = newHabits.length > 0 ? 201 : 200;
+  
+  res.status(statusCode).json({
+    success: true,
+    message: newHabits.length > 0 
+      ? `Successfully added ${newHabits.length} habit(s)` 
+      : 'No new habits were added',
+    data: {
+      added: newHabits.length,
+      total: habitIds.length,
+      habits: newHabits,
+      duplicates: duplicates.map(d => ({
+        id: d._id,
+        name: d.name,
+        message: 'Already exists in your habits'
+      })),
+      errors
+    }
+  });
 });
 
 // @desc    Bulk update habits order
@@ -3283,6 +3434,7 @@ export {
   getHabitTemplates,
   getTemplateById,
   getTemplatesByCategory,
+  addHabitsFromRecommendations,
 
   // Sub-tracking
   addHabitSubTracking,
