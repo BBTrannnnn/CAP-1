@@ -1,22 +1,37 @@
 // app/(tabs)/habits/AddHabitModal.tsx
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Stack, Link, router } from 'expo-router';
 import {
-  View, Text, SafeAreaView, ScrollView, TextInput,
-  StyleSheet, Pressable, TouchableOpacity,
-  StyleProp, ViewStyle, TextStyle, ImageStyle,
+  View,
+  Text,
+  SafeAreaView,
+  ScrollView,
+  TextInput,
+  StyleSheet,
+  Pressable,
+  TouchableOpacity,
+  StyleProp,
+  ViewStyle,
+  TextStyle,
+  ImageStyle,
 } from 'react-native';
-import { X, Search, Plus, Check } from '@tamagui/lucide-icons';
+import { X, Search, Plus } from '@tamagui/lucide-icons';
+import { getHabitTemplates } from '../../../server/habits';
 
-// Helper: flatten mọi style mảng -> object (an toàn web/DOM/SVG)
+// Helper: flatten mọi style mảng -> object
 const sx = (...styles: Array<StyleProp<ViewStyle | TextStyle | ImageStyle>>) =>
   StyleSheet.flatten(styles.filter(Boolean));
 
-type HabitItem = { icon: string; name: string; category: string; color: string };
+type HabitItem = {
+  id: string;
+  icon: string;
+  name: string;
+  category: string;
+  color: string;
+};
 type Categories = Record<string, HabitItem[]>;
 
 function withAlpha(hex: string, alpha = 0.12) {
-  // hex #RRGGBB -> rgba(r,g,b,a)
   const h = hex.replace('#', '');
   const r = parseInt(h.slice(0, 2), 16);
   const g = parseInt(h.slice(2, 4), 16);
@@ -26,44 +41,70 @@ function withAlpha(hex: string, alpha = 0.12) {
 
 export default function AddHabitModal() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [selectedHabit, setSelectedHabit] = useState<HabitItem | null>(null);
+  const [categories, setCategories] = useState<Categories>({});
+  const [isLoading, setIsLoading] = useState(true);
 
-  const categories: Categories = useMemo(
-    () => ({
-      'Sức khỏe': [
-        { icon: '🏃', name: 'Ăn uống lành mạnh', category: 'Healthy',  color: '#10b981' },
-        { icon: '⭐', name: 'Tập thể dục',       category: 'Fitness',  color: '#f97316' },
-        { icon: '💧', name: 'Uống nước đủ',      category: 'Health',   color: '#a78bfa' },
-      ],
-      'Tinh thần': [
-        { icon: '💗', name: 'Thiền định',        category: 'Mindful',  color: '#ec4899' },
-        { icon: '📖', name: 'Viết nhật ký',      category: 'Mindful',  color: '#8b5cf6' },
-        { icon: '📚', name: 'Đọc sách',          category: 'Learning', color: '#10b981' },
-        { icon: '🧘', name: 'Cảm ơn',            category: 'Mindful',  color: '#f59e0b' },
-        { icon: '✨', name: 'Học ngoại ngữ',     category: 'Learning', color: '#a78bfa' },
-      ],
-      'Kiểm soát': [
-        { icon: '🚭', name: 'Không hút thuốc',                     category: 'Control', color: '#9ca3af' },
-        { icon: '🍷', name: 'Không uống rượu',                     category: 'Control', color: '#ec4899' },
-        { icon: '☕', name: 'Ít coffee',                            category: 'Control', color: '#f97316' },
-        { icon: '💰', name: 'Tiết kiệm tiền',                      category: 'Finance', color: '#10b981' },
-        { icon: '📱', name: 'Không xem điện thoại trước khi ngủ',  category: 'Control', color: '#6b7280' },
-      ],
-    }),
-    []
-  );
+  useEffect(() => {
+    (async () => {
+      setIsLoading(true);
+      try {
+        const res: any = await getHabitTemplates({ limit: 100 });
+        console.log('[AddHabitModal] templates API:', res);
+        const templates = Array.isArray(res?.templates) ? res.templates : [];
+        const cats: Categories = {};
+        templates.forEach((t: any) => {
+          const catName = t.categoryDetails?.name || t.category || 'Khác';
+          if (!cats[catName]) cats[catName] = [];
+          cats[catName].push({
+            id: t._id,
+            icon: t.icon || '⭐',
+            name: t.name,
+            category: t.category,
+            color: t.color || '#3b82f6',
+          });
+        });
+        setCategories(cats);
+      } catch (err) {
+        console.error('[AddHabitModal] failed to fetch templates:', err);
+        setCategories({});
+      } finally {
+        setIsLoading(false);
+      }
+    })();
+  }, []);
 
   const filtered: Categories = useMemo(() => {
     const f: Categories = {};
     const q = searchTerm.trim().toLowerCase();
-    Object.keys(categories).forEach(cat => {
-      const items = categories[cat].filter(h => h.name.toLowerCase().includes(q));
+    if (!q) return categories;
+    Object.keys(categories).forEach((cat) => {
+      const items = categories[cat].filter((h) => h.name.toLowerCase().includes(q));
       if (items.length) f[cat] = items;
     });
     return f;
   }, [categories, searchTerm]);
 
-  const canContinue = !!selectedKey;
+  // Chỉ dùng param id (templateId)
+  const goToCreateHabitDetail = (habit: HabitItem) => {
+    setSelectedHabit(habit);
+    router.push({
+      pathname: '/(tabs)/habits/CreateHabitDetail',
+      params: {
+        templateId: habit.id,
+      },
+    });
+  };
+
+  const handleContinue = () => {
+      // Chưa chọn -> đi vào CreateHabitDetail không param (id = null)
+      router.push('/(tabs)/habits/CreateHabitDetail');
+  };
+
+  const totalTemplates = Object.keys(categories).reduce(
+    (acc, cat) => acc + categories[cat].length,
+    0
+  );
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -94,51 +135,56 @@ export default function AddHabitModal() {
       </View>
 
       {/* Content */}
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 16 }}>
-        {Object.keys(filtered).length ? (
+      <ScrollView
+        contentContainerStyle={{
+          paddingHorizontal: 16,
+          paddingTop: 8,
+          paddingBottom: 16,
+        }}
+      >
+        {isLoading ? (
+          <View style={styles.emptyBox}>
+            <Text style={{ color: '#9ca3af' }}>Đang tải...</Text>
+          </View>
+        ) : Object.keys(filtered).length ? (
           Object.keys(filtered).map((cat) => (
             <View key={cat} style={{ marginBottom: 20 }}>
               <Text style={styles.sectionLabel}>{cat}</Text>
 
-              {filtered[cat].map((habit, idx) => {
-                const key = `${cat}-${idx}`;
-                const selected = selectedKey === key;
-                return (
-                  <Pressable
-                    key={key}
-                    onPress={() => setSelectedKey(key)}
-                    style={sx(
-                      styles.itemRow,
-                      selected && { backgroundColor: '#f0fdf4' }
-                    )}
+              {filtered[cat].map((habit) => (
+                <Pressable
+                  key={habit.id}
+                  onPress={() => goToCreateHabitDetail(habit)}
+                  style={styles.itemRow}
+                >
+                  <View
+                    style={sx(styles.iconSquare, {
+                      backgroundColor: withAlpha(habit.color, 0.12),
+                      borderColor: withAlpha(habit.color, 0.4),
+                    })}
                   >
-                    <View
-                      style={sx(
-                        styles.iconSquare,
-                        { backgroundColor: withAlpha(habit.color, 0.12), borderColor: withAlpha(habit.color, 0.4) }
-                      )}
-                    >
-                      <Text style={{ fontSize: 20 }}>{habit.icon}</Text>
-                    </View>
+                    <Text style={{ fontSize: 20 }}>{habit.icon}</Text>
+                  </View>
 
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.itemName} numberOfLines={1}>{habit.name}</Text>
-                      <Text style={styles.itemCat} numberOfLines={1}>{habit.category}</Text>
-                    </View>
-
-                    {selected && (
-                      <View style={styles.checkCircle}>
-                        <Check size={14} color="#fff" />
-                      </View>
-                    )}
-                  </Pressable>
-                );
-              })}
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.itemName} numberOfLines={1}>
+                      {habit.name}
+                    </Text>
+                    <Text style={styles.itemCat} numberOfLines={1}>
+                      {habit.category}
+                    </Text>
+                  </View>
+                </Pressable>
+              ))}
             </View>
           ))
         ) : (
           <View style={styles.emptyBox}>
-            <Text style={{ color: '#9ca3af' }}>Không tìm thấy thói quen</Text>
+            <Text style={{ color: '#9ca3af' }}>
+              {totalTemplates === 0
+                ? 'Không có thói quen mẫu nào'
+                : 'Không tìm thấy thói quen phù hợp'}
+            </Text>
           </View>
         )}
       </ScrollView>
@@ -151,15 +197,12 @@ export default function AddHabitModal() {
           </Pressable>
         </Link>
 
+        {/* Luôn màu xanh dương, nếu chưa chọn id thì vào CreateHabitDetail không param */}
         <Pressable
-          onPress={() => canContinue && router.push('/(tabs)/habits/CreateHabitDetail')}
-          disabled={!canContinue}
-          style={sx(
-            styles.bottomBtn,
-            { backgroundColor: canContinue ? '#2563eb' : '#d1d5db' }
-          )}
+          onPress={handleContinue}
+          style={sx(styles.bottomBtn, { backgroundColor: '#2563eb' })}
         >
-          <Text style={sx(styles.bottomText, { color: '#fff' })}>Tiếp tục</Text>
+          <Text style={sx(styles.bottomText, { color: '#fff' })}>Tạo thói quen tùy chỉnh</Text>
         </Pressable>
       </View>
 
@@ -179,61 +222,96 @@ export default function AddHabitModal() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#fff' },
   header: {
-    paddingHorizontal: 16, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: '#e5e7eb',
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   headerTitle: { fontSize: 18, fontWeight: '700', color: '#111827' },
   iconBtn: {
-    width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: '#F3F4F6',
   },
 
   searchBox: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: '#F5F5F5', paddingHorizontal: 12, paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#F5F5F5',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     borderRadius: 10,
   },
   searchInput: { flex: 1, fontSize: 14, color: '#111827' },
 
-  sectionLabel: { fontSize: 13, fontWeight: '700', color: '#6b7280', marginBottom: 10 },
+  sectionLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#6b7280',
+    marginBottom: 10,
+  },
   itemRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f3f4f6',
-    borderRadius: 10, paddingHorizontal: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+    borderRadius: 10,
+    paddingHorizontal: 4,
   },
   iconSquare: {
-    width: 40, height: 40, borderRadius: 10,
-    alignItems: 'center', justifyContent: 'center',
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
   },
   itemName: { fontSize: 15, fontWeight: '600', color: '#0f172a' },
   itemCat: { fontSize: 12, color: '#6b7280' },
 
-  checkCircle: {
-    width: 20, height: 20, borderRadius: 10, backgroundColor: '#10b981',
-    alignItems: 'center', justifyContent: 'center',
-  },
-
   emptyBox: {
-    height: 200, alignItems: 'center', justifyContent: 'center',
+    height: 200,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   bottomBar: {
-    flexDirection: 'row', gap: 8,
-    paddingHorizontal: 16, paddingVertical: 12,
-    borderTopWidth: 1, borderTopColor: '#e5e7eb',
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
   },
   bottomBtn: {
-    flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center',
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
   },
   bottomText: { fontSize: 14, fontWeight: '600' },
 
   customBtn: {
-    width: '100%', paddingVertical: 12, borderRadius: 10,
-    borderWidth: 2, borderStyle: 'dashed', borderColor: '#2563eb',
-    alignItems: 'center', justifyContent: 'center',
-    flexDirection: 'row', gap: 8, backgroundColor: 'transparent',
+    width: '100%',
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: '#2563eb',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    backgroundColor: 'transparent',
   },
   customBtnText: { color: '#2563eb', fontSize: 14, fontWeight: '600' },
 });

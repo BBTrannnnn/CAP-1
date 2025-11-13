@@ -1,20 +1,27 @@
 // app/(tabs)/habits/CreateHabitDetail.tsx
-import React, { useMemo, useState } from 'react';
-import { Stack, Link } from 'expo-router';
+import React, { useMemo, useState, useEffect } from 'react';
+import { Stack, Link, useLocalSearchParams, router } from 'expo-router';
 import {
   View, Text, SafeAreaView, ScrollView, StyleSheet,
   Pressable, TextInput, TouchableOpacity, Modal, Platform,
-  StyleProp, ViewStyle, TextStyle, ImageStyle
+  StyleProp, ViewStyle, TextStyle, ImageStyle, Alert,
 } from 'react-native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { X, ChevronLeft, Check, MoreVertical } from '@tamagui/lucide-icons';
+import {
+  getHabitTemplateById,
+  createHabit,
+  updateHabit,
+  deleteHabit,
+} from '../../../server/habits';
 
-// Helper: flatten mọi style mảng -> object (an toàn web/DOM/SVG)
+// Helper: flatten style mảng -> object
 const sx = (...styles: Array<StyleProp<ViewStyle | TextStyle | ImageStyle>>) =>
   StyleSheet.flatten(styles.filter(Boolean));
 
 type Freq = 'daily' | 'weekly' | 'custom';
 type Repeat = 'everyday' | 'avoid';
+type TrackingMode = 'check' | 'count';
 
 function fmtDate(d: Date) {
   const y = d.getFullYear();
@@ -23,17 +30,89 @@ function fmtDate(d: Date) {
   return `${y}-${m}-${day}`;
 }
 
+/* ------------------------------------------------------------------ */
+/* Helpers đảm bảo không bao giờ gửi frequency nếu là custom          */
+/* ------------------------------------------------------------------ */
+
+// Loại bỏ key có giá trị undefined hoặc null (deep)
+function deepStrip<T = any>(obj: T): T {
+  if (Array.isArray(obj)) {
+    // @ts-ignore
+    return obj.map(deepStrip).filter(v => v !== undefined && v !== null) as any;
+  }
+  if (obj && typeof obj === 'object') {
+    const out: any = {};
+    Object.entries(obj as any).forEach(([k, v]) => {
+      const vv = deepStrip(v);
+      if (vv !== undefined && vv !== null) out[k] = vv;
+    });
+    return out;
+  }
+  return obj;
+}
+
+// Xoá cứng các key
+function drop<T extends Record<string, any>>(obj: T, keys: string[]): T {
+  const clone: any = { ...obj };
+  for (const k of keys) delete clone[k];
+  return clone;
+}
+
+// Trả về phần tần suất: nếu custom → CHỈ gửi customFrequency (+ targetCount nếu count)
+// TUYỆT ĐỐI không kèm frequency khi custom
+function buildFrequencyPart(
+  frequency: Freq,
+  customTimes: string,
+  customPeriod: 'day' | 'week' | 'month',
+  trackingMode: TrackingMode
+) {
+  if (frequency === 'custom') {
+    const n = parseInt(customTimes || '0', 10);
+    if (Number.isFinite(n) && n > 0) {
+      const customObj = { times: n, period: customPeriod };
+      return {
+        // Nếu BE dùng "customFrequence" (sai chính tả) hãy đổi key dưới thành customFrequence
+        customFrequency: customObj,
+        ...(trackingMode === 'count' ? { targetCount: n } : {}),
+      };
+    }
+    // Người dùng chọn custom nhưng chưa nhập số lần hợp lệ → không gửi gì cả
+    return {};
+  }
+  // daily/weekly → chỉ gửi frequency
+  return { frequency };
+}
+
+// Bảo hiểm cuối: nếu đang có customFrequency/customFrequence → xoá frequency (nếu lỡ còn sót)
+function sanitizeFrequency<T extends Record<string, any>>(payload: T): T {
+  const hasCustom =
+    !!(payload as any).customFrequency || !!(payload as any).customFrequence;
+  return hasCustom ? drop(payload, ['frequency']) : payload;
+}
+
 export default function CreateHabitDetail() {
-  const [habitName, setHabitName] = useState('Ăn uống lành mạnh');
-  const [selectedIcon, setSelectedIcon] = useState('🏃');
+  const { templateId } = useLocalSearchParams<{ templateId?: string }>();
+  const isEditMode = useMemo(
+    () => !!templateId && templateId !== 'null' && templateId !== 'undefined',
+    [templateId]
+  );
+
+  // State
+  const [habitName, setHabitName] = useState('');
+  const [selectedIcon, setSelectedIcon] = useState<string>('');
   const [selectedColor, setSelectedColor] = useState('#10b981');
   const [frequency, setFrequency] = useState<Freq>('daily');
-  const [customFrequency, setCustomFrequency] = useState('3');
+  const [customTimes, setCustomTimes] = useState('1');
+  const [customPeriod, setCustomPeriod] = useState<'day' | 'week' | 'month'>('day');
   const [repeatType, setRepeatType] = useState<Repeat>('everyday');
-  const [selectedCategories, setSelectedCategories] = useState<string[]>(['Health']);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [description, setDescription] = useState('');
+  const [trackingMode, setTrackingMode] = useState<TrackingMode>('check');
 
   const [actionOpen, setActionOpen] = useState(false);
+  const [addOptionsOpen, setAddOptionsOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Dates
   const [startDate, setStartDate] = useState<Date>(new Date());
@@ -45,11 +124,11 @@ export default function CreateHabitDetail() {
     () => ['🍎','🏃','⏰','💝','📚','💻','📱','🧘','💰','😊','💤','⚡','🎯','📖','✏️','🏠','🎵','🍵','💧','🥬','🏥','👟','👥'],
     [],
   );
-  const colors = ['#10b981','#f97316','#3b82f6','#ec4899','#6366f1','#ef4444','#22c55e','#f59e0b','#8b5cf6','#9ca3af'];
+  const colors = ['#10B981', '#F59E0B', '#3B82F6', '#EC4899', '#6366F1', '#EF4444', '#22C55E', '#FF6B35', '#8B5CF6', '#6B7280'];
   const frequencies = [
-    { id: 'daily', label: 'Hằng ngày' },
-    { id: 'weekly', label: 'Hằng tuần' },
-    { id: 'custom', label: 'Tùy chỉnh' },
+    { id: 'daily', label: 'Hàng ngày' },
+    { id: 'weekly', label: 'Hàng tuần' },
+    { id: 'custom', label: 'Tuỳ chỉnh' },
   ] as const;
   const repeatTypes = [
     { id: 'everyday', label: 'Làm',   Icon: Check },
@@ -68,10 +147,127 @@ export default function CreateHabitDetail() {
     { id: 'Energy',   label: 'Energy',   icon: '⚡',  color: '#f59e0b' },
   ];
 
-  const toggleCategory = (id: string) =>
-    setSelectedCategories(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  // Auto set custom khi nhập số lần
+  const onChangeCustomTimes = (v: string) => {
+    setCustomTimes(v);
+    if (frequency !== 'custom') setFrequency('custom');
+  };
 
-  // Web date input handler
+  // Build payload (Create & “Tạo từ mẫu” dùng chung)
+  const buildPayload = () => {
+    const primaryCategory = selectedCategories[0];
+    const categorySlug = primaryCategory ? primaryCategory.toLowerCase() : undefined;
+    const habitType = repeatType === 'avoid' ? 'quit' : 'build';
+
+    const base: any = {
+      name: habitName?.trim() || undefined,
+      description: description?.trim() || undefined,
+      icon: selectedIcon || undefined,
+      color: selectedColor || undefined,
+      category: categorySlug,
+      habitType,
+      trackingMode,
+      startDate: fmtDate(startDate),
+      ...(endDate ? { endDate: fmtDate(endDate) } : {}),
+    };
+
+    const freqPart = buildFrequencyPart(frequency, customTimes, customPeriod, trackingMode);
+    // Gộp → strip undefined/null → xoá frequency nếu có custom
+    let payload: any = sanitizeFrequency(deepStrip({ ...base, ...freqPart }));
+    console.log('[CreateHabitDetail] payload:', payload);
+    return payload;
+  };
+
+  const handleCreateFromTemplate = async () => {
+    if (!templateId || isSubmitting) return;
+    try {
+      setIsSubmitting(true);
+      const payload = buildPayload();
+      const res = await createHabit(payload);
+      console.log('[CreateHabitDetail] createHabit (from template) API:', res);
+      Alert.alert('Thành công', 'Đã tạo thói quen.');
+      router.replace('/(tabs)/habits');
+    } catch (err) {
+      console.error('[CreateHabitDetail] createHabit (from template) error:', err);
+      Alert.alert('Lỗi', 'Không thể tạo thói quen. Vui lòng thử lại.');
+      setIsSubmitting(false);
+    } finally {
+      setActionOpen(false);
+    }
+  };
+
+  // Load template / reset
+  useEffect(() => {
+    const resetForm = () => {
+      setHabitName('');
+      setDescription('');
+      setSelectedIcon('');
+      setSelectedColor('#10b981');
+      setFrequency('daily');
+      setCustomTimes('1');
+      setCustomPeriod('day');
+      setRepeatType('everyday');
+      setSelectedCategories([]);
+      setStartDate(new Date());
+      setEndDate(null);
+      setTrackingMode('check');
+    };
+
+    if (!isEditMode) {
+      resetForm();
+      return;
+    }
+
+    (async () => {
+      try {
+        const res: any = await getHabitTemplateById(templateId);
+        const t = res?.template || res?.habitTemplate || res;
+        if (!t) return resetForm();
+
+        if (t.name) setHabitName(t.name);
+        if (t.description) setDescription(t.description);
+        if (t.icon) setSelectedIcon(t.icon);
+        if (t.color) setSelectedColor(t.color);
+
+        if (t.frequency === 'weekly') setFrequency('weekly');
+        else if (t.frequency === 'custom') setFrequency('custom');
+        else setFrequency('daily');
+
+        const tmplCustom = t.customFrequency || t.customFrequence;
+        if (tmplCustom) {
+          const times = Number(tmplCustom.times || t.targetCount || 1);
+          if (Number.isFinite(times) && times > 0) setCustomTimes(String(times));
+          const period = tmplCustom.period;
+          if (period === 'day' || period === 'week' || period === 'month') setCustomPeriod(period);
+        } else if (t.targetCount) {
+          setCustomTimes(String(t.targetCount));
+        }
+
+        if (t.habitType === 'quit') setRepeatType('avoid');
+        else setRepeatType('everyday');
+
+        if (t.trackingMode === 'count') setTrackingMode('count');
+        else setTrackingMode('check');
+
+        if (t.category) {
+          const found = categories.find(
+            (c) => c.id.toLowerCase() === String(t.category).toLowerCase()
+          );
+          setSelectedCategories([found ? found.id : String(t.category)]);
+        }
+      } catch (err) {
+        console.error('[CreateHabitDetail] load template error:', err);
+        resetForm();
+      }
+    })();
+  }, [isEditMode, templateId]);
+
+  const toggleCategory = (id: string) =>
+    setSelectedCategories((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+
+  // Web date handler
   const handleWebDateChange = (which: 'start' | 'end', value: string) => {
     const date = new Date(value);
     if (which === 'start') {
@@ -79,6 +275,50 @@ export default function CreateHabitDetail() {
       if (endDate && endDate < date) setEndDate(date);
     } else {
       setEndDate(date);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!habitName.trim()) {
+      Alert.alert('Thiếu tên', 'Vui lòng nhập tên thói quen.');
+      return;
+    }
+    if (invalidRange || isSubmitting) return;
+
+    const payload = buildPayload();
+
+    try {
+      setIsSubmitting(true);
+      if (isEditMode) {
+        const res = await updateHabit(templateId as string, payload);
+        console.log('[CreateHabitDetail] updateHabit API:', res);
+        Alert.alert('Thành công', 'Đã cập nhật thói quen.');
+      } else {
+        const res = await createHabit(payload);
+        console.log('[CreateHabitDetail] createHabit API:', res);
+      }
+      router.replace('/(tabs)/habits');
+    } catch (err) {
+      console.error(`[CreateHabitDetail] ${isEditMode ? 'updateHabit' : 'createHabit'} error:`, err);
+      Alert.alert('Lỗi', `Không thể ${isEditMode ? 'cập nhật' : 'tạo'} thói quen. Vui lòng thử lại.`);
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!isEditMode || isSubmitting) return;
+    try {
+      setIsSubmitting(true);
+      const res = await deleteHabit(templateId as string);
+      console.log('[CreateHabitDetail] deleteHabit API:', res);
+      Alert.alert('Thành công', 'Đã xóa thói quen.');
+      router.replace('/(tabs)/habits');
+    } catch (err) {
+      console.error('[CreateHabitDetail] deleteHabit error:', err);
+      Alert.alert('Lỗi', 'Không thể xóa thói quen. Vui lòng thử lại.');
+      setIsSubmitting(false);
+    } finally {
+      setConfirmOpen(false);
     }
   };
 
@@ -95,8 +335,29 @@ export default function CreateHabitDetail() {
             </Pressable>
           </Link>
           <View>
-            <Text style={styles.title}>Chi tiết thói quen</Text>
+            <Text style={styles.title}>{isEditMode ? 'Sửa thói quen' : 'Chi tiết thói quen'}</Text>
             <Text style={sx(styles.small, { color: '#2563eb', fontWeight: '700' })}>Quay lại</Text>
+          </View>
+        </View>
+
+        {/* Tracking mode */}
+        <View style={sx(styles.card, styles.section)}>
+          <Text style={styles.sectionTitle}>Tracking mode</Text>
+          <View style={styles.segmentRow}>
+            {(['check','count'] as const).map((m) => (
+              <Pressable
+                key={m}
+                onPress={() => setTrackingMode(m)}
+                style={sx(
+                  styles.segment,
+                  trackingMode === m && styles.segmentActive
+                )}
+              >
+                <Text style={sx(styles.segmentText, trackingMode === m && { color: '#2563eb' })}>
+                  {m === 'check' ? 'Check' : 'Count'}
+                </Text>
+              </Pressable>
+            ))}
           </View>
         </View>
 
@@ -112,14 +373,38 @@ export default function CreateHabitDetail() {
         </View>
       </View>
 
-      {/* Action menu (modal) */}
+      {/* Action menu */}
       <Modal visible={actionOpen} transparent animationType="fade" onRequestClose={() => setActionOpen(false)}>
         <Pressable style={styles.overlay} onPress={() => setActionOpen(false)}>
-          <Pressable style={styles.menu} onPress={e => e.stopPropagation()}>
+          <Pressable style={styles.menu} onPress={(e) => e.stopPropagation()}>
+            {isEditMode ? (
+              <TouchableOpacity style={styles.menuItem} onPress={handleCreateFromTemplate}>
+                <Text style={styles.menuText}>Thêm vào thói quen</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => {
+                  setActionOpen(false);
+                  handleSave();
+                }}
+              >
+                <Text style={styles.menuText}>Lưu</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity style={styles.menuItem} onPress={handleCreateFromTemplate}>
+              <Text style={styles.menuText}>Thêm từ mẫu</Text>
+            </TouchableOpacity>
             <TouchableOpacity style={styles.menuItem} onPress={() => setActionOpen(false)}>
               <Text style={styles.menuText}>Sửa</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.menuItem} onPress={() => { setActionOpen(false); setConfirmOpen(true); }}>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setActionOpen(false);
+                setConfirmOpen(true);
+              }}
+            >
               <Text style={sx(styles.menuText, { color: '#dc2626' })}>Xóa</Text>
             </TouchableOpacity>
           </Pressable>
@@ -127,7 +412,7 @@ export default function CreateHabitDetail() {
       </Modal>
 
       <ScrollView contentContainerStyle={{ paddingBottom: 16 }}>
-        {/* Tên thói quen */}
+        {/* Tên + mô tả */}
         <View style={sx(styles.card, styles.section)}>
           <Text style={styles.sectionTitle}>Tên thói quen</Text>
           <TextInput
@@ -137,14 +422,14 @@ export default function CreateHabitDetail() {
             placeholder="VD: Uống 2L nước"
             placeholderTextColor="#94a3b8"
           />
+
         </View>
 
-        {/* Ngày bắt đầu / kết thúc */}
+        {/* Thời gian */}
         <View style={sx(styles.card, styles.section)}>
           <Text style={styles.sectionTitle}>Thời gian</Text>
-          
+
           {Platform.OS === 'web' ? (
-            /* Web: Sử dụng HTML input date */
             <View style={{ flexDirection: 'row', gap: 10 }}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.label}>Bắt đầu</Text>
@@ -199,7 +484,6 @@ export default function CreateHabitDetail() {
               </View>
             </View>
           ) : (
-            /* Mobile: Sử dụng DateTimePickerModal */
             <View style={{ flexDirection: 'row', gap: 10 }}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.label}>Bắt đầu</Text>
@@ -215,13 +499,10 @@ export default function CreateHabitDetail() {
               </View>
             </View>
           )}
-          
-          {invalidRange && (
-            <Text style={styles.error}>Ngày kết thúc phải ≥ ngày bắt đầu.</Text>
-          )}
+
+          {invalidRange && <Text style={styles.error}>Ngày kết thúc phải ≥ ngày bắt đầu.</Text>}
         </View>
 
-        {/* Modal hiển thị lịch cho mobile */}
         {Platform.OS !== 'web' && (
           <DateTimePickerModal
             isVisible={!!pickerMode}
@@ -251,8 +532,10 @@ export default function CreateHabitDetail() {
                 onPress={() => setSelectedIcon(icon)}
                 style={sx(
                   styles.iconCell,
-                  { borderColor: selectedIcon === icon ? selectedColor : '#e5e7eb',
-                    backgroundColor: selectedIcon === icon ? '#00000008' : '#fff' }
+                  {
+                    borderColor: selectedIcon === icon ? selectedColor : '#e5e7eb',
+                    backgroundColor: selectedIcon === icon ? '#00000008' : '#fff',
+                  }
                 )}
               >
                 <Text style={{ fontSize: 20 }}>{icon}</Text>
@@ -286,15 +569,9 @@ export default function CreateHabitDetail() {
               <Pressable
                 key={f.id}
                 onPress={() => setFrequency(f.id)}
-                style={sx(
-                  styles.segment,
-                  frequency === f.id && styles.segmentActive
-                )}
+                style={sx(styles.segment, frequency === f.id && styles.segmentActive)}
               >
-                <Text style={sx(
-                  styles.segmentText,
-                  frequency === f.id && { color: '#2563eb' }
-                )}>
+                <Text style={sx(styles.segmentText, frequency === f.id && { color: '#2563eb' })}>
                   {f.label}
                 </Text>
               </Pressable>
@@ -302,14 +579,29 @@ export default function CreateHabitDetail() {
           </View>
 
           {frequency === 'custom' && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 }}>
-              <TextInput
-                style={sx(styles.input, { width: 88, height: 40, paddingVertical: 8 })}
-                value={customFrequency}
-                onChangeText={setCustomFrequency}
-                keyboardType="number-pad"
-              />
-              <Text style={styles.small}>lần/tuần</Text>
+            <View style={{ gap: 8, marginTop: 10 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <TextInput
+                  style={sx(styles.input, { width: 88, height: 40, paddingVertical: 8 })}
+                  value={customTimes}
+                  onChangeText={onChangeCustomTimes}
+                  keyboardType="number-pad"
+                />
+                <View style={[styles.segmentRow, { flex: 1 }]}>
+                  {(['day', 'week', 'month'] as const).map(p => (
+                    <Pressable
+                      key={p}
+                      onPress={() => setCustomPeriod(p)}
+                      style={sx(styles.segment, customPeriod === p && styles.segmentActive)}
+                    >
+                      <Text style={sx(styles.segmentText, customPeriod === p && { color: '#2563eb' })}>
+                        {p === 'day' ? 'Ngày' : p === 'week' ? 'Tuần' : 'Tháng'}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+              <Text style={styles.small}>Số lần / chu kỳ</Text>
             </View>
           )}
         </View>
@@ -329,10 +621,7 @@ export default function CreateHabitDetail() {
                 )}
               >
                 <Icon size={16} color={repeatType === id ? '#2563eb' : '#475569'} />
-                <Text style={sx(
-                  styles.segmentText,
-                  repeatType === id && { color: '#2563eb' }
-                )}>
+                <Text style={sx(styles.segmentText, repeatType === id && { color: '#2563eb' })}>
                   {label}
                 </Text>
               </Pressable>
@@ -352,8 +641,10 @@ export default function CreateHabitDetail() {
                   onPress={() => toggleCategory(cat.id)}
                   style={sx(
                     styles.chip,
-                    { borderColor: active ? cat.color : '#e5e7eb',
-                      backgroundColor: active ? '#00000008' : '#fff' }
+                    {
+                      borderColor: active ? cat.color : '#e5e7eb',
+                      backgroundColor: active ? '#00000008' : '#fff',
+                    }
                   )}
                 >
                   <Text style={{ fontSize: 16 }}>{cat.icon}</Text>
@@ -364,10 +655,13 @@ export default function CreateHabitDetail() {
           </View>
         </View>
 
-        {/* Nhắc nhở */}
+        {/* Nhắc nhở (placeholder) */}
         <View style={sx(styles.card, styles.section)}>
           <Text style={styles.sectionTitle}>Nhắc nhở</Text>
-          <Pressable style={styles.remindBtn}>
+          <Pressable
+            style={styles.remindBtn}
+            onPress={() => Alert.alert('Nhắc nhở', 'Phần này đang để trống logic API ở FE.')}
+          >
             <Text style={styles.remindLeft}>Tạo nhắc nhở mới</Text>
             <Text style={styles.remindArrow}>→</Text>
           </Pressable>
@@ -382,35 +676,63 @@ export default function CreateHabitDetail() {
           </Pressable>
         </Link>
         <Pressable
-          disabled={invalidRange}
-          style={sx(
-            styles.bottomBtn,
-            { flex: 2, backgroundColor: invalidRange ? '#94a3b8' : '#2563eb' }
-          )}
-          onPress={() => {
-            // TODO: gọi API tạo thói quen
-            // router.replace('/(tabs)/habits');
-          }}
+          disabled={invalidRange || isSubmitting}
+          style={sx(styles.bottomBtn, { flex: 2, backgroundColor: invalidRange || isSubmitting ? '#94a3b8' : '#2563eb' })}
+          onPress={handleSave}
         >
-          <Text style={sx(styles.bottomText, { color: '#fff' })}>Tạo thói quen</Text>
+          <Text style={sx(styles.bottomText, { color: '#fff' })}>
+            {isSubmitting ? (isEditMode ? 'Đang lưu...' : 'Đang tạo...') : (isEditMode ? 'Lưu thay đổi' : 'Tạo thói quen')}
+          </Text>
         </Pressable>
+        {!isEditMode && (
+          <Pressable
+            disabled={isSubmitting}
+            style={sx(styles.bottomBtn, { backgroundColor: '#f1f5f9' })}
+            onPress={() => setAddOptionsOpen(true)}
+          >
+            <Text style={sx(styles.bottomText, { color: '#0f172a' })}>Thêm...</Text>
+          </Pressable>
+        )}
       </View>
+
+      {/* Add options */}
+      <Modal visible={addOptionsOpen} transparent animationType="fade" onRequestClose={() => setAddOptionsOpen(false)}>
+        <Pressable style={styles.overlay} onPress={() => setAddOptionsOpen(false)}>
+          <Pressable style={styles.menu} onPress={(e) => e.stopPropagation()}>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setAddOptionsOpen(false);
+                handleSave();
+              }}
+            >
+              <Text style={styles.menuText}>Thêm vào thói quen</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setAddOptionsOpen(false);
+                Alert.alert('Chưa hỗ trợ', 'Lưu làm mẫu hiện chưa khả dụng.');
+              }}
+            >
+              <Text style={styles.menuText}>Lưu làm mẫu (không khả dụng)</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       {/* Confirm delete */}
       <Modal visible={confirmOpen} transparent animationType="fade" onRequestClose={() => setConfirmOpen(false)}>
         <Pressable style={styles.overlay} onPress={() => setConfirmOpen(false)}>
           <View style={styles.confirmCard}>
-            <Text style={styles.confirmTitle}>Xóa thói quen "{habitName}"?</Text>
+            <Text style={styles.confirmTitle}>Xóa thói quen "{habitName || 'này'}"?</Text>
             <Text style={styles.small}>Hành động này không thể hoàn tác.</Text>
             <View style={styles.confirmRow}>
               <Pressable style={styles.btnCancel} onPress={() => setConfirmOpen(false)}>
                 <Text style={styles.btnCancelText}>Hủy</Text>
               </Pressable>
-              <Pressable
-                style={styles.btnDanger}
-                onPress={() => { setConfirmOpen(false); /* TODO: delete */ }}
-              >
-                <Text style={styles.btnDangerText}>Xóa</Text>
+              <Pressable style={styles.btnDanger} onPress={handleDelete} disabled={isSubmitting}>
+                <Text style={styles.btnDangerText}>{isSubmitting ? 'Đang xóa...' : 'Xóa'}</Text>
               </Pressable>
             </View>
           </View>
@@ -433,95 +755,54 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 4,
   },
-  header: {
-    margin: 12, padding: 12,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-  },
+  header: { margin: 12, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   iconBtn: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  iconGhost: {
-    width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#ffffffcc', borderWidth: 1, borderColor: '#e5e7eb',
-  },
+  iconGhost: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#ffffffcc', borderWidth: 1, borderColor: '#e5e7eb' },
   title: { fontSize: 18, fontWeight: '800', color: '#0f172a' },
   small: { fontSize: 12, color: '#64748b' },
 
   section: { padding: 14, marginHorizontal: 12, marginBottom: 12 },
   sectionTitle: { fontSize: 16, fontWeight: '800', color: '#0f172a', marginBottom: 10 },
 
-  input: {
-    borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12,
-    paddingHorizontal: 12, paddingVertical: 12, fontSize: 14, backgroundColor: '#fff',
-  },
+  input: { borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, fontSize: 14, backgroundColor: '#fff' },
 
   label: { fontSize: 10, color: '#64748b', fontWeight: '700', marginBottom: 4, marginLeft: 6 },
-  webInputWrapper: {
-    overflow: 'hidden',
-  },
+  webInputWrapper: { overflow: 'hidden' },
   datePill: {
-    height: 36, borderRadius: 999, borderWidth: 1, borderColor: '#e5e7eb',
-    backgroundColor: '#fff', paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#0f172a',
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-    elevation: 2,
+    height: 36, borderRadius: 999, borderWidth: 1, borderColor: '#e5e7eb', backgroundColor: '#fff',
+    paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#0f172a', shadowOpacity: 0.1, shadowOffset: { width: 0, height: 2 }, shadowRadius: 4, elevation: 2,
   },
   dateText: { fontSize: 12, fontWeight: '800', color: '#0f172a' },
   error: { color: '#dc2626', fontSize: 11, marginTop: 6, fontWeight: '700' },
 
   wrapRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  iconCell: {
-    width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1,
-  },
-  colorDot: {
-    width: 34, height: 34, borderRadius: 17, borderColor: '#d1d5db',
-  },
+  iconCell: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
+  colorDot: { width: 34, height: 34, borderRadius: 17, borderColor: '#d1d5db' },
 
   segmentRow: { flexDirection: 'row', gap: 8 },
-  segment: {
-    flex: 1, paddingVertical: 10, borderRadius: 12,
-    borderWidth: 1, borderColor: '#e5e7eb', alignItems: 'center',
-    backgroundColor: '#fff',
-  },
+  segment: { flex: 1, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: '#e5e7eb', alignItems: 'center', backgroundColor: '#fff' },
   segmentActive: { backgroundColor: '#eff6ff', borderColor: '#2563eb', borderWidth: 2 },
   segmentText: { fontSize: 13, fontWeight: '700', color: '#475569' },
 
-  chip: {
-    paddingVertical: 10, paddingHorizontal: 12, borderRadius: 12,
-    borderWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 6,
-  },
+  chip: { paddingVertical: 10, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 6 },
   chipText: { fontSize: 13, fontWeight: '600', color: '#0f172a', maxWidth: 120 },
 
-  remindBtn: {
-    width: '100%', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#e5e7eb',
-    backgroundColor: '#fff', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'
-  },
+  remindBtn: { width: '100%', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#e5e7eb', backgroundColor: '#fff', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   remindLeft: { fontSize: 14, color: '#475569' },
   remindArrow: { fontSize: 14, color: '#475569', fontWeight: '700' },
 
-  bottomBar: {
-    padding: 12, flexDirection: 'row', gap: 8,
-  },
+  bottomBar: { padding: 12, flexDirection: 'row', gap: 8 },
   bottomBtn: { flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center' },
   bottomText: { fontSize: 14, fontWeight: '800' },
 
-  overlay: {
-    flex: 1, backgroundColor: 'rgba(15,23,42,0.35)',
-    alignItems: 'center', justifyContent: 'center'
-  },
-  menu: {
-    width: 200, backgroundColor: '#fff', borderRadius: 12,
-    borderWidth: 1, borderColor: '#e5e7eb', overflow: 'hidden'
-  },
+  overlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.35)', alignItems: 'center', justifyContent: 'center' },
+  menu: { width: 200, backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: '#e5e7eb', overflow: 'hidden' },
   menuItem: { paddingVertical: 12, paddingHorizontal: 12 },
   menuText: { fontSize: 13, color: '#0f172a' },
 
-  confirmCard: {
-    width: '92%', maxWidth: 420, backgroundColor: '#fff',
-    borderRadius: 22, padding: 22, borderWidth: 1, borderColor: '#e5e7eb',
-  },
+  confirmCard: { width: '92%', maxWidth: 420, backgroundColor: '#fff', borderRadius: 22, padding: 22, borderWidth: 1, borderColor: '#e5e7eb' },
   confirmTitle: { fontSize: 18, fontWeight: '800', color: '#0f172a', marginBottom: 6 },
   confirmRow: { flexDirection: 'row', justifyContent: 'center', gap: 12, marginTop: 16 },
   btnCancel: { backgroundColor: '#e5e7eb', borderRadius: 999, paddingVertical: 10, paddingHorizontal: 16 },
