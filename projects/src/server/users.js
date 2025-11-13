@@ -23,6 +23,21 @@ export function setBaseUrl(url) {
 // ===== Token helpers =====
 const TOKEN_KEY = 'auth_token';
 
+export function buildQuery(params) {
+  if (!params) return '';
+  const sp = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v === undefined || v === null || v === '') return;
+    if (Array.isArray(v)) {
+      v.forEach((item) => sp.append(k, String(item)));
+    } else {
+      sp.append(k, String(v));
+    }
+  });
+  const q = sp.toString();
+  return q ? `?${q}` : '';
+}
+
 async function setToken(token) {
   if (token) {
     await AsyncStorage.setItem(TOKEN_KEY, token);
@@ -38,39 +53,65 @@ async function clearToken() {
 }
 
 // ===== Request helper =====
-async function apiRequest(path, { method = 'GET', body, auth = false } = {}) {
+export async function apiRequest(path, { method = 'GET', body, auth = false } = {}) {
   const headers = { 'Content-Type': 'application/json' };
 
-  if (auth) {
-    const token = await getToken();
-    if (!token) {
-      const err = new Error('Missing auth token');
-      err.status = 401;
+  const label = `[apiRequest] ${method} ${path}`;
+  let maskedBody = body;
+  if (body && typeof body === 'object') {
+    try {
+      maskedBody = JSON.parse(JSON.stringify(body));
+      Object.keys(maskedBody).forEach((k) => {
+        if (String(k).toLowerCase().includes('password')) {
+          maskedBody[k] = '***';
+        }
+      });
+    } catch {}
+  }
+
+  console.groupCollapsed?.(label);
+  console.log('request:', { method, path, auth, body: maskedBody });
+
+  try {
+    if (auth) {
+      const token = await getToken();
+      if (!token) {
+        const err = new Error('Missing auth token');
+        err.status = 401;
+        throw err;
+      }
+      headers.Authorization = `Bearer ${token}`;
+    }
+
+    const res = await fetch(`${BASE_URL}${path}`, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+    let data = null;
+    try {
+      data = await res.json();
+    } catch {
+      // no body or not JSON
+    }
+
+    console.log('status:', res.status);
+    console.log('response:', data);
+
+    if (!res.ok) {
+      const err = new Error(data?.message || `HTTP ${res.status}`);
+      err.status = res.status;
+      err.data = data;
       throw err;
     }
-    headers.Authorization = `Bearer ${token}`;
-  }
-
-  const res = await fetch(`${BASE_URL}${path}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
-
-  let data = null;
-  try {
-    data = await res.json();
-  } catch {
-    // no body or not JSON
-  }
-
-  if (!res.ok) {
-    const err = new Error(data?.message || `HTTP ${res.status}`);
-    err.status = res.status;
-    err.data = data;
+    return data;
+  } catch (err) {
+    console.error('error:', { status: err?.status, data: err?.data || err });
     throw err;
+  } finally {
+    console.groupEnd?.();
   }
-  return data;
 }
 
 // ===== API functions =====
@@ -91,7 +132,7 @@ export async function register({
     method: 'POST',
     body: { name, email, phone, password, confirmPassword },
   });
-  if (data?.accessToken) await setToken(data.accessToken);
+  if (data?.token) await setToken(data.token);
   return data;
 }
 
