@@ -47,7 +47,7 @@ type CountEntry = {
   id: number;
   qty: number;
   note?: string;
-  feeling?: 'great' | 'good' | 'neutral' | 'bad';
+  mood?: 'great' | 'good' | 'neutral' | 'bad';
   start?: string;
   end?: string;
   beId?: string;
@@ -64,7 +64,7 @@ export default function FlowStateHabits() {
   const [notes, setNotes] = useState<Record<number, string>>({});
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailHabitId, setDetailHabitId] = useState<number | null>(null);
-  const [feelings, setFeelings] = useState<
+  const [moods, setmoods] = useState<
     Record<number, 'great' | 'good' | 'neutral' | 'bad' | undefined>
   >({});
   const [quantities, setQuantities] = useState<Record<number, number>>({});
@@ -290,7 +290,7 @@ export default function FlowStateHabits() {
           );
 
           const initialNotes: Record<number, string> = {};
-          const initialFeelings: Record<
+          const initialmoods: Record<
             number,
             'great' | 'good' | 'neutral' | 'bad' | undefined
           > = {};
@@ -322,13 +322,13 @@ export default function FlowStateHabits() {
             const moodRaw = (t.mood || '').toLowerCase();
             if (moodRaw) {
               if (moodRaw === 'great' || moodRaw === 'awesome') {
-                initialFeelings[nid] = 'great';
+                initialmoods[nid] = 'great';
               } else if (moodRaw === 'good' || moodRaw === 'ok') {
-                initialFeelings[nid] = 'good';
+                initialmoods[nid] = 'good';
               } else if (moodRaw === 'okay' || moodRaw === 'neutral') {
-                initialFeelings[nid] = 'neutral';
+                initialmoods[nid] = 'neutral';
               } else if (moodRaw === 'bad') {
-                initialFeelings[nid] = 'bad';
+                initialmoods[nid] = 'bad';
               }
             }
           });
@@ -336,8 +336,8 @@ export default function FlowStateHabits() {
           if (Object.keys(initialNotes).length > 0) {
             setNotes(initialNotes);
           }
-          if (Object.keys(initialFeelings).length > 0) {
-            setFeelings(initialFeelings);
+          if (Object.keys(initialmoods).length > 0) {
+            setmoods(initialmoods);
           }
           if (Object.keys(overrideStatus).length > 0) {
             setHabitStatus((prev) => ({ ...prev, ...overrideStatus }));
@@ -388,6 +388,7 @@ export default function FlowStateHabits() {
   const addCountEntry = (habitId: number) => {
     (async () => {
       try {
+
         const bid = n2b[habitId];
         if (!bid) {
           setCountEntries((prev) => {
@@ -402,23 +403,29 @@ export default function FlowStateHabits() {
               start: startVal,
               end: endVal,
             };
+            getCurrentCountValue(habitId)
             return { ...prev, [habitId]: [...arr, newEntry] };
           });
           setCountViewOpen((v) => ({ ...v, [habitId]: true }));
+          getCurrentCountValue(habitId)
           return;
         }
         const meta = unitMap[habitId];
         const qty = meta ? Math.max(1, quantities[habitId] ?? meta.current) : 1;
         const startVal = timeStart[habitId] ?? hhmmNow();
         const endVal = timeEnd[habitId] || undefined;
-        const body: any = { quantity: qty, date: todayStr(), startTime: startVal };
+        const body: any = { quantity: qty, date: todayStr(), startTime: startVal , mood: moods[habitId]};
         if (endVal) body.endTime = endVal;
         await apiAddHabitSubTracking(bid, body);
+        getCurrentCountValue(habitId)
+        toggleCountView(habitId)
+        toggleCountView(habitId)
         setCountViewOpen((v) => ({ ...v, [habitId]: true }));
         refreshAll();
       } catch (err) {
         console.error('[habits.index] add subtrack error:', err);
       }
+      
     })();
   };
 
@@ -431,6 +438,8 @@ export default function FlowStateHabits() {
         if (entry?.beId && bid) {
           await apiDeleteHabitSubTracking(bid, entry.beId);
           refreshAll();
+          toggleCountView(habitId)
+          toggleCountView(habitId)
         }
       } catch (err) {
         console.error('[habits.index] delete subtrack error:', err);
@@ -477,7 +486,7 @@ export default function FlowStateHabits() {
           if (en.end !== undefined) body.endTime = en.end || null;
           if (en.qty !== undefined) body.quantity = en.qty;
           if (en.note !== undefined) body.note = en.note;
-          if (en.feeling !== undefined) body.mood = en.feeling === 'neutral' ? 'okay' : en.feeling;
+          if (en.mood !== undefined) body.mood = en.mood === 'neutral' ? 'okay' : en.mood;
           await apiUpdateHabitSubTracking(bid, en.beId, body);
         } else {
           const body: any = {
@@ -487,7 +496,7 @@ export default function FlowStateHabits() {
           };
           if (en.end) body.endTime = en.end;
           if (en.note) body.note = en.note;
-          if (en.feeling) body.mood = en.feeling === 'neutral' ? 'okay' : en.feeling;
+          if (en.mood) body.mood = en.mood === 'neutral' ? 'okay' : en.mood;
           await apiAddHabitSubTracking(bid, body);
         }
         refreshAll();
@@ -694,7 +703,7 @@ export default function FlowStateHabits() {
       if (!bid) return;
 
       try {
-        const moodRaw = feelings[id];
+        const moodRaw = moods[id];
         const mood = moodRaw === 'neutral' ? 'okay' : moodRaw;
         const note = notes[id];
 
@@ -737,7 +746,7 @@ export default function FlowStateHabits() {
           ? 'in_progress'
           : 'pending';
 
-      const moodRaw = feelings[id];
+      const moodRaw = moods[id];
       const mood = moodRaw === 'neutral' ? 'okay' : moodRaw;
       const note = notes[id];
 
@@ -938,6 +947,22 @@ export default function FlowStateHabits() {
             }}
           >
             <BarChart3 size={20} color="#0f172a" />
+          </button>
+          <button
+            onClick={() => router.push('/(tabs)/habits/HabitSurvey')}
+            style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '20px',
+              backgroundColor: '#E5E7EB',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: 'none',
+              cursor: 'pointer',
+            }}
+          >
+            <Target size={20} color="#0f172a" />
           </button>
          
         </div>
@@ -1210,9 +1235,9 @@ export default function FlowStateHabits() {
             })();
 
             const noteText = (notes[habit.id] || '').trim();
-            const feelingKey = feelings[habit.id];
-            const feelingMeta = (() => {
-              switch (feelingKey) {
+            const moodKey = moods[habit.id];
+            const moodMeta = (() => {
+              switch (moodKey) {
                 case 'great':
                   return {
                     emoji: '😊',
@@ -1516,8 +1541,8 @@ export default function FlowStateHabits() {
                       </div>
                     )}
 
-                    {/* Feeling preview */}
-                    {feelingMeta && (
+                    {/* mood preview */}
+                    {moodMeta && (
                       <div
                         style={{
                           display: 'flex',
@@ -1542,19 +1567,19 @@ export default function FlowStateHabits() {
                             gap: 6,
                             padding: '4px 8px',
                             borderRadius: 999,
-                            backgroundColor: feelingMeta.bg,
-                            border: `1px solid ${feelingMeta.border}`,
+                            backgroundColor: moodMeta.bg,
+                            border: `1px solid ${moodMeta.border}`,
                           }}
                         >
-                          <span style={{ fontSize: 14 }}>{feelingMeta.emoji}</span>
+                          <span style={{ fontSize: 14 }}>{moodMeta.emoji}</span>
                           <span
                             style={{
                               fontSize: 12,
                               fontWeight: 700,
-                              color: feelingMeta.text,
+                              color: moodMeta.text,
                             }}
                           >
-                            {feelingMeta.label}
+                            {moodMeta.label}
                           </span>
                         </div>
                       </div>
@@ -1670,9 +1695,11 @@ export default function FlowStateHabits() {
                           </div>
                         ) : (
                           (countEntries[habit.id] ?? []).map((en, idx) => {
+                            console.log(countEntries[habit.id]);
+                            
                             const dur = timeDiff(en.start, en.end);
-                            const feelingMetaEn = (() => {
-                              switch (en.feeling) {
+                            const moodMetaEn = (() => {
+                              switch (en.mood) {
                                 case 'great':
                                   return {
                                     emoji: '😊',
@@ -1730,10 +1757,10 @@ export default function FlowStateHabits() {
                             })();
 
                             const entryTone = (() => {
-                              if (feelingMetaEn)
+                              if (moodMetaEn)
                                 return {
-                                  bg: feelingMetaEn.bg,
-                                  border: feelingMetaEn.border,
+                                  bg: moodMetaEn.bg,
+                                  border: moodMetaEn.border,
                                 };
                               if (habit.tag) return toneByTag;
                               return tonePalette[idx % tonePalette.length];
@@ -1824,28 +1851,28 @@ export default function FlowStateHabits() {
                                       “{en.note}”
                                     </div>
                                   )}
-                                  {feelingMetaEn && (
+                                  {moodMetaEn && (
                                     <div
                                       style={{
                                         marginTop: 4,
                                         display: 'inline-flex',
                                         alignItems: 'center',
                                         gap: 6,
-                                        background: feelingMetaEn.bg,
-                                        border: `1px solid ${feelingMetaEn.border}`,
+                                        background: moodMetaEn.bg,
+                                        border: `1px solid ${moodMetaEn.border}`,
                                         borderRadius: 999,
                                         padding: '4px 8px',
                                       }}
                                     >
-                                      <span>{feelingMetaEn.emoji}</span>
+                                      <span>{moodMetaEn.emoji}</span>
                                       <span
                                         style={{
                                           fontSize: 12,
                                           fontWeight: 700,
-                                          color: feelingMetaEn.color,
+                                          color: moodMetaEn.color,
                                         }}
                                       >
-                                        {feelingMetaEn.label}
+                                        {moodMetaEn.label}
                                       </span>
                                     </div>
                                   )}
@@ -2029,7 +2056,7 @@ export default function FlowStateHabits() {
                                       >
                                         {(['great', 'good', 'neutral', 'bad'] as const).map(
                                           (f) => {
-                                            const selected = en.feeling === f;
+                                            const selected = en.mood === f;
                                             const label =
                                               f === 'great'
                                                 ? 'Tuyệt vời'
@@ -2043,7 +2070,7 @@ export default function FlowStateHabits() {
                                                 key={f}
                                                 onClick={() =>
                                                   updateEntry(habit.id, en.id, {
-                                                    feeling: selected ? undefined : f,
+                                                    mood: selected ? undefined : f,
                                                   })
                                                 }
                                                 style={{
@@ -2756,13 +2783,13 @@ export default function FlowStateHabits() {
                           { key: 'bad', label: 'Không tốt', emoji: '😞' },
                         ] as const
                       ).map((opt) => {
-                        const selected = feelings[h.id] === opt.key;
+                        const selected = moods[h.id] === opt.key;
                         return (
                           <button
                             key={opt.key}
                             onClick={() =>
-                              setFeelings({
-                                ...feelings,
+                              setmoods({
+                                ...moods,
                                 [h.id]: selected ? undefined : opt.key,
                               })
                             }

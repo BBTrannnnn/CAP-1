@@ -32,7 +32,12 @@ export function updateHabit(habitId, payload) {
     auth: true,
   });
 }
-
+export function getQuestionSurvey(habitId) {
+  return apiRequest(`/api/survey/session`,
+     {
+      method: 'GET',
+      auth: true });
+}
 export function deleteHabit(habitId) {
   // DELETE /api/habits/:habitId
   return apiRequest(`/api/habits/${habitId}`, {
@@ -97,7 +102,9 @@ export function deleteTrackingDay(habitId, date) {
 export function getSubTrackings(habitId, query) {
   // GET /api/habits/:habitId/subtrack
   const q = buildQuery(query);
-  return apiRequest(`/api/habits/${habitId}/subtrack${q}`, { auth: true });
+  var res = apiRequest(`/api/habits/${habitId}/subtrack${q}`, { auth: true });
+  console.log('subtrack',res);
+  return res;
 }
 
 export function addSubTracking(habitId, payload) {
@@ -109,7 +116,17 @@ export function addSubTracking(habitId, payload) {
     auth: true,
   });
 }
-
+export function submitSurvey(ans) {
+  // POST /api/habits/:habitId/subtrack
+  // payload: { quantity?, date?, startTime, endTime?, note?, mood?, override? }
+  console.log(ans);
+  
+  return apiRequest(`/api/survey/submit`, {
+    method: 'POST',
+    body: ans,
+    auth: true,
+  });
+}
 export function updateSubTracking(habitId, subId, payload) {
   // PUT /api/habits/:habitId/subtrack/:subId
   return apiRequest(`/api/habits/${habitId}/subtrack/${subId}`, {
@@ -336,6 +353,8 @@ export function recommendHabits(answers, limit = 5) {
   const q = buildQuery({ limit });
   // This route might not need auth, but we add it for consistency.
   // If it fails, change auth to false.
+  console.log(answers);
+  
   return apiRequest(`/api/ai-habit/recommend${q}`, {
     method: 'POST',
     body: { answers },

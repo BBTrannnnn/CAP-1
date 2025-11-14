@@ -79,7 +79,8 @@ const HabitTracker: React.FC = () => {
     enabled: true,
     note: '',
   });
-
+  const [name,setName] = useState('');
+  const [frequency, setFrequency] = useState('');
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [editingGoal, setEditingGoal] = useState<Challenge | null>(null);
   const [newGoal, setNewGoal] = useState<Challenge>({
@@ -176,6 +177,23 @@ const HabitTracker: React.FC = () => {
       try {
         const res: any = await getHabitStats(habitId as string, {});
         console.log('[RunningHabitTracker] getHabitStats API:', res);
+        const name = res?.data.habit.name;
+        const frequency = res?.data.habit.frequency;
+        const setfre = () => {
+          switch (frequency) {
+            case 'daily':
+              return 'HÀNG NGÀY';
+            case 'weekly':
+              return 'HÀNG TUẦN';
+            case 'monthly':
+              return 'HÀNG THÁNG';
+            default:
+              return 'HÀNG NGÀY';
+          }
+        }
+        setName(name);
+        setFrequency(setfre()
+        );
         const s = res?.data ?? res ?? {};
         const completed = Number(s.stats.completedCount ?? s.stats.completed ?? 0) || 0;
         const failed = Number(s.stats.failedCount ?? s.stats.failed ?? 0) || 0;
@@ -605,17 +623,17 @@ const HabitTracker: React.FC = () => {
             <div className="rt-section-title">Tổng quan</div>
             <div className="rt-hero">
               <div className="rt-hero-inner">
-                <div className="rt-hero-eyebrow">THÓI QUEN HÀNG NGÀY</div>
-                <div className="rt-hero-title">Chạy bộ</div>
-                <div className="rt-hero-subtitle">Gieo nhịp từng bước - Kỷ luật mỗi ngày</div>
+                <div className="rt-hero-eyebrow">THÓI QUEN {frequency}</div>
+                <div className="rt-hero-title">{name}</div>
+                <div className="rt-hero-subtitle">Gieo nhịp từng bước - Kỷ luật {frequency}</div>
                 <div className="rt-hero-stats">
                   <div className="rt-hero-stat">
                     <div className="rt-hero-stat-label">Tần suất</div>
-                    <div className="rt-hero-stat-value">Hàng ngày</div>
+                    <div className="rt-hero-stat-value">{frequency}</div>
                   </div>
                   <div className="rt-hero-stat">
                     <div className="rt-hero-stat-label">Mục tiêu</div>
-                    <div className="rt-hero-stat-value">5 km</div>
+                    <div className="rt-hero-stat-value">{name}</div>
                   </div>
                 </div>
               </div>

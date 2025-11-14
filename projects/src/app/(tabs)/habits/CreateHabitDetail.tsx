@@ -1,4 +1,4 @@
-// app/(tabs)/habits/CreateHabitDetail.tsx
+
 import React, { useMemo, useState, useEffect } from 'react';
 import { Stack, Link, useLocalSearchParams, router } from 'expo-router';
 import {
@@ -7,7 +7,7 @@ import {
   StyleProp, ViewStyle, TextStyle, ImageStyle, Alert,
 } from 'react-native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
-import { X, ChevronLeft, Check, MoreVertical } from '@tamagui/lucide-icons';
+import { X, ChevronLeft, Check, Plus } from '@tamagui/lucide-icons';
 import {
   getHabitTemplateById,
   createHabit,
@@ -71,15 +71,12 @@ function buildFrequencyPart(
     if (Number.isFinite(n) && n > 0) {
       const customObj = { times: n, period: customPeriod };
       return {
-        // Nếu BE dùng "customFrequence" (sai chính tả) hãy đổi key dưới thành customFrequence
         customFrequency: customObj,
         ...(trackingMode === 'count' ? { targetCount: n } : {}),
       };
     }
-    // Người dùng chọn custom nhưng chưa nhập số lần hợp lệ → không gửi gì cả
     return {};
   }
-  // daily/weekly → chỉ gửi frequency
   return { frequency };
 }
 
@@ -109,8 +106,6 @@ export default function CreateHabitDetail() {
   const [description, setDescription] = useState('');
   const [trackingMode, setTrackingMode] = useState<TrackingMode>('check');
 
-  const [actionOpen, setActionOpen] = useState(false);
-  const [addOptionsOpen, setAddOptionsOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -153,7 +148,7 @@ export default function CreateHabitDetail() {
     if (frequency !== 'custom') setFrequency('custom');
   };
 
-  // Build payload (Create & “Tạo từ mẫu” dùng chung)
+  // Build payload (Create & "Tạo từ mẫu" dùng chung)
   const buildPayload = () => {
     const primaryCategory = selectedCategories[0];
     const categorySlug = primaryCategory ? primaryCategory.toLowerCase() : undefined;
@@ -172,27 +167,30 @@ export default function CreateHabitDetail() {
     };
 
     const freqPart = buildFrequencyPart(frequency, customTimes, customPeriod, trackingMode);
-    // Gộp → strip undefined/null → xoá frequency nếu có custom
     let payload: any = sanitizeFrequency(deepStrip({ ...base, ...freqPart }));
     console.log('[CreateHabitDetail] payload:', payload);
     return payload;
   };
 
-  const handleCreateFromTemplate = async () => {
-    if (!templateId || isSubmitting) return;
+  const handleCreateNew = async () => {
+    if (!habitName.trim()) {
+      alert('Thiếu tên', 'Vui lòng nhập tên thói quen.');
+      return;
+    }
+    if (invalidRange || isSubmitting) return;
+
     try {
       setIsSubmitting(true);
       const payload = buildPayload();
       const res = await createHabit(payload);
-      console.log('[CreateHabitDetail] createHabit (from template) API:', res);
-      Alert.alert('Thành công', 'Đã tạo thói quen.');
+      console.log('[CreateHabitDetail] createHabit API:', res);
+      alert('Thành công', 'Đã tạo thói quen mới.');
+      setIsSubmitting(false);
       router.replace('/(tabs)/habits');
     } catch (err) {
-      console.error('[CreateHabitDetail] createHabit (from template) error:', err);
-      Alert.alert('Lỗi', 'Không thể tạo thói quen. Vui lòng thử lại.');
+      console.error('[CreateHabitDetail] createHabit error:', err);
+      alert('Lỗi', 'Không thể tạo thói quen. Vui lòng thử lại.');
       setIsSubmitting(false);
-    } finally {
-      setActionOpen(false);
     }
   };
 
@@ -280,7 +278,7 @@ export default function CreateHabitDetail() {
 
   const handleSave = async () => {
     if (!habitName.trim()) {
-      Alert.alert('Thiếu tên', 'Vui lòng nhập tên thói quen.');
+      alert('Thiếu tên', 'Vui lòng nhập tên thói quen.');
       return;
     }
     if (invalidRange || isSubmitting) return;
@@ -292,7 +290,7 @@ export default function CreateHabitDetail() {
       if (isEditMode) {
         const res = await updateHabit(templateId as string, payload);
         console.log('[CreateHabitDetail] updateHabit API:', res);
-        Alert.alert('Thành công', 'Đã cập nhật thói quen.');
+        alert('Thành công', 'Đã cập nhật thói quen.');
       } else {
         const res = await createHabit(payload);
         console.log('[CreateHabitDetail] createHabit API:', res);
@@ -300,7 +298,7 @@ export default function CreateHabitDetail() {
       router.replace('/(tabs)/habits');
     } catch (err) {
       console.error(`[CreateHabitDetail] ${isEditMode ? 'updateHabit' : 'createHabit'} error:`, err);
-      Alert.alert('Lỗi', `Không thể ${isEditMode ? 'cập nhật' : 'tạo'} thói quen. Vui lòng thử lại.`);
+      alert('Lỗi', `Không thể ${isEditMode ? 'cập nhật' : 'tạo'} thói quen. Vui lòng thử lại.`);
       setIsSubmitting(false);
     }
   };
@@ -311,11 +309,11 @@ export default function CreateHabitDetail() {
       setIsSubmitting(true);
       const res = await deleteHabit(templateId as string);
       console.log('[CreateHabitDetail] deleteHabit API:', res);
-      Alert.alert('Thành công', 'Đã xóa thói quen.');
+      alert('Thành công', 'Đã xóa thói quen.');
       router.replace('/(tabs)/habits');
     } catch (err) {
       console.error('[CreateHabitDetail] deleteHabit error:', err);
-      Alert.alert('Lỗi', 'Không thể xóa thói quen. Vui lòng thử lại.');
+      alert('Lỗi', 'Không thể xóa thói quen. Vui lòng thử lại.');
       setIsSubmitting(false);
     } finally {
       setConfirmOpen(false);
@@ -340,9 +338,27 @@ export default function CreateHabitDetail() {
           </View>
         </View>
 
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <Pressable 
+            style={sx(styles.createBtn, { backgroundColor: '#10b981' })} 
+            onPress={handleCreateNew}
+            disabled={isSubmitting}
+          >
+            <Plus size={18} color="#fff" strokeWidth={3} />
+            <Text style={styles.createBtnText}>Tạo mới</Text>
+          </Pressable>
+          <Link href="/(tabs)/habits" asChild>
+            <Pressable style={styles.iconGhost}>
+              <X size={18} color="#0f172a" />
+            </Pressable>
+          </Link>
+        </View>
+      </View>
+
+      <ScrollView contentContainerStyle={{ paddingBottom: 16 }}>
         {/* Tracking mode */}
         <View style={sx(styles.card, styles.section)}>
-          <Text style={styles.sectionTitle}>Tracking mode</Text>
+          <Text style={styles.sectionTitle}>Chế độ theo dõi</Text>
           <View style={styles.segmentRow}>
             {(['check','count'] as const).map((m) => (
               <Pressable
@@ -354,64 +370,13 @@ export default function CreateHabitDetail() {
                 )}
               >
                 <Text style={sx(styles.segmentText, trackingMode === m && { color: '#2563eb' })}>
-                  {m === 'check' ? 'Check' : 'Count'}
+                  {m === 'check' ? '✓ Check' : '# Count'}
                 </Text>
               </Pressable>
             ))}
           </View>
         </View>
 
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <Pressable style={styles.iconGhost} onPress={() => setActionOpen(true)}>
-            <MoreVertical size={20} color="#0f172a" />
-          </Pressable>
-          <Link href="/(tabs)/habits" asChild>
-            <Pressable style={styles.iconGhost}>
-              <X size={18} color="#0f172a" />
-            </Pressable>
-          </Link>
-        </View>
-      </View>
-
-      {/* Action menu */}
-      <Modal visible={actionOpen} transparent animationType="fade" onRequestClose={() => setActionOpen(false)}>
-        <Pressable style={styles.overlay} onPress={() => setActionOpen(false)}>
-          <Pressable style={styles.menu} onPress={(e) => e.stopPropagation()}>
-            {isEditMode ? (
-              <TouchableOpacity style={styles.menuItem} onPress={handleCreateFromTemplate}>
-                <Text style={styles.menuText}>Thêm vào thói quen</Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={() => {
-                  setActionOpen(false);
-                  handleSave();
-                }}
-              >
-                <Text style={styles.menuText}>Lưu</Text>
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity style={styles.menuItem} onPress={handleCreateFromTemplate}>
-              <Text style={styles.menuText}>Thêm từ mẫu</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.menuItem} onPress={() => setActionOpen(false)}>
-              <Text style={styles.menuText}>Sửa</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => {
-                setActionOpen(false);
-                setConfirmOpen(true);
-              }}
-            >
-              <Text style={sx(styles.menuText, { color: '#dc2626' })}>Xóa</Text>
-            </TouchableOpacity>
-          </Pressable>
-        </Pressable>
-      </Modal>
-
-      <ScrollView contentContainerStyle={{ paddingBottom: 16 }}>
         {/* Tên + mô tả */}
         <View style={sx(styles.card, styles.section)}>
           <Text style={styles.sectionTitle}>Tên thói quen</Text>
@@ -422,7 +387,6 @@ export default function CreateHabitDetail() {
             placeholder="VD: Uống 2L nước"
             placeholderTextColor="#94a3b8"
           />
-
         </View>
 
         {/* Thời gian */}
@@ -534,7 +498,7 @@ export default function CreateHabitDetail() {
                   styles.iconCell,
                   {
                     borderColor: selectedIcon === icon ? selectedColor : '#e5e7eb',
-                    backgroundColor: selectedIcon === icon ? '#00000008' : '#fff',
+                    backgroundColor: selectedIcon === icon ? `${selectedColor}15` : '#fff',
                   }
                 )}
               >
@@ -554,7 +518,11 @@ export default function CreateHabitDetail() {
                 onPress={() => setSelectedColor(c)}
                 style={sx(
                   styles.colorDot,
-                  { backgroundColor: c, borderWidth: selectedColor === c ? 3 : 1 }
+                  { 
+                    backgroundColor: c, 
+                    borderWidth: selectedColor === c ? 3 : 1,
+                    borderColor: selectedColor === c ? c : '#d1d5db',
+                  }
                 )}
               />
             ))}
@@ -582,7 +550,7 @@ export default function CreateHabitDetail() {
             <View style={{ gap: 8, marginTop: 10 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <TextInput
-                  style={sx(styles.input, { width: 88, height: 40, paddingVertical: 8 })}
+                  style={sx(styles.input, { width: 88, height: 40, paddingVertical: 8, textAlign: 'center', fontWeight: '700' })}
                   value={customTimes}
                   onChangeText={onChangeCustomTimes}
                   keyboardType="number-pad"
@@ -643,7 +611,7 @@ export default function CreateHabitDetail() {
                     styles.chip,
                     {
                       borderColor: active ? cat.color : '#e5e7eb',
-                      backgroundColor: active ? '#00000008' : '#fff',
+                      backgroundColor: active ? `${cat.color}15` : '#fff',
                     }
                   )}
                 >
@@ -653,18 +621,6 @@ export default function CreateHabitDetail() {
               );
             })}
           </View>
-        </View>
-
-        {/* Nhắc nhở (placeholder) */}
-        <View style={sx(styles.card, styles.section)}>
-          <Text style={styles.sectionTitle}>Nhắc nhở</Text>
-          <Pressable
-            style={styles.remindBtn}
-            onPress={() => Alert.alert('Nhắc nhở', 'Phần này đang để trống logic API ở FE.')}
-          >
-            <Text style={styles.remindLeft}>Tạo nhắc nhở mới</Text>
-            <Text style={styles.remindArrow}>→</Text>
-          </Pressable>
         </View>
       </ScrollView>
 
@@ -684,42 +640,16 @@ export default function CreateHabitDetail() {
             {isSubmitting ? (isEditMode ? 'Đang lưu...' : 'Đang tạo...') : (isEditMode ? 'Lưu thay đổi' : 'Tạo thói quen')}
           </Text>
         </Pressable>
-        {!isEditMode && (
+        {isEditMode && (
           <Pressable
             disabled={isSubmitting}
-            style={sx(styles.bottomBtn, { backgroundColor: '#f1f5f9' })}
-            onPress={() => setAddOptionsOpen(true)}
+            style={sx(styles.bottomBtn, { backgroundColor: '#fee2e2', borderWidth: 1, borderColor: '#fca5a5' })}
+            onPress={() => setConfirmOpen(true)}
           >
-            <Text style={sx(styles.bottomText, { color: '#0f172a' })}>Thêm...</Text>
+            <Text style={sx(styles.bottomText, { color: '#dc2626' })}>Xóa</Text>
           </Pressable>
         )}
       </View>
-
-      {/* Add options */}
-      <Modal visible={addOptionsOpen} transparent animationType="fade" onRequestClose={() => setAddOptionsOpen(false)}>
-        <Pressable style={styles.overlay} onPress={() => setAddOptionsOpen(false)}>
-          <Pressable style={styles.menu} onPress={(e) => e.stopPropagation()}>
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => {
-                setAddOptionsOpen(false);
-                handleSave();
-              }}
-            >
-              <Text style={styles.menuText}>Thêm vào thói quen</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => {
-                setAddOptionsOpen(false);
-                Alert.alert('Chưa hỗ trợ', 'Lưu làm mẫu hiện chưa khả dụng.');
-              }}
-            >
-              <Text style={styles.menuText}>Lưu làm mẫu (không khả dụng)</Text>
-            </TouchableOpacity>
-          </Pressable>
-        </Pressable>
-      </Modal>
 
       {/* Confirm delete */}
       <Modal visible={confirmOpen} transparent animationType="fade" onRequestClose={() => setConfirmOpen(false)}>
@@ -755,58 +685,258 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 4,
   },
-  header: { margin: 12, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  header: { 
+    margin: 12, 
+    padding: 12, 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between' 
+  },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  iconBtn: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  iconGhost: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#ffffffcc', borderWidth: 1, borderColor: '#e5e7eb' },
+  iconBtn: { 
+    width: 40, 
+    height: 40, 
+    borderRadius: 12, 
+    alignItems: 'center', 
+    justifyContent: 'center' 
+  },
+  iconGhost: { 
+    width: 40, 
+    height: 40, 
+    borderRadius: 12, 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    backgroundColor: '#ffffffcc', 
+    borderWidth: 1, 
+    borderColor: '#e5e7eb' 
+  },
+  createBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    shadowColor: '#10b981',
+    shadowOpacity: 0.3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  createBtnText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#fff',
+  },
   title: { fontSize: 18, fontWeight: '800', color: '#0f172a' },
   small: { fontSize: 12, color: '#64748b' },
 
   section: { padding: 14, marginHorizontal: 12, marginBottom: 12 },
-  sectionTitle: { fontSize: 16, fontWeight: '800', color: '#0f172a', marginBottom: 10 },
+  sectionTitle: { 
+    fontSize: 16, 
+    fontWeight: '800', 
+    color: '#0f172a', 
+    marginBottom: 10 
+  },
 
-  input: { borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, fontSize: 14, backgroundColor: '#fff' },
+  input: { 
+    borderWidth: 1, 
+    borderColor: '#e5e7eb', 
+    borderRadius: 12, 
+    paddingHorizontal: 12, 
+    paddingVertical: 12, 
+    fontSize: 14, 
+    backgroundColor: '#fff',
+    color: '#0f172a',
+  },
 
-  label: { fontSize: 10, color: '#64748b', fontWeight: '700', marginBottom: 4, marginLeft: 6 },
+  label: { 
+    fontSize: 10, 
+    color: '#64748b', 
+    fontWeight: '700', 
+    marginBottom: 4, 
+    marginLeft: 6 
+  },
   webInputWrapper: { overflow: 'hidden' },
   datePill: {
-    height: 36, borderRadius: 999, borderWidth: 1, borderColor: '#e5e7eb', backgroundColor: '#fff',
-    paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#0f172a', shadowOpacity: 0.1, shadowOffset: { width: 0, height: 2 }, shadowRadius: 4, elevation: 2,
+    height: 36, 
+    borderRadius: 999, 
+    borderWidth: 1, 
+    borderColor: '#e5e7eb', 
+    backgroundColor: '#fff',
+    paddingHorizontal: 12, 
+    alignItems: 'center', 
+    justifyContent: 'center',
+    shadowColor: '#0f172a', 
+    shadowOpacity: 0.1, 
+    shadowOffset: { width: 0, height: 2 }, 
+    shadowRadius: 4, 
+    elevation: 2,
   },
   dateText: { fontSize: 12, fontWeight: '800', color: '#0f172a' },
-  error: { color: '#dc2626', fontSize: 11, marginTop: 6, fontWeight: '700' },
+  error: { 
+    color: '#dc2626', 
+    fontSize: 11, 
+    marginTop: 6, 
+    fontWeight: '700' 
+  },
 
   wrapRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  iconCell: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
-  colorDot: { width: 34, height: 34, borderRadius: 17, borderColor: '#d1d5db' },
+  iconCell: { 
+    width: 44, 
+    height: 44, 
+    borderRadius: 12, 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    borderWidth: 2,
+    shadowColor: '#0f172a',
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  colorDot: { 
+    width: 34, 
+    height: 34, 
+    borderRadius: 17,
+    shadowColor: '#0f172a',
+    shadowOpacity: 0.15,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 2,
+  },
 
   segmentRow: { flexDirection: 'row', gap: 8 },
-  segment: { flex: 1, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: '#e5e7eb', alignItems: 'center', backgroundColor: '#fff' },
-  segmentActive: { backgroundColor: '#eff6ff', borderColor: '#2563eb', borderWidth: 2 },
+  segment: { 
+    flex: 1, 
+    paddingVertical: 10, 
+    borderRadius: 12, 
+    borderWidth: 1, 
+    borderColor: '#e5e7eb', 
+    alignItems: 'center', 
+    backgroundColor: '#fff',
+    shadowColor: '#0f172a',
+    shadowOpacity: 0.03,
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  segmentActive: { 
+    backgroundColor: '#eff6ff', 
+    borderColor: '#2563eb', 
+    borderWidth: 2,
+    shadowColor: '#2563eb',
+    shadowOpacity: 0.2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 6,
+    elevation: 3,
+  },
   segmentText: { fontSize: 13, fontWeight: '700', color: '#475569' },
 
-  chip: { paddingVertical: 10, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 6 },
-  chipText: { fontSize: 13, fontWeight: '600', color: '#0f172a', maxWidth: 120 },
+  chip: { 
+    paddingVertical: 10, 
+    paddingHorizontal: 12, 
+    borderRadius: 12, 
+    borderWidth: 2, 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 6,
+    shadowColor: '#0f172a',
+    shadowOpacity: 0.03,
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  chipText: { 
+    fontSize: 13, 
+    fontWeight: '600', 
+    color: '#0f172a', 
+    maxWidth: 120 
+  },
 
-  remindBtn: { width: '100%', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#e5e7eb', backgroundColor: '#fff', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  remindLeft: { fontSize: 14, color: '#475569' },
-  remindArrow: { fontSize: 14, color: '#475569', fontWeight: '700' },
-
-  bottomBar: { padding: 12, flexDirection: 'row', gap: 8 },
-  bottomBtn: { flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center' },
+  bottomBar: { 
+    padding: 12, 
+    flexDirection: 'row', 
+    gap: 8,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+  },
+  bottomBtn: { 
+    flex: 1, 
+    paddingVertical: 12, 
+    borderRadius: 12, 
+    alignItems: 'center',
+    shadowColor: '#0f172a',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 2,
+  },
   bottomText: { fontSize: 14, fontWeight: '800' },
 
-  overlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.35)', alignItems: 'center', justifyContent: 'center' },
-  menu: { width: 200, backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: '#e5e7eb', overflow: 'hidden' },
-  menuItem: { paddingVertical: 12, paddingHorizontal: 12 },
-  menuText: { fontSize: 13, color: '#0f172a' },
+  overlay: { 
+    flex: 1, 
+    backgroundColor: 'rgba(15,23,42,0.5)', 
+    alignItems: 'center', 
+    justifyContent: 'center' 
+  },
 
-  confirmCard: { width: '92%', maxWidth: 420, backgroundColor: '#fff', borderRadius: 22, padding: 22, borderWidth: 1, borderColor: '#e5e7eb' },
-  confirmTitle: { fontSize: 18, fontWeight: '800', color: '#0f172a', marginBottom: 6 },
-  confirmRow: { flexDirection: 'row', justifyContent: 'center', gap: 12, marginTop: 16 },
-  btnCancel: { backgroundColor: '#e5e7eb', borderRadius: 999, paddingVertical: 10, paddingHorizontal: 16 },
-  btnCancelText: { color: '#0f172a', fontWeight: '800' },
-  btnDanger: { backgroundColor: '#ef4444', borderRadius: 999, paddingVertical: 10, paddingHorizontal: 16 },
-  btnDangerText: { color: '#fff', fontWeight: '800' },
+  confirmCard: { 
+    width: '92%', 
+    maxWidth: 420, 
+    backgroundColor: '#fff', 
+    borderRadius: 22, 
+    padding: 22, 
+    borderWidth: 1, 
+    borderColor: '#e5e7eb',
+    shadowColor: '#0f172a',
+    shadowOpacity: 0.2,
+    shadowOffset: { width: 0, height: 8 },
+    shadowRadius: 24,
+    elevation: 8,
+  },
+  confirmTitle: { 
+    fontSize: 18, 
+    fontWeight: '800', 
+    color: '#0f172a', 
+    marginBottom: 6 
+  },
+  confirmRow: { 
+    flexDirection: 'row', 
+    justifyContent: 'center', 
+    gap: 12, 
+    marginTop: 16 
+  },
+  btnCancel: { 
+    backgroundColor: '#e5e7eb', 
+    borderRadius: 999, 
+    paddingVertical: 10, 
+    paddingHorizontal: 16,
+    minWidth: 100,
+    alignItems: 'center',
+  },
+  btnCancelText: { 
+    color: '#0f172a', 
+    fontWeight: '800',
+    fontSize: 14,
+  },
+  btnDanger: { 
+    backgroundColor: '#ef4444', 
+    borderRadius: 999, 
+    paddingVertical: 10, 
+    paddingHorizontal: 16,
+    minWidth: 100,
+    alignItems: 'center',
+    shadowColor: '#ef4444',
+    shadowOpacity: 0.3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  btnDangerText: { 
+    color: '#fff', 
+    fontWeight: '800',
+    fontSize: 14,
+  },
 });
