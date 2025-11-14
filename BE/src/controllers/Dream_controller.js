@@ -139,12 +139,11 @@ async function predictCategory(dreamText) {
 
 //LANGUAGE DETECTION
 function detectLanguage(text) {
-  // Check for Vietnamese diacritics (most reliable)
+  // Ưu tiên kiểm tra ký tự có dấu tiếng Việt
   const vietnameseChars = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i;
   if (vietnameseChars.test(text)) {
     return 'vi';
   }
-
   // Check for Vietnamese words (có dấu và không dấu)
   const vietnameseWords = /\b(tôi|toi|mơ|mo|giấc|giac|thấy|thay|bị|bi|đang|dang|của|cua|là|la|có|co|không|khong|này|nay|được|duoc|với|voi|cho|trong|ve|và|va|một|mot|các|cac|những|nhung|ngày|ngay|người|nguoi|buồn|buon|vui|minh|bay|sợ|so|lo|hạnh phúc|hanh phuc)\b/i;
 

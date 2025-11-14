@@ -5,7 +5,7 @@ import { CLOUDINARY_URLS, USE_LOCALHOST, LOCALHOST_BASE } from './cloudinary-url
 
 dotenv.config();
 
-// Hàm helper để lấy URL (tự động chọn Cloudinary hoặc localhost)
+// Hàm lấy URL  (tự động chọn Cloudinary hoặc localhost)
 const getAudioUrl = (cloudinaryUrl, filename) => {
   return USE_LOCALHOST ? `${LOCALHOST_BASE}/${filename}` : cloudinaryUrl;
 };
@@ -124,7 +124,7 @@ const audioData = [
     duration: 1800,
     displayDuration: '30 phút',
     audioUrl: getAudioUrl(CLOUDINARY_URLS.storyHoChiMinh, 'story-HoChiMinh-ByGSHoangChiBao.mp3'),
-    thumbnail: 'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?w=400',
+    thumbnail: '',
     category: 'history',
     tags: ['story', 'history', 'inspiration', 'vietnam'],
     language: 'vi',
