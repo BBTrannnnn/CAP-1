@@ -71,6 +71,11 @@ export default function TabsLayout() {
         name="habits/HabitSuggestions"
         options={{ href:null }}
       />
+
+      <Tabs.Screen
+        name="habits/HabitSurvey"
+        options={{ href:null }}
+      />
       <Tabs screenOptions={{ tabBarShowLabel: false }} />
     </Tabs>
     

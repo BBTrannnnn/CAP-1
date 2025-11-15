@@ -933,7 +933,8 @@ export default function FlowStateHabits() {
             <Plus size={20} color="#fff" />
           </button>
           <button
-            onClick={() => router.push('/(tabs)/habits/HabitStreak')}
+            onClick={() => {
+              router.push('/(tabs)/habits/HabitStreak')}}
             style={{
               width: '40px',
               height: '40px',

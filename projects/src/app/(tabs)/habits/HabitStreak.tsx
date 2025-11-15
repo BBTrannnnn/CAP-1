@@ -155,7 +155,8 @@ export default function HabitStreak() {
     };
 
     loadHabits();
-  }, []);
+
+  }, [location.pathname]);
 
   // ====== Load stats + calendar theo habit + tháng ======
   React.useEffect(() => {

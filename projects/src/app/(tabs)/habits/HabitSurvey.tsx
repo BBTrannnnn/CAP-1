@@ -233,7 +233,7 @@ export default function HabitSurvey() {
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <button
-              onClick={() => router.back()}
+              onClick={() => router.push('/(tabs)/habits')}
               style={{
                 width: 40,
                 height: 40,
@@ -314,7 +314,7 @@ export default function HabitSurvey() {
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <button
-              onClick={() => router.back()}
+              onClick={() => router.push('/(tabs)/habits')}
               style={{
                 width: 40,
                 height: 40,
@@ -360,7 +360,7 @@ export default function HabitSurvey() {
             {errorMsg || 'Không tải được bộ câu hỏi khảo sát.'}
           </div>
           <button
-            onClick={() => router.back()}
+            onClick={() => router.push('/(tabs)/habits')}
             style={{
               marginTop: 8,
               padding: '10px 14px',
@@ -399,7 +399,7 @@ export default function HabitSurvey() {
           }}
         >
           <button
-            onClick={() => router.back()}
+            onClick={() => router.push('/(tabs)/habits')}
             style={{
               width: 40,
               height: 40,
@@ -547,7 +547,7 @@ export default function HabitSurvey() {
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <button
-            onClick={() => router.back()}
+            onClick={() => router.push('/(tabs)/habits')}
             style={{
               width: 40,
               height: 40,
