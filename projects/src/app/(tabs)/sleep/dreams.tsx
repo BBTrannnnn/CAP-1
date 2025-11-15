@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FlatList, Alert } from 'react-native';
-import { YStack, XStack, Card, Button, Text, Input, Separator, Spinner, Sheet, ScrollView } from 'tamagui';
+import { FlatList, Alert, TextInput } from 'react-native';
+import { YStack, XStack, Card, Button, Text, Separator, Spinner, Sheet, ScrollView } from 'tamagui';
 import { apiGet } from '../../../lib/api';
 import { analyzeDream, fetchDreamStats, removeDream } from '../../../lib/dreamApi';
 import type { DreamItem, DreamStats as DreamStatsType, DreamCategory } from '../../../types/dream';
@@ -368,17 +368,22 @@ const DreamsScreen: React.FC = () => {
       <Card backgroundColor="#fff" borderRadius={16} padding={16} margin={16} marginBottom={12}>
         <YStack>
           <Text fontSize={18} fontWeight="bold" marginBottom={8} color={PRIMARY}>Phân tích giấc mơ</Text>
-          <Input
+          <TextInput
+            multiline
+            style={{
+              marginTop: 8,
+              minHeight: 120,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: '#E4E4E4',
+              backgroundColor: '#F8F8F8',
+              paddingHorizontal: 12,
+              paddingVertical: 8,
+              fontSize: 14,
+            }}
+            placeholder="Hãy mô tả giấc mơ của bạn..."
             value={prompt}
             onChangeText={setPrompt}
-            placeholder="Mô tả giấc mơ của bạn..."
-            multiline={true}
-            maxLength={5000}
-            backgroundColor="#F3E8FF"
-            borderRadius={8}
-            padding={10}
-            minHeight={60}
-            marginBottom={8}
           />
           <Button
             height={52}
@@ -400,29 +405,37 @@ const DreamsScreen: React.FC = () => {
       <Card backgroundColor="#fff" borderRadius={16} padding={16} margin={16} marginBottom={12}>
         <YStack>
           <Text fontSize={18} fontWeight="bold" marginBottom={8} color={PRIMARY}>Lịch sử giấc mơ</Text>
-          <XStack marginBottom={8}>
-            {CATEGORY_CHIPS.map(chip => (
-              <Button
-                key={chip.label}
-                onPress={async () => {
-                  setSelectedCategory(chip.key);
-                  await fetchHistory(1, 10, chip.key);
-                }}
-                borderRadius={999}
-                backgroundColor={selectedCategory === chip.key ? '#F3E8FF' : '#FFF'}
-                borderWidth={1}
-                borderColor={selectedCategory === chip.key ? PRIMARY : '#E8ECF3'}
-                marginRight={8}
-                marginBottom={8}
-                paddingHorizontal={14}
-                paddingVertical={8}
-                fontSize={14}
-                color={selectedCategory === chip.key ? PRIMARY : '#333'}
-                fontWeight="700"
-              >
-                {chip.label}
-              </Button>
-            ))}
+          {/* Bộ lọc mood / category */}
+          <XStack
+            flexWrap="wrap"
+            rowGap={8}
+            columnGap={8}
+            marginTop={12}
+            marginBottom={12}
+          >
+            {CATEGORY_CHIPS.map(chip => {
+              const isActive = selectedCategory === chip.key;
+              return (
+                <Button
+                  key={String(chip.key ?? 'all')}
+                  size="$2"
+                  borderRadius={999}
+                  paddingHorizontal={14}
+                  height={32}
+                  backgroundColor={isActive ? PRIMARY : '#F3E8FF'}
+                  borderColor={isActive ? PRIMARY : '#E2D4FF'}
+                  borderWidth={1}
+                  onPress={async () => {
+                    setSelectedCategory(chip.key);
+                    await fetchHistory(1, 10, chip.key);
+                  }}
+                >
+                  <Text fontSize={13} fontWeight="600" color={isActive ? '#FFFFFF' : '#5A3CB0'}>
+                    {chip.label}
+                  </Text>
+                </Button>
+              );
+            })}
           </XStack>
           {!loadingList && history.length === 0 && (
             <Text textAlign="center" color="#888" marginVertical={20}>
@@ -431,8 +444,10 @@ const DreamsScreen: React.FC = () => {
           )}
           <FlatList
             data={Array.isArray(history) ? history : []}
-            keyExtractor={(item: DreamHistoryItem) => item._id}
-            renderItem={({ item }) => <DreamCard item={item} onDelete={handleDelete} />}
+            keyExtractor={(item: DreamHistoryItem, index) => (item._id || (item as any).id || index.toString())}
+            renderItem={({ item, index }) => (
+              <DreamCard key={(item._id || (item as any).id || index.toString())} item={item} onDelete={handleDelete} />
+            )}
             contentContainerStyle={{ paddingBottom: 80 }}
             scrollEnabled={false}
             nestedScrollEnabled={false}

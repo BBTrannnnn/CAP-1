@@ -1,10 +1,11 @@
 // app/(tabs)/sleep.tsx
 import React, { useEffect, useMemo, useState } from 'react';
 import DreamsScreen from './dreams';
-import { ScrollView, Alert, Platform } from 'react-native';
+import SleepContent from './SleepContent';
+import { ScrollView, Alert, Platform, Pressable } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { YStack, XStack, Text, Button, Card, Input, Separator } from 'tamagui';
+import { YStack, XStack, Text, Button, Card, Input, Separator, } from 'tamagui';
 
 import Ionicons from '@expo/vector-icons/Ionicons';
 import AntDesign from '@expo/vector-icons/AntDesign';
@@ -49,6 +50,103 @@ export default function SleepLab() {
   // ID đang xoá (để disable nút)
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  // Nạp dữ liệu ban đầu cho bảng thống kê
+  useEffect(() => {
+    let isCancelled = false;
+
+    async function loadInitialSleepData() {
+      try {
+        // 1) Đọc local 7 ngày đã lưu trong AsyncStorage
+        const stored = await AsyncStorage.getItem('sleepJournal');
+        if (!isCancelled && stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) {
+            setEntries(parsed);
+          }
+        }
+      } catch (error) {
+        if (__DEV__) {
+          console.warn('[Sleep] Không đọc được sleepJournal từ AsyncStorage', error);
+        }
+      }
+
+      try {
+        // 2) Lấy log từ BE để cập nhật state logs
+        const res = await apiGet('/api/sleep/logs?page=1&limit=10');
+        const freshLogs = normalizeLogs(res?.data || []);
+        if (isCancelled) return;
+
+        setLogs(freshLogs);
+
+        // Nếu chưa có entries từ AsyncStorage thì tạo entries từ log BE
+        if (freshLogs.length > 0) {
+          const mappedEntries = freshLogs
+            .map((log: any) => {
+              const dateISO = getYMDFromLog(log) || todayISO();
+              const bed = log.sleepTime || '10:30 PM';
+              const wake = log.wakeTime || '7:00 AM';
+              const durationMin = diffMinutes(bed, wake);
+
+              // Map wakeMood → emoji để bảng hiển thị giống UI hiện tại
+              let moodEmoji: Mood = '😊';
+              switch (log.wakeMood) {
+                case 'met':
+                  moodEmoji = '😫';
+                  break;
+                case 'cang_thang':
+                  moodEmoji = '😐';
+                  break;
+                case 'thu_gian':
+                  moodEmoji = '😊';
+                  break;
+                case 'vui':
+                  moodEmoji = '🤩';
+                  break;
+                case 'buon':
+                  moodEmoji = '😴';
+                  break;
+              }
+
+              return {
+                dateISO,
+                bedTime: bed,
+                wakeTime: wake,
+                durationMin,
+                quality: typeof log.quality === 'number' ? log.quality : 3,
+                mood: moodEmoji,
+                factors: Array.isArray(log.factors) ? log.factors : [],
+              };
+            })
+            .filter((entry) => within7Days(entry.dateISO))
+            .sort((a, b) => (a.dateISO < b.dateISO ? 1 : -1))
+            .slice(0, 7);
+
+          // Chỉ ghi đè entries nếu AsyncStorage chưa có gì
+          setEntries((previous) => (previous.length > 0 ? previous : mappedEntries));
+
+          // Lưu lại vào AsyncStorage để lần sau mở app nhanh hơn
+          try {
+            await AsyncStorage.setItem('sleepJournal', JSON.stringify(mappedEntries));
+          } catch (error) {
+            if (__DEV__) {
+              console.warn('[Sleep] Không lưu lại mappedEntries vào AsyncStorage', error);
+            }
+          }
+        }
+      } catch (error) {
+        if (__DEV__) {
+          console.warn('[Sleep] Lỗi khi lấy logs từ BE', error);
+        }
+      }
+    }
+
+    loadInitialSleepData();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
   // map _id theo yyyy-mm-dd để disable nút theo hàng
   const idByDate = useMemo(() => {
     const m: Record<string, string> = {};
@@ -77,6 +175,13 @@ export default function SleepLab() {
     'Tắm nước ấm': 'tam_nuoc_am',
     'Noise': 'on_ao',
   };
+
+  const COL_DAY = 72;
+  const COL_TIME = 64;      
+  const COL_DURATION = 72; 
+  const COL_STAR = 48;      
+  const COL_MOOD = 64;      
+  const HEADER_FONT = 9;
 
   function selectedFactorsFromState(factorsState: Record<string, boolean>) {
     return Object.keys(factorsState)
@@ -595,27 +700,79 @@ const handleDelete = async (logId: string, dateISO: string) => {
                 </Text>
               </XStack>
 
-              {/* Header */}
-              <XStack
-                alignItems="center"
-                justifyContent="space-between"
-                backgroundColor="#F7F9FC"
-                paddingVertical={10}
-                paddingHorizontal={10}
-                borderRadius={10}
-                borderWidth={1}
-                borderColor="#E5E9F0"
-              >
-                <Text fontSize={12} fontWeight="700" color="#6B6B6B" style={{ width: 70 }}>Ngày</Text>
-                <Text fontSize={12} fontWeight="700" color="#6B6B6B" style={{ width: 70 }}>Đi ngủ</Text>
-                <Text fontSize={12} fontWeight="700" color="#6B6B6B" style={{ width: 70 }}>Thức dậy</Text>
-                <Text fontSize={12} fontWeight="700" color="#6B6B6B" style={{ width: 70 }}>Thời gian</Text>
-                <Text fontSize={12} fontWeight="700" color="#6B6B6B" style={{ width: 70 }}>Sao</Text>
-                <Text fontSize={12} fontWeight="700" color="#6B6B6B" style={{ flex: 1, textAlign: 'right' }}>Mood</Text>
-              </XStack>
+              {/* Horizontal ScrollView for table */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <YStack>
+                  {/* Header */}
+                  <XStack
+                    alignItems="center"
+                    justifyContent="space-between"
+                    backgroundColor="#F7F9FC"
+                    paddingVertical={8}
+                    paddingHorizontal={10}
+                    borderRadius={10}
+                    borderWidth={1}
+                    borderColor="#E5E9F0"
+                  >
+                    <Text
+                      fontSize={HEADER_FONT}
+                      fontWeight="700"
+                      color="#6B6B6B"
+                      style={{ width: COL_DAY }}
+                    >
+                      Ngày
+                    </Text>
 
-              {/* Rows */}
-              {weeklyEntries.length === 0 ? (
+                    <Text
+                      fontSize={HEADER_FONT}
+                      fontWeight="700"
+                      color="#6B6B6B"
+                      style={{ width: COL_TIME, textAlign: 'center' }}
+                    >
+                      Đi ngủ
+                    </Text>
+
+                    <Text
+                      fontSize={HEADER_FONT}
+                      fontWeight="700"
+                      color="#6B6B6B"
+                      style={{ width: COL_TIME, textAlign: 'center' }}
+                    >
+                      Thức dậy
+                    </Text>
+
+                    <Text
+                      fontSize={HEADER_FONT}
+                      fontWeight="700"
+                      color="#6B6B6B"
+                      style={{ width: COL_DURATION, textAlign: 'center' }}
+                    >
+                      Thời gian
+                    </Text>
+
+                    <Text
+                      fontSize={HEADER_FONT}
+                      fontWeight="700"
+                      color="#6B6B6B"
+                      style={{ width: COL_STAR, textAlign: 'center' }}
+                    >
+                      Sao
+                    </Text>
+
+                    <Text
+                      fontSize={HEADER_FONT}
+                      fontWeight="700"
+                      color="#6B6B6B"
+                      style={{ width: COL_MOOD, textAlign: 'right' }}
+                    >
+                      Mood
+                    </Text>
+
+                    <XStack style={{ width: 60 }} />
+                  </XStack>
+
+                  {/* Rows */}
+                  {weeklyEntries.length === 0 ? (
                 <Text
                   fontSize={13}
                   color="#6B6B6B"
@@ -638,41 +795,27 @@ const handleDelete = async (logId: string, dateISO: string) => {
                     borderColor="#EEF1F5"
                     borderRadius={index === weeklyEntries.length - 1 ? 10 : 0}
                   >
-                    <Text fontSize={13} fontWeight="600" color="#1F1F1F" style={{ width: 70 }}>
-                      {formatVN(e.dateISO)}
-                    </Text>
-                    <Text fontSize={13} color="#333" style={{ width: 70 }}>{e.bedTime}</Text>
-                    <Text fontSize={13} color="#333" style={{ width: 70 }}>{e.wakeTime}</Text>
-                    <Text fontSize={13} color="#333" style={{ width: 70 }}>{fmtDuration(e.durationMin)}</Text>
+                      <Text fontSize={13} fontWeight="600" color="#1F1F1F" style={{ width: COL_DAY }}>
+                        {formatVN(e.dateISO)}
+                      </Text>
+                      <Text fontSize={13} color="#333" style={{ width: COL_TIME, textAlign: 'center' }}>{e.bedTime}</Text>
+                      <Text fontSize={13} color="#333" style={{ width: COL_TIME, textAlign: 'center' }}>{e.wakeTime}</Text>
+                      <Text fontSize={13} color="#333" style={{ width: COL_DURATION, textAlign: 'center' }}>{fmtDuration(e.durationMin)}</Text>
 
-                    <XStack style={{ width: 70 }} alignItems="center" gap={2}>
-                      {Array.from({ length: 5 }).map((_, i) => (
-                        <AntDesign
-                          key={i}
-                          name="star"
-                          size={12}
-                          color={i < e.quality ? '#FFC107' : '#E0E0E0'}
-                        />
-                      ))}
-                    </XStack>
-
-                    <XStack alignItems="center" justifyContent="flex-end" style={{ flex: 1 }}>
-                      <XStack
-                        alignItems="center"
-                        justifyContent="center"
-                        paddingHorizontal={10}
-                        paddingVertical={4}
-                        borderRadius={999}
-                        borderWidth={1}
-                        borderColor="#EEEFF6"
-                        backgroundColor="#FFF9E6"
-                      >
-                        <Text fontSize={14}>{e.mood}</Text>
-                        <Text fontSize={12} style={{ marginLeft: 6, color: '#6B6B6B' }}>
-                          {labelMood(e.mood)}
-                        </Text>
+                      <XStack style={{ width: COL_STAR, justifyContent: 'center' }} alignItems="center" gap={6}>
+                        {Array.from({ length: 5 }).map((_, i) => (
+                          <AntDesign
+                            key={i}
+                            name="star"
+                            size={12}
+                            color={i < e.quality ? '#FFC107' : '#E0E0E0'}
+                          />
+                        ))}
                       </XStack>
-                    </XStack>
+
+                      <Text fontSize={14} style={{ width: COL_MOOD, textAlign: 'right' }}>
+                        {e.mood}
+                      </Text>
                     <Button
                       backgroundColor="#FFEAEA"
                       disabled={deletingId === idByDate[e.dateISO]}
@@ -706,101 +849,16 @@ const handleDelete = async (logId: string, dateISO: string) => {
                       }
                     </Button>
                   </XStack>
-                  
                 ))
-              )}
+                  )}
+                </YStack>
+              </ScrollView>
             </Card>
           </YStack>
         )}
 
         {/* ============= TAB 2: SUPPORT ============= */}
-        {tab === 'support' && (
-          <YStack gap={16}>
-            {/* Chat AI */}
-            <Card padding={16} borderRadius={12} borderWidth={1} borderColor="#E8ECF3" backgroundColor="#FFFFFF">
-              <XStack alignItems="center" gap={8}>
-                <Ionicons name="chatbubbles-outline" size={20} color={PRIMARY} />
-                <Text fontSize={16} fontWeight="700">Trò chuyện cùng AI</Text>
-              </XStack>
-              <Text fontSize={13} color="#6B6B6B" style={{ marginTop: 4 }}>
-                Tâm sự, đặt câu hỏi, hoặc nhờ AI kể chuyện/thiền dẫn để dễ ngủ hơn.
-              </Text>
-              <Button
-                style={{ marginTop: 12 }}
-                borderRadius={12}
-                height={48}
-                backgroundColor={PRIMARY}
-                pressStyle={{ backgroundColor: PRIMARY_PRESSED }}
-                onPress={() => router.push('/(tabs)/sleep/ai-chat')}
-              >
-                <Text fontSize={15} fontWeight="700" color="#FFFFFF">Bắt đầu trò chuyện</Text>
-              </Button>
-            </Card>
-
-            {/* Relaxing sounds */}
-            <Card padding={16} borderRadius={12} borderWidth={1} borderColor="#E8ECF3" backgroundColor="#FFFFFF">
-              <XStack alignItems="center" gap={8}>
-                <Ionicons name="musical-notes-outline" size={20} color={PRIMARY} />
-                <Text fontSize={16} fontWeight="700">Âm thanh thư giãn</Text>
-              </XStack>
-              <XStack flexWrap="wrap" gap={12} style={{ marginTop: 12 }}>
-                {[
-                  { icon: 'rainy-outline', label: 'Tiếng mưa' },
-                  { icon: 'leaf-outline', label: 'Rừng đêm' },
-                  { icon: 'flame-outline', label: 'Lò sưởi' },
-                  { icon: 'cloudy-outline', label: 'Gió thổi' },
-                ].map((item) => (
-                  <Card
-                    key={item.label}
-                    width="45%"
-                    padding={12}
-                    borderRadius={12}
-                    borderWidth={1}
-                    borderColor="#E8ECF3"
-                  >
-                    <Ionicons name={item.icon as any} size={22} color={PRIMARY} />
-                    <Text fontSize={14} fontWeight="600" style={{ marginTop: 8 }}>{item.label}</Text>
-                    <Text fontSize={12} color="#6B6B6B">60 phút</Text>
-                  </Card>
-                ))}
-              </XStack>
-            </Card>
-
-            {/* Bedtime stories */}
-            <Card padding={16} borderRadius={12} borderWidth={1} borderColor="#E8ECF3" backgroundColor="#FFFFFF">
-                <XStack alignItems="center" gap={8}>
-                    <Ionicons name="book-outline" size={20} color={PRIMARY} />
-                    <Text fontSize={16} fontWeight="700">Kể chuyện ru ngủ</Text>
-                </XStack>
-                <YStack marginTop={12} gap={12}>
-                    {[
-                    { title: 'Hành trình trong rừng xanh', time: '15 phút' },
-                    { title: 'Chuyến phiêu lưu biển cả', time: '20 phút' },
-                    { title: 'Ngôi nhà trên mây', time: '30 phút' },
-                    ].map((story) => (
-                    <Card
-                        key={story.title}
-                        padding={12}
-                        borderRadius={12}
-                        borderWidth={1}
-                        borderColor="#E8ECF3"
-                        backgroundColor="#FAFAFA"
-                    >
-                        <XStack alignItems="center" justifyContent="space-between">
-                        <YStack>
-                            <Text fontSize={15} fontWeight="600">{story.title}</Text>
-                            <Text fontSize={12} color="#6B6B6B">{story.time}</Text>
-                        </YStack>
-                        <Button backgroundColor="transparent" height={40} width={40}>
-                            <Ionicons name="play-circle" size={24} color={PRIMARY} />
-                        </Button>
-                        </XStack>
-                    </Card>
-                    ))}
-                </YStack>
-            </Card>
-          </YStack>
-        )}
+        {tab === 'support' && <SleepContent />}
 
         {/* ============= TAB 3: DREAMS ============= */}
         {tab === 'dreams' && <DreamsScreen />}

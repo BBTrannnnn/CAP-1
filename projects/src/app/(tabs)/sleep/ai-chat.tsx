@@ -1,17 +1,40 @@
-import React, { useState, useRef } from 'react';
-import { ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { ScrollView, KeyboardAvoidingView, Platform, View, TextInput, FlatList, StyleSheet, SafeAreaView } from 'react-native';
 import { YStack, XStack, Card, Text, Input, Button, Theme } from 'tamagui';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import LinearGradient from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
 
 const PRIMARY = '#9B59FF';
 const GRADIENT = ['#9B59FF', '#7F00FF'];
+const TAB_BAR_HEIGHT = 72;
 
 type Msg = { id: string; role: 'user' | 'ai'; text: string };
 
 export default function AIChatScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
+
+  // Ẩn tab bar khi vào màn AI chat, hiện lại khi rời màn
+  useFocusEffect(
+    useCallback(() => {
+      const parent = navigation.getParent();
+
+      // Ẩn bottom tab
+      parent?.setOptions({
+        tabBarStyle: { display: 'none' },
+      });
+
+      // Khi rời màn AI chat → hiện lại tab bar
+      return () => {
+        parent?.setOptions({ tabBarStyle: undefined });
+      };
+    }, [navigation]),
+  );
+
   const [msgs, setMsgs] = useState<Msg[]>([
     {
       id: '1',
@@ -40,102 +63,101 @@ export default function AIChatScreen() {
     }, 800);
   };
 
-  return (
-    <Theme name="light">
-      <YStack flex={1} backgroundColor="#F4F7FB">
-        {/* Header */}
-        <XStack alignItems="center" paddingHorizontal={16} paddingVertical={14}>
-          <Button
-            backgroundColor="transparent"
-            height={40}
-            width={40}
-            onPress={() => router.back()}
-          >
-            <Ionicons name="chevron-back" size={22} color="#1F1F1F" />
-          </Button>
-          <Text fontSize={18} fontWeight="700" color="#1F1F1F">
-            Trò chuyện cùng AI
-          </Text>
-        </XStack>
-
-        {/* Chat body */}
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+  const renderMessage = ({ item, index }: { item: Msg; index: number }) => {
+    return (
+      <View
+        key={`${item.id}-${index}`}
+        style={{
+          alignSelf: item.role === 'user' ? 'flex-end' : 'flex-start',
+          marginBottom: 12,
+          maxWidth: '80%',
+        }}
+      >
+        <View
+          style={{
+            backgroundColor: item.role === 'user' ? PRIMARY : '#FFFFFF',
+            paddingHorizontal: 14,
+            paddingVertical: 10,
+            borderRadius: 16,
+            elevation: 2,
+          }}
         >
+          <Text fontSize={15} color={item.role === 'user' ? '#FFFFFF' : '#1F1F1F'} lineHeight={20}>
+            {item.text}
+          </Text>
+        </View>
+      </View>
+    );
+  };
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F4F7FB' }}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 10 : 0}
+      >
+        {/* danh sách tin nhắn */}
+        <View style={{ flex: 1 }}>
           <ScrollView
             ref={scrollRef}
-            contentContainerStyle={{
-              padding: 16,
-              paddingBottom: 24,
-            }}
+            contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
           >
-            {msgs.map((m) => (
-              <XStack
-                key={m.id}
-                justifyContent={m.role === 'user' ? 'flex-end' : 'flex-start'}
-                marginBottom={12}
-              >
-                <Card
-                  paddingHorizontal={14}
-                  paddingVertical={10}
-                  borderRadius={16}
-                  maxWidth="80%"
-                  borderWidth={0}
-                  elevation={2}
-                  backgroundColor={m.role === 'user' ? '#9B59FF' : '#FFFFFF'}
-                >
-                  <Text
-                    fontSize={15}
-                    color={m.role === 'user' ? '#FFFFFF' : '#1F1F1F'}
-                    lineHeight={20}
-                  >
-                    {m.text}
-                  </Text>
-                </Card>
-              </XStack>
-            ))}
+            {msgs.map((item, index) => renderMessage({ item, index }))}
           </ScrollView>
+        </View>
 
-          {/* Input bar */}
-          <XStack
-            paddingHorizontal={12}
-            paddingVertical={10}
-            gap={8}
-            backgroundColor="#FFFFFF"
-            borderTopWidth={1}
-            borderColor="#E8ECF3"
-            alignItems="center"
+        {/* THANH INPUT – luôn nằm cuối, không absolute */}
+        <View style={styles.inputWrapper}>
+          <TextInput
+            style={styles.input}
+            placeholder="Nhập điều bạn muốn tâm sự..."
+            value={text}
+            onChangeText={setText}
+            multiline
+          />
+
+          <Button
+            height={48}
+            width={48}
+            borderRadius={14}
+            backgroundColor={PRIMARY}
+            pressStyle={{ backgroundColor: '#7F00FF' }}
+            onPress={sendMsg}
           >
-            <Input
-              flex={1}
-              height={46}
-              borderRadius={14}
-              borderWidth={1}
-              borderColor="#E4E4E4"
-              backgroundColor="#F8F8F8"
-              paddingHorizontal={12}
-              placeholder="Nhập tin nhắn... (ví dụ: kể chuyện ru ngủ)"
-              value={text}
-              onChangeText={setText}
-            />
-            <Button
-              height={46}
-              width={46}
-              borderRadius={14}
-              backgroundColor={PRIMARY}
-              pressStyle={{ backgroundColor: '#7F00FF' }}
-              onPress={sendMsg}
-            >
-              <Ionicons name="send" size={18} color="#fff" />
-            </Button>
-          </XStack>
-        </KeyboardAvoidingView>
-      </YStack>
-    </Theme>
+            <Ionicons name="send" size={18} color="#fff" />
+          </Button>
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  listContent: {
+    padding: 16,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    paddingHorizontal: 12,
+    paddingVertical: Platform.OS === "ios" ? 10 : 6,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderColor: '#E8ECF3',
+    alignItems: 'center',
+  },
+  input: {
+    flex: 1,
+    height: 48,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E4E4E4',
+    backgroundColor: '#F8F8F8',
+    paddingHorizontal: 12,
+    fontSize: 15,
+  },
+});
 
 function suggest(q: string) {
   const s = q.toLowerCase();
