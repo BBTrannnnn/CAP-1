@@ -402,6 +402,83 @@ const deleteProfileById = asyncHandler(async (req, res) => {
   });
 });
 
+// Cập nhật profile của chính user đang đăng nhập
+const updateOwnProfile = asyncHandler(async (req, res) => {
+  // Đặt params.id để tái sử dụng logic updateProfileById
+  req.params.id = req.user._id.toString();
+  return await updateProfileById(req, res);
+});
+
+// Admin dashboard: thống kê nhanh
+const getDashboard = asyncHandler(async (req, res) => {
+  // Tổng users
+  const totalUsers = await User.countDocuments();
+  // Tổng admins
+  const totalAdmins = await User.countDocuments({ role: 'admin' });
+  // Tổng users active
+  const totalActive = await User.countDocuments({ isActive: true });
+  // Lấy 10 users mới nhất
+  const recentUsers = await User.find()
+    .select('-password -confirmPassword')
+    .sort({ createdAt: -1 })
+    .limit(10);
+
+  // Phân bố theo role (dạng { role: count })
+  const roleAgg = await User.aggregate([
+    { $group: { _id: '$role', count: { $sum: 1 } } }
+  ]);
+  const roleDistribution = {};
+  roleAgg.forEach(r => { roleDistribution[r._id || 'unknown'] = r.count; });
+
+  // Phân bố active vs inactive
+  const activeAgg = await User.aggregate([
+    { $group: { _id: '$isActive', count: { $sum: 1 } } }
+  ]);
+  const activeDistribution = { active: 0, inactive: 0 };
+  activeAgg.forEach(a => {
+    if (a._id === true) activeDistribution.active = a.count;
+    else activeDistribution.inactive = a.count;
+  });
+
+  // Thống kê đăng ký 30 ngày gần nhất (theo ngày YYYY-MM-DD)
+  const now = new Date();
+  const past30 = new Date(now);
+  past30.setDate(past30.getDate() - 29); // include today => 30 days
+
+  const signups = await User.aggregate([
+    { $match: { createdAt: { $gte: new Date(past30.setHours(0,0,0,0)) } } },
+    { $group: {
+        _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+        count: { $sum: 1 }
+    } },
+    { $sort: { _id: 1 } }
+  ]);
+
+  // Build array for last 30 days with zero-fill
+  const signupsLast30Days = [];
+  for (let i = 0; i < 30; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() - (29 - i));
+    const key = d.toISOString().slice(0,10);
+    const found = signups.find(s => s._id === key);
+    signupsLast30Days.push({ date: key, count: found ? found.count : 0 });
+  }
+
+  res.status(200).json({
+    success: true,
+    message: 'Dashboard stats',
+    data: {
+      totalUsers,
+      totalAdmins,
+      totalActive,
+      roleDistribution,
+      activeDistribution,
+      signupsLast30Days,
+      recentUsers,
+    }
+  });
+});
+
 
 // Đăng nhập local
 const login = asyncHandler(async (req, res) => {
@@ -829,6 +906,8 @@ export {
   getAllUsers, 
   getProfileById, 
   updateProfileById, 
+  updateOwnProfile,
+  getDashboard,
   deleteProfileById, 
   loginWithGoogle, 
   login,

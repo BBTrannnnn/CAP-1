@@ -1,18 +1,3 @@
-"""
-DREAM ANALYSIS MODEL TRAINING - GOOGLE COLAB VERSION
-Train LSTM model với GPU/TPU - Nhanh gấp 10-20 lần so với CPU
-
-HƯỚNG DẪN SỬ DỤNG:
-1. Mở Google Colab: https://colab.research.google.com/
-2. Runtime > Change runtime type > Hardware accelerator > GPU (Tesla T4)
-3. Upload file dream_training_data.json
-4. Copy paste code này vào Colab
-5. Run all cells
-6. Download trained model về máy
-
-Thời gian dự kiến: 1-2 phút với GPU (thay vì 3 tiếng với CPU!)
-"""
-
 import json
 import numpy as np
 import tensorflow as tf
@@ -25,30 +10,29 @@ import os
 print("TensorFlow version:", tf.__version__)
 print("GPU Available:", tf.config.list_physical_devices('GPU'))
 
-# ============ CONFIG ============
+#CONFIG 
 CONFIG = {
-    'max_words': 2000,      # Tang 1000 -> 2000 (quan trong!)
+    'max_words': 2000,      
     'max_len': 50,
-    'embedding_dim': 128,   # Tang 64 -> 128
-    'lstm_units': 64,       # Giam 128 -> 64 (tranh overfit)
-    'epochs': 50,           # Tang 30 -> 50
-    'batch_size': 16,       # Giam 32 -> 16 (update nhieu hon)
+    'embedding_dim': 128,  
+    'lstm_units': 64,      
+    'epochs': 50,           
+    'batch_size': 16,      
     'validation_split': 0.2,
-    'learning_rate': 0.003, # Tang 0.001 -> 0.003 (quan trong!)
+    'learning_rate': 0.003, 
 }
 
 CATEGORIES = ['stress', 'fear', 'anxiety', 'sadness', 'happy', 'neutral', 'confusion']
 
 print("\nCONFIG:")
-print(f"   Epochs: {CONFIG['epochs']}")
-print(f"   Batch size: {CONFIG['batch_size']}")
-print(f"   LSTM units: {CONFIG['lstm_units']}")
-print(f"   Max sequence length: {CONFIG['max_len']}")
+print(f"Epochs: {CONFIG['epochs']}")
+print(f"Batch size: {CONFIG['batch_size']}")
+print(f"LSTM units: {CONFIG['lstm_units']}")
+print(f"Max sequence length: {CONFIG['max_len']}")
 
 
-# ============ LOAD DATA ============
+#LOAD DATA
 def load_data(file_path='dream_training_data.json'):
-    """Load and prepare training data"""
     print(f"\nLoading data from {file_path}...")
     
     with open(file_path, 'r', encoding='utf-8') as f:
@@ -59,7 +43,7 @@ def load_data(file_path='dream_training_data.json'):
     
     print(f"Loaded {len(texts)} dreams")
     
-    # Category distribution
+    #Category distribution
     category_counts = {}
     for label in labels:
         cat = CATEGORIES[label]
@@ -70,7 +54,7 @@ def load_data(file_path='dream_training_data.json'):
         pct = (count / len(labels)) * 100
         print(f"   {cat:10s} {count:4d} ({pct:.1f}%)")
     
-    # DEBUG: Check sample data
+    #Check sample data
     print("\nSample dreams:")
     for i in range(min(3, len(texts))):
         print(f"   [{CATEGORIES[labels[i]]}] {texts[i][:80]}...")
@@ -78,9 +62,8 @@ def load_data(file_path='dream_training_data.json'):
     return texts, labels
 
 
-# ============ TOKENIZATION ============
+#TOKENIZATION
 def create_tokenizer(texts, max_words):
-    """Create and fit tokenizer"""
     print(f"\nBuilding vocabulary (max {max_words} words)...")
     
     tokenizer = keras.preprocessing.text.Tokenizer(
@@ -112,9 +95,8 @@ def prepare_sequences(texts, tokenizer, max_len):
     return padded
 
 
-# ============ BUILD MODEL ============
+#BUILD MODEL 
 def build_model(vocab_size, config):
-    """Build LSTM model"""
     print("\nBuilding LSTM model...")
     
     model = keras.Sequential([
@@ -134,7 +116,7 @@ def build_model(vocab_size, config):
         layers.Dense(len(CATEGORIES), activation='softmax', name='output')
     ])
     
-    # Build model first (fix the count_params error)
+    # Build model first to show summary
     model.build(input_shape=(None, config['max_len']))
     
     # Compile with optimizer
@@ -154,16 +136,15 @@ def build_model(vocab_size, config):
     return model
 
 
-# ============ TRAIN MODEL ============
+#TRAIN MODEL
 def train_model(model, X_train, y_train, config):
-    """Train the model"""
     print("\nStarting training...")
-    print(f"   Training samples: {len(X_train)}")
-    print(f"   Validation split: {config['validation_split']*100:.0f}%")
-    print(f"   Epochs: {config['epochs']}")
-    print(f"   Batch size: {config['batch_size']}")
+    print(f"Training samples: {len(X_train)}")
+    print(f"Validation split: {config['validation_split']*100:.0f}%")
+    print(f"Epochs: {config['epochs']}")
+    print(f"Batch size: {config['batch_size']}")
     
-    # Callbacks
+    #Callbacks
     callbacks = [
         keras.callbacks.EarlyStopping(
             monitor='val_accuracy',
@@ -180,7 +161,7 @@ def train_model(model, X_train, y_train, config):
         )
     ]
     
-    # Train
+    #Train
     history = model.fit(
         X_train, y_train,
         epochs=config['epochs'],
@@ -190,7 +171,7 @@ def train_model(model, X_train, y_train, config):
         verbose=1
     )
     
-    # Final metrics
+    #Final metrics
     final_train_acc = history.history['accuracy'][-1]
     final_val_acc = history.history['val_accuracy'][-1]
     
@@ -201,19 +182,19 @@ def train_model(model, X_train, y_train, config):
     return history
 
 
-# ============ SAVE MODEL ============
+#SAVE MODEL
 def save_model_for_tfjs(model, tokenizer, save_dir='trained_model'):
     """Save model in TensorFlow.js format"""
     print(f"\nSaving model to {save_dir}...")
     
-    # Create directory
+    #Create directory
     os.makedirs(save_dir, exist_ok=True)
     
-    # Save model in TF.js format
+    #save model in TF.js format
     import tensorflowjs as tfjs
     tfjs.converters.save_keras_model(model, save_dir)
     
-    # Save tokenizer
+    #Save tokenizer
     tokenizer_config = {
         'word_index': tokenizer.word_index,
         'index_word': {int(k): v for k, v in tokenizer.index_word.items()},
@@ -224,7 +205,7 @@ def save_model_for_tfjs(model, tokenizer, save_dir='trained_model'):
     with open(f'{save_dir}/tokenizer.json', 'w', encoding='utf-8') as f:
         json.dump(tokenizer_config, f, ensure_ascii=False, indent=2)
     
-    # Save config
+    #Save config
     model_config = {
         'categories': CATEGORIES,
         'vocab_size': len(tokenizer.word_index) + 1,
@@ -237,9 +218,9 @@ def save_model_for_tfjs(model, tokenizer, save_dir='trained_model'):
         json.dump(model_config, f, indent=2)
     
     print(f"Model saved successfully!")
-    print(f"   Files: model.json, group1-shard*.bin, tokenizer.json, config.json")
+    print(f"Files: model.json, group1-shard*.bin, tokenizer.json, config.json")
     
-    # Create zip for download
+    #Create zip for download
     zip_path = 'trained_model.zip'
     with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
         for root, dirs, files in os.walk(save_dir):
@@ -249,54 +230,47 @@ def save_model_for_tfjs(model, tokenizer, save_dir='trained_model'):
                 zipf.write(file_path, arcname)
     
     print(f"\nCreated ZIP file: {zip_path}")
-    print("   Download this file and extract to BE/trained_model/")
     
     return save_dir
 
 
-# ============ MAIN EXECUTION ============
+#MAIN 
 def main():
     """Main training pipeline"""
     print("\n" + "="*60)
     print("DREAM ANALYSIS MODEL TRAINING")
-    print("   Platform: Google Colab (GPU/TPU)")
-    print("   Dataset: Self-generated + DreamBank")
+    print("Platform Google Colab (GPU/TPU)")
+    print("Dataset tu tao + DreamBank")
     print("="*60)
     
     # Install tensorflowjs converter
-    print("\nInstalling TensorFlow.js converter...")
+    print("\nInstall TensorFlow.js converter")
     os.system('pip install -q tensorflowjs')
     
-    # 1. Load data
+    #Load data
     texts, labels = load_data('dream_training_data.json')
     
-    # 2. Create tokenizer
+    #Create tokenizer
     tokenizer, vocab_size = create_tokenizer(texts, CONFIG['max_words'])
     
-    # 3. Prepare sequences
+    #Prepare sequences
     X = prepare_sequences(texts, tokenizer, CONFIG['max_len'])
     y = np.array(labels)
     
-    # 4. Build model
+    #Build model
     model = build_model(vocab_size, CONFIG)
     
-    # 5. Train model
+    #Train model
     history = train_model(model, X, y, CONFIG)
     
-    # 6. Save model
+    #Save model
     save_dir = save_model_for_tfjs(model, tokenizer)
     
     print("\n" + "="*60)
-    print("ALL DONE!")
+    print("xong")
     print("="*60)
-    print("\nNEXT STEPS:")
-    print("1. Download 'trained_model.zip' from Colab")
-    print("2. Extract to: BE/trained_model/")
-    print("3. Test API: POST /api/dreams/analyze")
-    print("\nYour model is ready to use!")
 
-
-# ============ RUN ============
+#RUN
 if __name__ == '__main__':
     # Enable GPU memory growth
     gpus = tf.config.list_physical_devices('GPU')
