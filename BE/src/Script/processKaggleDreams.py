@@ -2,12 +2,12 @@ import pandas as pd
 import json
 import re
 
-# Doc file CSV
-print("Dang doc dreams.csv...")
+#Doc file CSV
+print("doc dreams.csv")
 df = pd.read_csv('kaggle_data/dreams.csv')
 print(f"Tong so dreams: {len(df)}")
 
-# Keywords cho tung category - map sang categories cua model
+#Keywords cho tung category - map sang categories cua model
 categories = {
     'happy': ['happy', 'joy', 'excited', 'wonderful', 'celebration', 'laugh', 'smile', 'fun', 'pleasure', 'delight', 'cheerful', 'playful'],
     'sadness': ['sad', 'cry', 'depressed', 'lonely', 'miss', 'grief', 'sorrow', 'miserable', 'unhappy', 'melancholy', 'tears'],
@@ -53,43 +53,18 @@ for cat in categories.keys():
     count = len(df[df['category'] == cat])
     print(f"  {cat}: {count} dreams")
 
-# Chon dreams cho moi category de can bang
-# Model co 7 categories: sadness, happy, fear, neutral, anxiety, stress, confusion
-# Hien tai: 560 dreams (80 moi category)
-# Them tu Kaggle: ~143 dreams moi category
-# Tong: ~223 dreams moi category = 1561 dreams
-dreams_per_category = 700
-selected_dreams = []
-
-for category in categories.keys():
-    cat_dreams = df[df['category'] == category].head(dreams_per_category)
-    selected_dreams.extend(cat_dreams.to_dict('records'))
-
-print(f"\nDa chon {len(selected_dreams)} dreams tu Kaggle")
-
-# Doc dreams hien tai
-print("\nDang doc dream_training_data.json...")
-with open('dream_training_data.json', 'r', encoding='utf-8') as f:
-    existing_dreams = json.load(f)
-
-print(f"So dreams hien tai: {len(existing_dreams)}")
-
-# Convert Kaggle dreams sang format giong existing dreams
+print("\nDang chuan bi luu tat ca dreams tu Kaggle...")
 kaggle_dreams = []
-for dream in selected_dreams:
+for _, dream in df.iterrows():
     kaggle_dreams.append({
         'text': dream['dreams_text'],
         'category': dream['category']
     })
 
-# Merge hai datasets
-all_dreams = existing_dreams + kaggle_dreams
-print(f"\nTong so dreams sau khi merge: {len(all_dreams)}")
-
 # Thong ke final
 print("\nPhan bo final:")
 category_counts = {}
-for dream in all_dreams:
+for dream in kaggle_dreams:
     cat = dream['category']
     category_counts[cat] = category_counts.get(cat, 0) + 1
 
@@ -97,9 +72,9 @@ for cat, count in sorted(category_counts.items()):
     print(f"  {cat}: {count} dreams")
 
 # Luu file moi
-output_file = 'dream_training_data_merged.json'
+output_file = 'dream_training_data_kaggle.json'
 with open(output_file, 'w', encoding='utf-8') as f:
-    json.dump(all_dreams, f, ensure_ascii=False, indent=2)
+    json.dump(kaggle_dreams, f, ensure_ascii=False, indent=2)
 
 print(f"\nDa luu file: {output_file}")
 print("Hoan thanh!")

@@ -4,6 +4,8 @@ import {
   getAllUsers,
   getProfileById, 
   updateProfileById, 
+  updateOwnProfile,
+  getDashboard,
   deleteProfileById, 
   login, 
   logout,
@@ -32,6 +34,12 @@ const router = express.Router();
  router.get('/me', authenticateToken, (req, res) => {
    res.json({ success: true, user: req.user });
  });
+
+// Người dùng cập nhật profile của chính họ
+router.put('/me', authenticateToken, validateRequest, updateOwnProfile);
+
+// Admin dashboard
+router.get('/dashboard', authenticateToken, requireAdmin, getDashboard);
  // Bỏ các route admin/debug/bootstrap
  router.put('/:id',validateRequest,authenticateToken,updateProfileById);
  router.get('/:id',authenticateToken,getProfileById);
