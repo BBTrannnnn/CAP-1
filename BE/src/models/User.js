@@ -57,6 +57,27 @@ const userSchema = new mongoose.Schema({
         type: String,
         default: 'local'
     },
+    fcmTokens: [{
+    token: { 
+      type: String, 
+      required: true 
+    },
+    device: { 
+      type: String, 
+      enum: ['ios', 'android', 'web', 'unknown'],
+      default: 'unknown' 
+    },
+    deviceId: String,
+    createdAt: { 
+      type: Date, 
+      default: Date.now 
+    },
+    lastUsed: { 
+      type: Date, 
+      default: Date.now 
+    }
+  }],
+
     // Role: 'user' | 'admin' - cho phép quản lý nội dung bởi admin
     role: { type: String, enum: ['user', 'admin'], default: 'user' },
     isActive: {
