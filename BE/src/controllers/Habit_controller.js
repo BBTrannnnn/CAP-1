@@ -1344,35 +1344,57 @@ function getValidationRules(habit, quantity, durationMinutes) {
 
   // ✅ Rule chuẩn, thực tế & mở rộng nhiều loại habit
   const rules = {
-    /* === CHẠY BỘ === */
+    /* === CHẠY BỘ / THỂ THAO === */
     km: { min: 5, max: 15, type: 'per_unit', name: 'km', message: 'Chạy bộ' },
+    m: { min: 0.1, max: 0.3, type: 'per_unit', name: 'mét', message: 'Chạy nước rút' },
+    bước: { min: 0.01, max: 0.05, type: 'per_unit', name: 'bước', message: 'Đi bộ' },
 
     /* === UỐNG NƯỚC === */
     ly: { min: 0.5, max: 3, type: 'per_unit', name: 'ly', message: 'Uống nước' },
     cốc: { min: 0.5, max: 3, type: 'per_unit', name: 'cốc', message: 'Uống nước' },
     lít: { min: 1.5, max: 6, type: 'per_unit', name: 'lít', message: 'Uống nước' },
+    ml: { min: 0.1, max: 0.5, type: 'per_unit', name: 'ml', message: 'Uống nước' },
 
     /* === ĐỌC SÁCH === */
     trang: { min: 2, max: 5, type: 'per_unit', name: 'trang', message: 'Đọc sách' },
     page: { min: 2, max: 5, type: 'per_unit', name: 'trang', message: 'Đọc sách' },
+    cuốn: { min: 30, max: 180, type: 'per_unit', name: 'cuốn', message: 'Đọc sách' },
+    chương: { min: 5, max: 20, type: 'per_unit', name: 'chương', message: 'Đọc sách' },
 
     /* === TẬP GYM === */
     lần: { min: 10, max: 100, type: 'per_unit', name: 'lần', message: 'Tập luyện' },
     rep: { min: 10, max: 100, type: 'per_unit', name: 'rep', message: 'Tập luyện' },
     cái: { min: 10, max: 100, type: 'per_unit', name: 'cái', message: 'Tập luyện' },
     set: { min: 2, max: 10, type: 'per_unit', name: 'hiệp', message: 'Tập luyện' },
+    kg: { min: 1, max: 5, type: 'per_unit', name: 'kg', message: 'Nâng tạ' },
 
     /* === THIỀN / YOGA === */
     phút: { min: 5, tolerance: 0.15, type: 'exact', name: 'phút', message: 'Thiền / Yoga' },
     minute: { min: 5, tolerance: 0.15, type: 'exact', name: 'minute', message: 'Meditation / Yoga' },
     giờ: { min: 0.1, tolerance: 0.15, type: 'exact', name: 'giờ', message: 'Thiền / Yoga', multiplier: 60 },
+    hour: { min: 0.1, tolerance: 0.15, type: 'exact', name: 'hour', message: 'Meditation / Yoga', multiplier: 60 },
+
+    /* === HỌC TẬP === */
+    bài: { min: 3, max: 15, type: 'per_unit', name: 'bài', message: 'Làm bài tập' },
+    'video': { min: 5, max: 30, type: 'per_unit', name: 'video', message: 'Xem video học' },
+    từ: { min: 1, max: 5, type: 'per_unit', name: 'từ vựng', message: 'Học từ vựng' },
 
     /* === TÀI CHÍNH === */
     k: { min: 1, max: 500, type: 'per_unit', name: 'nghìn đồng', message: 'Tiết kiệm tiền' },
     đ: { min: 1000, max: 1000000, type: 'per_unit', name: 'đồng', message: 'Tiết kiệm tiền' },
+    vnd: { min: 1000, max: 1000000, type: 'per_unit', name: 'VND', message: 'Tiết kiệm tiền' },
 
     /* === NGỦ === */
     'giờ-ngủ': { min: 4, tolerance: 0.1, type: 'exact', name: 'giờ', message: 'Ngủ' },
+
+    /* === ĂN UỐNG / DINH DƯỠNG === */
+    'bữa': { min: 10, max: 60, type: 'per_unit', name: 'bữa', message: 'Ăn uống' },
+    'calo': { min: 0.1, max: 1, type: 'per_unit', name: 'calo', message: 'Ghi nhận dinh dưỡng' },
+
+    /* === CÔNG VIỆC / SÁNG TẠO === */
+    'task': { min: 5, max: 30, type: 'per_unit', name: 'task', message: 'Hoàn thành công việc' },
+    'dòng': { min: 0.5, max: 3, type: 'per_unit', name: 'dòng code', message: 'Viết code' },
+    'dự án': { min: 30, max: 240, type: 'per_unit', name: 'dự án', message: 'Làm dự án' },
   };
 
   // 🔍 Tìm rule phù hợp
@@ -1399,11 +1421,21 @@ function getValidationRules(habit, quantity, durationMinutes) {
   // ✅ Validate theo loại rule
   if (matchedRule.type === 'per_unit') {
     const minDuration = quantity * matchedRule.min;
+    const maxDuration = matchedRule.max ? quantity * matchedRule.max : Infinity;
+
     if (durationMinutes < minDuration) {
       return {
         isValid: false,
         message: `${matchedRule.message} ${quantity} ${matchedRule.name} trong ${Math.round(durationMinutes)} phút là quá nhanh`,
         suggestion: `Tối thiểu ${Math.ceil(minDuration)} phút để hợp lý`
+      };
+    }
+
+    if (durationMinutes > maxDuration) {
+      return {
+        isValid: false,
+        message: `${matchedRule.message} ${quantity} ${matchedRule.name} trong ${Math.round(durationMinutes)} phút là quá chậm`,
+        suggestion: `Tối đa ${Math.floor(maxDuration)} phút là hợp lý`
       };
     }
   }
@@ -1413,12 +1445,22 @@ function getValidationRules(habit, quantity, durationMinutes) {
       ? quantity * matchedRule.multiplier
       : quantity;
     const minDuration = expectedDuration * (1 - (matchedRule.tolerance || 0.15));
+    const maxDuration = expectedDuration * (1 + (matchedRule.tolerance || 0.15));
 
     if (durationMinutes < minDuration) {
       const correctQuantity = Math.round(durationMinutes / (matchedRule.multiplier || 1));
       return {
         isValid: false,
         message: `Bạn ghi ${quantity} ${matchedRule.name} nhưng thực tế chỉ khoảng ${Math.floor(durationMinutes)} phút`,
+        suggestion: `Nên ghi khoảng ${correctQuantity} ${matchedRule.name}`
+      };
+    }
+
+    if (durationMinutes > maxDuration) {
+      const correctQuantity = Math.round(durationMinutes / (matchedRule.multiplier || 1));
+      return {
+        isValid: false,
+        message: `Bạn ghi ${quantity} ${matchedRule.name} nhưng thực tế dài hơn (${Math.floor(durationMinutes)} phút)`,
         suggestion: `Nên ghi khoảng ${correctQuantity} ${matchedRule.name}`
       };
     }

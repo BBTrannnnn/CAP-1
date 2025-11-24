@@ -87,7 +87,7 @@ const register = asyncHandler(async (req, res) => {
     });
   }
 
-  const { name, phone, email, password,role, confirmPassword } = req.body;
+  const { name, phone, email, password, confirmPassword, dateOfBirth, gender, address } = req.body;
   
   // Kiểm tra email đã tồn tại
   const existingUser = await User.findOne({ email });
@@ -107,16 +107,43 @@ const register = asyncHandler(async (req, res) => {
     });
   }
 
-  // Tạo user mới
-  const user = await User.create({
+  // Validate dateOfBirth nếu có
+  let dob;
+  if (dateOfBirth) {
+    dob = new Date(dateOfBirth);
+    if (isNaN(dob.getTime())) {
+      return res.status(400).json({ success: false, message: 'Invalid dateOfBirth format' });
+    }
+    const today = new Date();
+    if (dob >= today) {
+      return res.status(400).json({ success: false, message: 'dateOfBirth must be in the past' });
+    }
+  }
+
+  // Validate gender nếu có
+  let genderValue;
+  if (gender) {
+    const g = gender.toString().trim().toLowerCase();
+    const validGenders = ['male', 'female'];
+    if (!validGenders.includes(g)) {
+      return res.status(400).json({ success: false, message: 'Gender must be one of: male, female' });
+    }
+    genderValue = g;
+  }
+
+  const userPayload = {
     name,
     email,
     phone,
     password,
     confirmPassword,
-    isActive: true,
-    loginProvider: 'local'
-  });
+    isActive: true
+  };
+  if (dob) userPayload.dateOfBirth = dob;
+  if (genderValue) userPayload.gender = genderValue;
+  if (address) userPayload.address = address.trim();
+
+  const user = await User.create(userPayload);
 
   // Tạo JWT token
   const token = generateToken(user);
@@ -131,9 +158,11 @@ const register = asyncHandler(async (req, res) => {
         name: user.name,
         email: user.email,
         phone: user.phone,
+        address: user.address,
         role: user.role,
         isActive: user.isActive,
-        loginProvider: user.loginProvider,
+        dateOfBirth: user.dateOfBirth,
+        gender: user.gender,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt
       }
@@ -198,7 +227,7 @@ const getProfileById = asyncHandler(async (req, res) => {
 });
 
 const updateProfileById = asyncHandler(async (req, res) => {
-  const { name, phone, email } = req.body;
+  const { name, phone, email, gender, dateOfBirth, address } = req.body;
   const userId = req.params.id;
 
   // Validate ObjectId
@@ -263,6 +292,42 @@ const updateProfileById = asyncHandler(async (req, res) => {
     user.phone = phone;
   }
 
+  // Cập nhật dateOfBirth nếu có
+  if (dateOfBirth) {
+    const birthDate = new Date(dateOfBirth);
+    if (isNaN(birthDate.getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid date format for date of birth",
+      });
+    }
+    const today = new Date();
+    if (birthDate >= today) {
+      return res.status(400).json({
+        success: false,
+        message: "Date of birth must be in the past",
+      });
+    }
+    user.dateOfBirth = birthDate;
+  }
+
+  // Cập nhật gender nếu có
+  if (gender) {
+    const validGenders = ['male', 'female'];
+    if (!validGenders.includes(gender.toLowerCase())) {
+      return res.status(400).json({
+        success: false,
+        message: "Gender must be one of: male, female",
+      });
+    }
+    user.gender = gender.toLowerCase();
+  }
+
+  // Cập nhật address nếu có
+  if (address !== undefined) {
+    user.address = address.trim();
+  }
+
   await user.save({ validateModifiedOnly: true });
 
   res.status(200).json({
@@ -273,87 +338,16 @@ const updateProfileById = asyncHandler(async (req, res) => {
       name: user.name,
       email: user.email,
       phone: user.phone,
-      isActive: user.isActive,
-      loginProvider: user.loginProvider,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-    },
-  });
-});
-
-const updateAdditionalInfo = asyncHandler(async (req, res) => {
-  const { dateOfBirth, gender, address } = req.body;
-  const userId = req.user._id; // Lấy từ token đã xác thực
-
-  // Kiểm tra user có tồn tại không
-  const user = await User.findById(userId);
-  if (!user) {
-    return res.status(404).json({
-      success: false,
-      message: "User not found",
-    });
-  }
-
-  // Cập nhật dateOfBirth nếu có
-  if (dateOfBirth) {
-    // Validate ngày sinh (phải là ngày trong quá khứ)
-    const birthDate = new Date(dateOfBirth);
-    const today = new Date();
-    
-    if (isNaN(birthDate.getTime())) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid date format for date of birth",
-      });
-    }
-    
-    if (birthDate >= today) {
-      return res.status(400).json({
-        success: false,
-        message: "Date of birth must be in the past",
-      });
-    }
-
-    user.dateOfBirth = birthDate;
-  }
-
-  // Cập nhật gender nếu có
-  if (gender) {
-    const validGenders = ['male', 'female', 'other'];
-    if (!validGenders.includes(gender.toLowerCase())) {
-      return res.status(400).json({
-        success: false,
-        message: "Gender must be one of: male, female, other",
-      });
-    }
-    user.gender = gender.toLowerCase();
-  }
-
-  // Cập nhật address nếu có (dạng string)
-  if (address !== undefined) {
-    user.address = address.trim();
-  }
-
-  await user.save({ validateModifiedOnly: true });
-
-  res.status(200).json({
-    success: true,
-    message: "Additional information updated successfully",
-    data: {
-      id: user._id,
-      name: user.name,
-      email: user.email,
-      phone: user.phone,
-      dateOfBirth: user.dateOfBirth,
       gender: user.gender,
+      dateOfBirth: user.dateOfBirth,
       address: user.address,
       isActive: user.isActive,
-      loginProvider: user.loginProvider,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     },
   });
 });
+
 
 const deleteProfileById = asyncHandler(async (req, res) => {
   const userId = req.params.id;
@@ -402,12 +396,6 @@ const deleteProfileById = asyncHandler(async (req, res) => {
   });
 });
 
-// Cập nhật profile của chính user đang đăng nhập
-const updateOwnProfile = asyncHandler(async (req, res) => {
-  // Đặt params.id để tái sử dụng logic updateProfileById
-  req.params.id = req.user._id.toString();
-  return await updateProfileById(req, res);
-});
 
 // Admin dashboard: thống kê nhanh
 const getDashboard = asyncHandler(async (req, res) => {
@@ -479,8 +467,7 @@ const getDashboard = asyncHandler(async (req, res) => {
   });
 });
 
-
-// Đăng nhập local
+// Đăng nhập user
 const login = asyncHandler(async (req, res) => {
   // Kiểm tra validation errors
   const errors = validationResult(req);
@@ -510,11 +497,11 @@ const login = asyncHandler(async (req, res) => {
     });
   }
 
-  // Kiểm tra user có password không (trường hợp login Google/Facebook)
-  if (!user.password || user.loginProvider !== 'local') {
+  // Nếu user chưa có password (ví dụ đăng ký bằng OAuth), yêu cầu reset/set password
+  if (!user.password) {
     return res.status(400).json({
       success: false,
-      message: "This account was registered via Google. Please use Google login."
+      message: 'This account does not have a password. Please set or reset your password.'
     });
   }
 
@@ -547,234 +534,234 @@ const login = asyncHandler(async (req, res) => {
 });
 
 // Google Login Configuration
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "803477306737-pvvd5qe1dkj602h4lkr3f5ed11tksgb4.apps.googleusercontent.com";
-const client = new OAuth2Client(GOOGLE_CLIENT_ID);
+// const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "803477306737-pvvd5qe1dkj602h4lkr3f5ed11tksgb4.apps.googleusercontent.com";
+// const client = new OAuth2Client(GOOGLE_CLIENT_ID);
 
-const loginWithGoogle = asyncHandler(async (req, res) => {
-  const { access_token } = req.body;
+// const loginWithGoogle = asyncHandler(async (req, res) => {
+//   const { access_token } = req.body;
   
-  if (!access_token) {
-    return res.status(400).json({ 
-      success: false, 
-      message: "Missing Google access token" 
-    });
-  }
+//   if (!access_token) {
+//     return res.status(400).json({ 
+//       success: false, 
+//       message: "Missing Google access token" 
+//     });
+//   }
 
-  try {
-    // Gọi Google API để lấy user info
-    const response = await fetch(`https://www.googleapis.com/oauth2/v2/userinfo?access_token=${access_token}`);
+//   try {
+//     // Gọi Google API để lấy user info
+//     const response = await fetch(`https://www.googleapis.com/oauth2/v2/userinfo?access_token=${access_token}`);
     
-    if (!response.ok) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Invalid Google access token" 
-      });
-    }
+//     if (!response.ok) {
+//       return res.status(400).json({ 
+//         success: false, 
+//         message: "Invalid Google access token" 
+//       });
+//     }
 
-    const googleUser = await response.json();
+//     const googleUser = await response.json();
     
-    if (!googleUser.email) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Email not found in Google account" 
-      });
-    }
+//     if (!googleUser.email) {
+//       return res.status(400).json({ 
+//         success: false, 
+//         message: "Email not found in Google account" 
+//       });
+//     }
 
-    // Kiểm tra user có trong DB chưa
-    let user = await User.findOne({ email: googleUser.email });
+//     // Kiểm tra user có trong DB chưa
+//     let user = await User.findOne({ email: googleUser.email });
 
-    if (!user) {
-      // Tạo số điện thoại giả duy nhất
-      let fakePhone;
-      let isPhoneUnique = false;
+//     if (!user) {
+//       // Tạo số điện thoại giả duy nhất
+//       let fakePhone;
+//       let isPhoneUnique = false;
       
-      while (!isPhoneUnique) {
-        fakePhone = "0" + Math.floor(100000000 + Math.random() * 900000000);
-        const existingPhone = await User.findOne({ phone: fakePhone });
-        if (!existingPhone) {
-          isPhoneUnique = true;
-        }
-      }
+//       while (!isPhoneUnique) {
+//         fakePhone = "0" + Math.floor(100000000 + Math.random() * 900000000);
+//         const existingPhone = await User.findOne({ phone: fakePhone });
+//         if (!existingPhone) {
+//           isPhoneUnique = true;
+//         }
+//       }
 
-      user = await User.create({
-        name: googleUser.name || "Google User",
-        email: googleUser.email,
-        phone: fakePhone,
-        isActive: true,
-        avatar: googleUser.picture || null,
-        loginProvider: "google"
-      });
-    } else {
-      // Cập nhật thông tin nếu user đã tồn tại
-      if (user.loginProvider !== 'google') {
-        return res.status(400).json({
-          success: false,
-          message: "This email is already registered with a local account. Please use email/password login."
-        });
-      }
+//       user = await User.create({
+//         name: googleUser.name || "Google User",
+//         email: googleUser.email,
+//         phone: fakePhone,
+//         isActive: true,
+//         avatar: googleUser.picture || null,
+//         loginProvider: "google"
+//       });
+//     } else {
+//       // Cập nhật thông tin nếu user đã tồn tại
+//       if (user.loginProvider !== 'google') {
+//         return res.status(400).json({
+//           success: false,
+//           message: "This email is already registered with a local account. Please use email/password login."
+//         });
+//       }
       
-      // Cập nhật avatar nếu có
-      if (googleUser.picture && !user.avatar) {
-        user.avatar = googleUser.picture;
-        await user.save();
-      }
-    }
+//       // Cập nhật avatar nếu có
+//       if (googleUser.picture && !user.avatar) {
+//         user.avatar = googleUser.picture;
+//         await user.save();
+//       }
+//     }
 
-    // Sinh JWT token
-    const token = generateToken(user);
+//     // Sinh JWT token
+//     const token = generateToken(user);
 
-    // Trả về user + token cho FE
-    res.json({
-      success: true,
-      message: "Google login successful",
-      token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        isActive: user.isActive,
-        avatar: user.avatar,
-        loginProvider: user.loginProvider,
-        phone: user.phone
-      }
-    });
-  } catch (error) {
-    console.error('Google login error:', error);
-    res.status(500).json({
-      success: false,
-      message: "Internal server error during Google login"
-    });
-  }
-});
+//     // Trả về user + token cho FE
+//     res.json({
+//       success: true,
+//       message: "Google login successful",
+//       token,
+//       user: {
+//         id: user._id,
+//         name: user.name,
+//         email: user.email,
+//         isActive: user.isActive,
+//         avatar: user.avatar,
+//         loginProvider: user.loginProvider,
+//         phone: user.phone
+//       }
+//     });
+//   } catch (error) {
+//     console.error('Google login error:', error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Internal server error during Google login"
+//     });
+//   }
+// });
 
 // Lấy URL Google OAuth
-const getGoogleAuthUrl = (req, res) => {
-  const baseUrl = 'https://accounts.google.com/o/oauth2/v2/auth';
-  const redirectUri = process.env.GOOGLE_REDIRECT_URI || 'http://localhost:5000/api/users/google/callback';
+// const getGoogleAuthUrl = (req, res) => {
+//   const baseUrl = 'https://accounts.google.com/o/oauth2/v2/auth';
+//   const redirectUri = process.env.GOOGLE_REDIRECT_URI || 'http://localhost:5000/api/users/google/callback';
   
-  const params = new URLSearchParams({
-    client_id: GOOGLE_CLIENT_ID,
-    redirect_uri: redirectUri,
-    scope: 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
-    response_type: 'code',
-    access_type: 'offline',
-    prompt: 'consent'
-  });
+//   const params = new URLSearchParams({
+//     client_id: GOOGLE_CLIENT_ID,
+//     redirect_uri: redirectUri,
+//     scope: 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
+//     response_type: 'code',
+//     access_type: 'offline',
+//     prompt: 'consent'
+//   });
 
-  res.json({
-    success: true,
-    authUrl: `${baseUrl}?${params.toString()}`
-  });
-};
+//   res.json({
+//     success: true,
+//     authUrl: `${baseUrl}?${params.toString()}`
+//   });
+// };
 
 
 // Callback Google
-const googleCallback = asyncHandler(async (req, res) => {
-  const { code } = req.query;
+// const googleCallback = asyncHandler(async (req, res) => {
+//   const { code } = req.query;
 
-  if (!code) {
-    return res.status(400).json({ 
-      success: false, 
-      message: "Authorization code not found" 
-    });
-  }
+//   if (!code) {
+//     return res.status(400).json({ 
+//       success: false, 
+//       message: "Authorization code not found" 
+//     });
+//   }
 
-  try {
-    // Đổi code lấy access_token
-    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id: process.env.GOOGLE_CLIENT_ID,
-        client_secret: process.env.GOOGLE_CLIENT_SECRET,
-        code,
-        grant_type: 'authorization_code',
-        redirect_uri: process.env.GOOGLE_REDIRECT_URI || 'http://localhost:5000/api/users/google/callback'
-      })
-    });
+//   try {
+//     // Đổi code lấy access_token
+//     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+//       method: 'POST',
+//       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+//       body: new URLSearchParams({
+//         client_id: process.env.GOOGLE_CLIENT_ID,
+//         client_secret: process.env.GOOGLE_CLIENT_SECRET,
+//         code,
+//         grant_type: 'authorization_code',
+//         redirect_uri: process.env.GOOGLE_REDIRECT_URI || 'http://localhost:5000/api/users/google/callback'
+//       })
+//     });
 
-    const tokens = await tokenResponse.json();
-    if (!tokens.access_token) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Failed to get access token from Google" 
-      });
-    }
+//     const tokens = await tokenResponse.json();
+//     if (!tokens.access_token) {
+//       return res.status(400).json({ 
+//         success: false, 
+//         message: "Failed to get access token from Google" 
+//       });
+//     }
 
-    // Gọi API userinfo
-    const userInfoRes = await fetch(`https://www.googleapis.com/oauth2/v2/userinfo?access_token=${tokens.access_token}`);
-    const googleUser = await userInfoRes.json();
+//     // Gọi API userinfo
+//     const userInfoRes = await fetch(`https://www.googleapis.com/oauth2/v2/userinfo?access_token=${tokens.access_token}`);
+//     const googleUser = await userInfoRes.json();
 
-    if (!googleUser.email) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Email not found in Google account" 
-      });
-    }
+//     if (!googleUser.email) {
+//       return res.status(400).json({ 
+//         success: false, 
+//         message: "Email not found in Google account" 
+//       });
+//     }
 
-    // Kiểm tra user trong DB
-    let user = await User.findOne({ email: googleUser.email });
+//     // Kiểm tra user trong DB
+//     let user = await User.findOne({ email: googleUser.email });
 
-    if (!user) {
-      // Tạo số điện thoại giả duy nhất
-      let fakePhone;
-      let isPhoneUnique = false;
-      while (!isPhoneUnique) {
-        fakePhone = "0" + Math.floor(100000000 + Math.random() * 900000000);
-        const existingPhone = await User.findOne({ phone: fakePhone });
-        if (!existingPhone) {
-          isPhoneUnique = true;
-        }
-      }
+//     if (!user) {
+//       // Tạo số điện thoại giả duy nhất
+//       let fakePhone;
+//       let isPhoneUnique = false;
+//       while (!isPhoneUnique) {
+//         fakePhone = "0" + Math.floor(100000000 + Math.random() * 900000000);
+//         const existingPhone = await User.findOne({ phone: fakePhone });
+//         if (!existingPhone) {
+//           isPhoneUnique = true;
+//         }
+//       }
 
-      user = await User.create({
-        name: googleUser.name || "Google User",
-        email: googleUser.email,
-        phone: fakePhone,
-        isActive: true,
-        avatar: googleUser.picture || null,
-        loginProvider: "google"
-      });
-    } else {
-      if (user.loginProvider !== 'google') {
-        return res.status(400).json({
-          success: false,
-          message: "This email is already registered with a local account. Please login with email/password."
-        });
-      }
-      if (googleUser.picture && !user.avatar) {
-        user.avatar = googleUser.picture;
-        await user.save();
-      }
-    }
+//       user = await User.create({
+//         name: googleUser.name || "Google User",
+//         email: googleUser.email,
+//         phone: fakePhone,
+//         isActive: true,
+//         avatar: googleUser.picture || null,
+//         loginProvider: "google"
+//       });
+//     } else {
+//       if (user.loginProvider !== 'google') {
+//         return res.status(400).json({
+//           success: false,
+//           message: "This email is already registered with a local account. Please login with email/password."
+//         });
+//       }
+//       if (googleUser.picture && !user.avatar) {
+//         user.avatar = googleUser.picture;
+//         await user.save();
+//       }
+//     }
 
-    // Sinh JWT
-    const token = generateToken(user);
+//     // Sinh JWT
+//     const token = generateToken(user);
 
-    // Trả luôn token + user về FE
-    res.json({
-      success: true,
-      message: "Google login successful",
-      token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        isActive: user.isActive,
-        avatar: user.avatar,
-        loginProvider: user.loginProvider,
-        phone: user.phone
-      }
-    });
+//     // Trả luôn token + user về FE
+//     res.json({
+//       success: true,
+//       message: "Google login successful",
+//       token,
+//       user: {
+//         id: user._id,
+//         name: user.name,
+//         email: user.email,
+//         isActive: user.isActive,
+//         avatar: user.avatar,
+//         loginProvider: user.loginProvider,
+//         phone: user.phone
+//       }
+//     });
 
-  } catch (error) {
-    console.error('Google callback error:', error);
-    res.status(500).json({
-      success: false,
-      message: "Internal server error during Google authentication"
-    });
-  }
-});
+//   } catch (error) {
+//     console.error('Google callback error:', error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Internal server error during Google authentication"
+//     });
+//   }
+// });
 
 
 // Logout (để clear token ở client side)
@@ -906,18 +893,16 @@ export {
   getAllUsers, 
   getProfileById, 
   updateProfileById, 
-  updateOwnProfile,
   getDashboard,
   deleteProfileById, 
-  loginWithGoogle, 
+  //loginWithGoogle, 
   login,
   logout,
-  getGoogleAuthUrl,
-  googleCallback,
+  //getGoogleAuthUrl,
+  //googleCallback,
   forgotPassword,
   resetPassword,
   verifyOTP,
   updateUserRole,
-  updateAdditionalInfo
 };
 

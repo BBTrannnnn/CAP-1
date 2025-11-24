@@ -4,19 +4,17 @@ import {
   getAllUsers,
   getProfileById, 
   updateProfileById, 
-  updateOwnProfile,
   getDashboard,
   deleteProfileById, 
   login, 
   logout,
-  loginWithGoogle,
-  getGoogleAuthUrl, 
-  googleCallback, 
+  //loginWithGoogle,
+  //getGoogleAuthUrl, 
+  //googleCallback, 
   forgotPassword, 
   resetPassword, 
   verifyOTP,
   updateUserRole,
-  updateAdditionalInfo
 } from "../controllers/User_controller.js";
 import { validateRequest } from "../../middlewares/validateReuqest.js";
 import authenticateToken from "../../middlewares/auth.js";
@@ -35,8 +33,6 @@ const router = express.Router();
    res.json({ success: true, user: req.user });
  });
 
-// Người dùng cập nhật profile của chính họ
-router.put('/me', authenticateToken, validateRequest, updateOwnProfile);
 
 // Admin dashboard
 router.get('/dashboard', authenticateToken, requireAdmin, getDashboard);
@@ -44,8 +40,6 @@ router.get('/dashboard', authenticateToken, requireAdmin, getDashboard);
  router.put('/:id',validateRequest,authenticateToken,updateProfileById);
  router.get('/:id',authenticateToken,getProfileById);
  router.delete('/:id',authenticateToken,deleteProfileById)
- router.put('/:id/addinfor', authenticateToken, validateRequest, updateAdditionalInfo);
-
 // Bỏ các route admin: cập nhật role, toggle active
 
 // Admin: cập nhật vai trò user
@@ -64,10 +58,6 @@ router.post("/login", validateRequest, login);
 // Đăng xuất
 router.post("/logout", logout);
 
-// Route đăng nhập bằng Google
-router.post("/google", loginWithGoogle);
-router.get("/google/callback", googleCallback);
-router.get("/google/auth-url", getGoogleAuthUrl); 
 
 //Quên mật khẩu - forgot lấy mã từu mail , rồi nhập otp rồi đổi mật khẩu qua resetpassword
 router.post("/forgotpassword", forgotPassword); // gửi OTP
