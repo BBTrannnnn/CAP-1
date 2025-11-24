@@ -1215,6 +1215,26 @@ const updateHabitSubTracking = asyncHandler(async (req, res) => {
     }
   }
 
+  // ✅ VALIDATE RULES nếu có endTime + quantity
+  if (subTracking.endTime && (quantity !== undefined || endTime !== undefined)) {
+    const durationMinutes = (subTracking.endTime - subTracking.startTime) / (1000 * 60);
+    const finalQuantity = quantity !== undefined ? quantity : subTracking.quantity;
+    const validationRules = getValidationRules(habit, finalQuantity, durationMinutes);
+
+    if (!validationRules.isValid) {
+      return res.status(400).json({
+        success: false,
+        message: validationRules.message,
+        details: {
+          quantity: finalQuantity,
+          duration: `${Math.floor(durationMinutes)} phút`,
+          unit: habit.unit || 'lần',
+          suggestion: validationRules.suggestion
+        }
+      });
+    }
+  }
+
   // Update note
   if (note !== undefined) {
     subTracking.note = note;
@@ -1256,7 +1276,7 @@ const updateHabitSubTracking = asyncHandler(async (req, res) => {
     message: 'Sub-tracking updated successfully',
     subTracking: {
       id: subTracking._id,
-      date: formatLocalDate(trackingDate), // ✅ FIX: Dùng formatLocalDate
+      date: formatLocalDate(trackingDate),
       startTime: subTracking.startTime.toTimeString().slice(0, 5),
       endTime: subTracking.endTime ? subTracking.endTime.toTimeString().slice(0, 5) : null,
       duration: duration ? `${duration} phút` : null,
