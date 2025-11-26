@@ -89,7 +89,7 @@ export default function AddHabitModal() {
   const goToCreateHabitDetail = (habit: HabitItem) => {
     setSelectedHabit(habit);
     router.push({
-      pathname: '/(tabs)/habits/CreateHabitDetail',
+      pathname: '/(tabs)/habits/QuitSmokingHabit',
       params: {
         templateId: habit.id,
       },
