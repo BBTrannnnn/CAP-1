@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { router, useFocusEffect } from 'expo-router';
 import {
   Check,
@@ -15,7 +21,17 @@ import {
   Pencil,
   Trash2,
 } from 'lucide-react-native';
-import '../../styles/FlowStateHabits.css';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  Modal,
+  StyleSheet,
+  Alert,
+} from 'react-native';
+
 import {
   getHabits as apiGetHabits,
   trackHabit as apiTrackHabit,
@@ -78,6 +94,22 @@ export default function FlowStateHabits() {
     null
   );
 
+  const [newCountForm, setNewCountForm] = useState<{
+    habitId: number | null;
+    qty: number;
+    start: string;
+    end: string;
+    note: string;
+    mood?: 'great' | 'good' | 'neutral' | 'bad';
+  }>({
+    habitId: null,
+    qty: 1,
+    start: '',
+    end: '',
+    note: '',
+    mood: undefined,
+  });
+
   const [b2n, setB2N] = useState<Record<string, number>>({});
   const [n2b, setN2B] = useState<Record<number, string>>({});
   const nextIdRef = useRef(1);
@@ -137,7 +169,6 @@ export default function FlowStateHabits() {
     return 'bg-blue-500';
   };
 
-  // helper để dùng cho cả load weeklyBars & update lại bar hôm nay
   const labelFor = (d: Date) => {
     const w = d.getDay();
     return w === 1
@@ -160,7 +191,6 @@ export default function FlowStateHabits() {
     (async () => {
       try {
         const res: any = await apiGetHabits();
-        console.log('[Habits.index] getHabits API:', res);
         const items: any[] = Array.isArray(res?.habits) ? res.habits : [];
 
         const newB2N: Record<string, number> = { ...b2n };
@@ -226,8 +256,6 @@ export default function FlowStateHabits() {
 
         // Tổng quan + báo cáo tuần
         const [ovr, report] = await Promise.all([apiGetTodayOverview(), apiGetWeeklyReport(0)]);
-        console.log('[Habits.index] getTodayOverview API:', ovr);
-        console.log('[Habits.index] getWeeklyReport API:', report);
 
         const ov = ovr?.overview;
         if (ov && typeof ov.totalHabits === 'number') {
@@ -278,7 +306,7 @@ export default function FlowStateHabits() {
           setWeeklyBars(null);
         }
 
-        // Load tracking hôm nay (status + note + mood) cho mỗi habit
+        // Load tracking hôm nay
         const uiIds = uiHabits.map((h) => h.id);
         if (uiIds.length > 0) {
           const trackResults = await Promise.all(
@@ -344,7 +372,7 @@ export default function FlowStateHabits() {
           }
         }
 
-        // Load count từ subtrackings hôm nay
+        // Load count subtrackings
         const countNids = Object.keys(countIds).map((k) => Number(k));
         if (countNids.length > 0) {
           const results = await Promise.all(
@@ -378,54 +406,130 @@ export default function FlowStateHabits() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshFlag]);
 
-  // Refresh when the screen regains focus (after create/update/delete)
   useFocusEffect(
     useCallback(() => {
       setRefreshFlag((x) => x + 1);
     }, [])
   );
 
+  const getCurrentCountValue = (habitId: number): number => {
+    const meta = unitMap[habitId];
+    if (!meta) return 0;
+    const entries = countEntries[habitId] ?? [];
+    if (entries.length > 0) {
+      return entries.reduce((acc, e) => acc + Math.max(0, e.qty || 0), 0);
+    }
+    const base = quantities[habitId];
+    return typeof base === 'number' ? Math.max(0, base) : 0;
+  };
+
+  const computedStatus = (
+    habitId: number
+  ): 'success' | 'fail' | 'skip' | 'in_progress' | undefined => {
+    const s = habitStatus[habitId];
+    if (s) return s;
+    const meta = unitMap[habitId];
+    if (meta) {
+      const cur = getCurrentCountValue(habitId);
+      if (cur > 0 && cur < meta.goal) return 'in_progress';
+    }
+    return undefined;
+  };
+
+  // auto sync status count-mode theo số lượng (frontend)
+  useEffect(() => {
+    habitList.forEach((h) => {
+      const meta = unitMap[h.id];
+      if (!meta) return;
+      const cur = getCurrentCountValue(h.id);
+      const isSuccess = habitStatus[h.id] === 'success';
+      if (cur >= meta.goal && !isSuccess) {
+        handleStatusChange(h.id, 'success');
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [countEntries, quantities]);
+
+  const timeDiff = (start?: string, end?: string) => {
+    if (!start || !end) return null;
+    const [sh, sm] = start.split(':').map(Number);
+    const [eh, em] = end.split(':').map(Number);
+    const mins = eh * 60 + em - (sh * 60 + sm);
+    return mins > 0 ? mins : null;
+  };
+
   const addCountEntry = (habitId: number) => {
+    const meta = unitMap[habitId];
+    const currentVal = getCurrentCountValue(habitId);
+    const baseQty = meta ? Math.max(1, currentVal || meta.current || 1) : 1;
+
+    const startVal = timeStart[habitId] ?? hhmmNow();
+    const endVal = timeEnd[habitId] ?? '';
+
+    setNewCountForm({
+      habitId,
+      qty: baseQty,
+      start: startVal,
+      end: endVal,
+      note: '',
+      mood: moods[habitId],
+    });
+  };
+
+  const cancelNewCountEntry = () => {
+    setNewCountForm({
+      habitId: null,
+      qty: 1,
+      start: '',
+      end: '',
+      note: '',
+      mood: undefined,
+    });
+  };
+
+  const saveNewCountEntry = () => {
+    if (!newCountForm.habitId) return;
+
+    const habitId = newCountForm.habitId;
+
     (async () => {
       try {
-
         const bid = n2b[habitId];
         if (!bid) {
-          setCountEntries((prev) => {
-            const arr = prev[habitId] ?? [];
-            const nextId = arr.length ? Math.max(...arr.map((e) => e.id)) + 1 : 1;
-            const meta = unitMap[habitId];
-            const startVal = timeStart[habitId] ?? '';
-            const endVal = timeEnd[habitId] ?? '';
-            const newEntry: CountEntry = {
-              id: nextId,
-              qty: meta ? Math.max(1, quantities[habitId] ?? meta.current) : 1,
-              start: startVal,
-              end: endVal,
-            };
-            getCurrentCountValue(habitId)
-            return { ...prev, [habitId]: [...arr, newEntry] };
-          });
-          setCountViewOpen((v) => ({ ...v, [habitId]: true }));
-          getCurrentCountValue(habitId)
+          alert('Lỗi', 'Không tìm thấy thói quen trên máy chủ.');
           return;
         }
-        const meta = unitMap[habitId];
-        const qty = meta ? Math.max(1, quantities[habitId] ?? meta.current) : 1;
-        const startVal = timeStart[habitId] ?? hhmmNow();
-        const endVal = timeEnd[habitId] || undefined;
-        const body: any = { quantity: qty, date: todayStr(), startTime: startVal , mood: moods[habitId]};
-        if (endVal) body.endTime = endVal;
+
+        const qty = newCountForm.qty > 0 ? newCountForm.qty : 1;
+        const body: any = {
+          quantity: qty,
+          date: todayStr(),
+          startTime: newCountForm.start || hhmmNow(),
+        };
+
+        if (newCountForm.end) body.endTime = newCountForm.end;
+        if (newCountForm.note.trim()) body.note = newCountForm.note.trim();
+        if (newCountForm.mood) {
+          body.mood = newCountForm.mood === 'neutral' ? 'okay' : newCountForm.mood;
+        }
+
         await apiAddHabitSubTracking(bid, body);
-        getCurrentCountValue(habitId)
-        toggleCountView(habitId)
-        toggleCountView(habitId)
-        setCountViewOpen((v) => ({ ...v, [habitId]: true }));
+
+        setNewCountForm({
+          habitId: null,
+          qty: 1,
+          start: '',
+          end: '',
+          note: '',
+          mood: undefined,
+        });
+
+        loadSubTrackingsForToday(habitId);
         refreshAll();
-      } catch (err) {
-        console.error('[habits.index] add subtrack error:', err);
+      } catch (err: any) {
+        console.error('[habits.index] add subtrack (new form) error:', err);
+        alert(err.message);
       }
-      
     })();
   };
 
@@ -438,13 +542,11 @@ export default function FlowStateHabits() {
         if (entry?.beId && bid) {
           await apiDeleteHabitSubTracking(bid, entry.beId);
           refreshAll();
-          toggleCountView(habitId)
-          toggleCountView(habitId)
+          toggleCountView(habitId);
+          toggleCountView(habitId);
         }
       } catch (err) {
         console.error('[habits.index] delete subtrack error:', err);
-      } finally {
-        // No local sync; rely on refresh
       }
     })();
   };
@@ -544,135 +646,6 @@ export default function FlowStateHabits() {
     });
   };
 
-  const getCurrentCountValue = (habitId: number): number => {
-    const meta = unitMap[habitId];
-    if (!meta) return 0;
-    const entries = countEntries[habitId] ?? [];
-    if (entries.length > 0) {
-      return entries.reduce((acc, e) => acc + Math.max(0, e.qty || 0), 0);
-    }
-    const base = quantities[habitId];
-    return typeof base === 'number' ? Math.max(0, base) : 0;
-  };
-
-  const computedStatus = (
-    habitId: number
-  ): 'success' | 'fail' | 'skip' | 'in_progress' | undefined => {
-    const s = habitStatus[habitId];
-    if (s) return s;
-    const meta = unitMap[habitId];
-    if (meta) {
-      const cur = getCurrentCountValue(habitId);
-      if (cur > 0 && cur < meta.goal) return 'in_progress';
-    }
-    return undefined;
-  };
-
-  // auto sync status count-mode theo số lượng (frontend)
-  useEffect(() => {
-    habitList.forEach((h) => {
-      const meta = unitMap[h.id];
-      if (!meta) return;
-      const cur = getCurrentCountValue(h.id);
-      const isSuccess = habitStatus[h.id] === 'success';
-      if (cur >= meta.goal && !isSuccess) {
-        handleStatusChange(h.id, 'success');
-      }
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [countEntries, quantities]);
-
-  const timeDiff = (start?: string, end?: string) => {
-    if (!start || !end) return null;
-    const [sh, sm] = start.split(':').map(Number);
-    const [eh, em] = end.split(':').map(Number);
-    const mins = eh * 60 + em - (sh * 60 + sm);
-    return mins > 0 ? mins : null;
-  };
-
-  const openEditModal = (h: Habit) => {
-    setEditId(h.id);
-    setEditTitle(h.title);
-    setEditSubtitle(h.subtitle);
-    setEditTag(h.tag);
-    setEditOpen(true);
-  };
-
-  const closeEditModal = () => {
-    setEditOpen(false);
-    setEditId(null);
-    setEditTitle('');
-    setEditSubtitle('');
-    setEditTag('');
-  };
-
-  const askDelete = (id: number, name: string) => {
-    setConfirmId(id);
-    setConfirmName(name);
-    setConfirmOpen(true);
-  };
-
-  const closeConfirm = () => {
-    setConfirmOpen(false);
-    setConfirmId(null);
-    setConfirmName('');
-  };
-
-  const saveEdit = () => {
-    if (editId == null) return;
-    (async () => {
-      try {
-        const bid = n2b[editId!];
-        if (bid) {
-          const updates: any = {
-            name: (editTitle || '').trim() || undefined,
-            description: editSubtitle,
-          };
-          const t = String(editTag || '').toLowerCase();
-          if (t) {
-            if (t.includes('mind')) updates.category = 'mindful';
-            else if (t.includes('sleep')) updates.category = 'sleep';
-            else if (t.includes('ener') || t.includes('fit') || t.includes('health'))
-              updates.category = 'energy';
-          }
-          await apiUpdateHabit(bid, updates);
-          refreshAll();
-        }
-        // No local sync; rely on refresh
-      } catch (err) {
-        console.error('[habits.index] update error:', err);
-      } finally {
-        closeEditModal();
-      }
-    })();
-  };
-
-  const deleteHabit = (id: number) => {
-    (async () => {
-      try {
-        const bid = n2b[id];
-        if (bid) await apiDeleteHabit(bid);
-        refreshAll();
-      } catch (err) {
-        console.error('[habits.index] delete error:', err);
-      } finally {
-        // No local sync; rely on refresh
-        if (activeMenu === id) setActiveMenu(null);
-        closeConfirm();
-        if (editOpen) closeEditModal();
-      }
-    })();
-  };
-
-  // dữ liệu biểu đồ
-  const getChartData = () => {
-    if (chartView === 'day') {
-      return weeklyBars ?? [];
-    }
-    return [];
-  };
-
-  // gửi status + note + date + mood khi đổi trạng thái
   const handleStatusChange = (
     id: number,
     status: 'success' | 'fail' | 'skip' | 'in_progress'
@@ -728,7 +701,6 @@ export default function FlowStateHabits() {
     })();
   };
 
-  // sync khi bấm Xong (habit thường)
   const syncHabitMeta = (id: number) => {
     (async () => {
       const bid = n2b[id];
@@ -771,10 +743,89 @@ export default function FlowStateHabits() {
     })();
   };
 
-  // ✅ tổng số habit dựa trên FE (cho progress luôn realtime)
+  const getChartData = () => {
+    if (chartView === 'day') {
+      return weeklyBars ?? [];
+    }
+    return [];
+  };
+
+  const openEditModal = (h: Habit) => {
+    setEditId(h.id);
+    setEditTitle(h.title);
+    setEditSubtitle(h.subtitle);
+    setEditTag(h.tag);
+    setEditOpen(true);
+  };
+
+  const closeEditModal = () => {
+    setEditOpen(false);
+    setEditId(null);
+    setEditTitle('');
+    setEditSubtitle('');
+    setEditTag('');
+  };
+
+  const askDelete = (id: number, name: string) => {
+    setConfirmId(id);
+    setConfirmName(name);
+    setConfirmOpen(true);
+  };
+
+  const closeConfirm = () => {
+    setConfirmOpen(false);
+    setConfirmId(null);
+    setConfirmName('');
+  };
+
+  const saveEdit = () => {
+    if (editId == null) return;
+    (async () => {
+      try {
+        const bid = n2b[editId!];
+        if (bid) {
+          const updates: any = {
+            name: (editTitle || '').trim() || undefined,
+            description: editSubtitle,
+          };
+          const t = String(editTag || '').toLowerCase();
+          if (t) {
+            if (t.includes('mind')) updates.category = 'mindful';
+            else if (t.includes('sleep')) updates.category = 'sleep';
+            else if (t.includes('ener') || t.includes('fit') || t.includes('health'))
+              updates.category = 'energy';
+          }
+          await apiUpdateHabit(bid, updates);
+          refreshAll();
+        }
+      } catch (err) {
+        console.error('[habits.index] update error:', err);
+      } finally {
+        closeEditModal();
+      }
+    })();
+  };
+
+  const deleteHabit = (id: number) => {
+    (async () => {
+      try {
+        const bid = n2b[id];
+        if (bid) await apiDeleteHabit(bid);
+        refreshAll();
+      } catch (err) {
+        console.error('[habits.index] delete error:', err);
+      } finally {
+        if (activeMenu === id) setActiveMenu(null);
+        closeConfirm();
+        if (editOpen) closeEditModal();
+      }
+    })();
+  };
+
+  const chartData = getChartData();
+
   const totalHabits = habitList.length || overview?.totalHabits || 0;
 
-  // ✅ số habit hoàn thành tính từ state FE, không phụ thuộc overview nữa
   const completedCount = useMemo(() => {
     const ids = new Set<number>();
     for (const h of habitList) {
@@ -786,9 +837,8 @@ export default function FlowStateHabits() {
       }
     }
     return ids.size;
-  }, [habitList, habitStatus, countEntries, quantities]);
+  }, [habitList, habitStatus, countEntries, quantities, unitMap]);
 
-  // ✅ phần trăm tiến độ cũng lấy từ FE
   const progressPercent =
     totalHabits > 0 ? Math.round((completedCount / totalHabits) * 100) : 0;
 
@@ -802,7 +852,6 @@ export default function FlowStateHabits() {
     setDetailHabitId(null);
   };
 
-  // Lưu count-mode trong modal
   const saveCountModal = (habitId: number) => {
     (async () => {
       try {
@@ -835,15 +884,12 @@ export default function FlowStateHabits() {
     })();
   };
 
-  const chartData = getChartData();
-
-  // ✅ mỗi khi progressPercent thay đổi, cập nhật lại cột của "ngày hôm nay" trong weeklyBars
   useEffect(() => {
     if (!weeklyBars || weeklyBars.length === 0) return;
     if (totalHabits <= 0) return;
 
     const todayLabel = labelFor(new Date());
-    const newHeight = progressPercent; // cho ngày hiện tại
+    const newHeight = progressPercent;
 
     setWeeklyBars((prev) => {
       if (!prev) return prev;
@@ -854,1494 +900,738 @@ export default function FlowStateHabits() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [progressPercent, totalHabits]);
 
+  // ================== JSX MOBILE ==================
   return (
-    <div
-      className="fsh-page"
-      style={{
-        height: '100vh',
-        overflowY: 'auto',
-        WebkitOverflowScrolling: 'touch',
-        paddingBottom: '96px',
-      }}
-    >
-      {/* Header */}
-      <div
-        className="fsh-card fsh-header-card"
-        style={{
-          backgroundColor: '#fff',
-          borderRadius: '16px',
-          border: '1px solid rgba(203,213,225,0.6)',
-          margin: '10px',
-          marginTop: '12px',
-          padding: '14px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          boxShadow: '0 8px 12px rgba(15,23,42,0.08)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <button
-            onClick={() => router.back()}
-            style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: '20px',
-              backgroundColor: '#2563eb',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              border: 'none',
-              cursor: 'pointer',
-            }}
-          >
-            <ChevronLeft size={20} color="#fff" />
-          </button>
-          <div>
-            <h1
-              style={{
-                fontSize: '18px',
-                fontWeight: '800',
-                letterSpacing: '0.2px',
-                color: '#0f172a',
-                margin: 0,
-              }}
+    <View style={styles.page}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Header */}
+        <View style={styles.headerCard}>
+          <View style={styles.headerLeft}>
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={styles.headerBackButton}
             >
-              Flow State Habits
-            </h1>
-            <p style={{ fontSize: '12px', color: '#64748b', margin: 0 }}>
-              Theo dõi thói quen hằng ngày
-            </p>
-          </div>
-        </div>
+              <ChevronLeft size={20} color="#fff" />
+            </TouchableOpacity>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button
-            onClick={() => router.push('/(tabs)/habits/AddHabitModal')}
-            style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: '20px',
-              backgroundColor: '#2563eb',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              border: 'none',
-              cursor: 'pointer',
-            }}
-          >
-            <Plus size={20} color="#fff" />
-          </button>
-          <button
-            onClick={() => {
-              router.push('/(tabs)/habits/HabitStreak')}}
-            style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: '20px',
-              backgroundColor: '#E5E7EB',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              border: 'none',
-              cursor: 'pointer',
-            }}
-          >
-            <BarChart3 size={20} color="#0f172a" />
-          </button>
-          <button
-            onClick={() => router.push('/(tabs)/habits/HabitSurvey')}
-            style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: '20px',
-              backgroundColor: '#E5E7EB',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              border: 'none',
-              cursor: 'pointer',
-            }}
-          >
-            <Target size={20} color="#0f172a" />
-          </button>
-         
-        </div>
-      </div>
+            <View>
+              <Text style={styles.headerTitle}>Flow State Habits</Text>
+              <Text style={styles.headerSubtitle}>Theo dõi thói quen hằng ngày</Text>
+            </View>
+          </View>
 
-      {/* Progress Summary */}
-      <div
-        className="fsh-card"
-        style={{
-          backgroundColor: '#fff',
-          borderRadius: '16px',
-          border: '1px solid rgba(203,213,225,0.6)',
-          padding: '16px',
-          margin: '0 10px',
-          marginTop: '8px',
-          boxShadow: '0 8px 12px rgba(15,23,42,0.08)',
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              backgroundColor: '#e0e7ff',
-              padding: '6px 10px',
-              borderRadius: '999px',
-              border: '1px solid rgba(99,102,241,0.25)',
-            }}
-          >
-            <TrendingUp size={16} color="#4338ca" />
-            <span style={{ color: '#4338ca', fontWeight: '700', fontSize: '12px' }}>
-              Tiến độ hôm nay
-            </span>
-          </div>
-          <span style={{ fontSize: '13px', color: '#334155', fontWeight: '700' }}>
-            {completedCount}/{totalHabits} hoàn thành
-          </span>
-        </div>
-
-        <div className="fsh-progress" style={{ marginTop: '6px' }}>
-          <div className="fsh-progress-fill" style={{ width: `${progressPercent}%` }} />
-        </div>
-
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginTop: '8px',
-          }}
-        >
-          <span style={{ fontSize: '12px', color: '#64748b' }}>Mục tiêu: hoàn thành tất cả</span>
-          <span style={{ fontSize: '20px', fontWeight: '800', color: '#0f172a' }}>
-            {progressPercent}%
-          </span>
-        </div>
-      </div>
-
-      {/* Chart Section */}
-      <div
-        className="fsh-card"
-        style={{
-          backgroundColor: '#fff',
-          borderRadius: '16px',
-          border: '1px solid rgba(203,213,225,0.6)',
-          padding: '16px',
-          margin: '0 10px',
-          marginTop: '12px',
-          boxShadow: '0 8px 12px rgba(15,23,42,0.08)',
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: '12px',
-          }}
-        >
-          <h2
-            style={{
-              fontSize: '16px',
-              fontWeight: '800',
-              color: '#0f172a',
-              margin: 0,
-            }}
-          >
-            Biểu đồ tiến bộ
-          </h2>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            {(['day', 'week', 'month'] as const).map((v) => (
-              <button
-                key={v}
-                onClick={() => setChartView(v)}
-                style={{
-                  padding: '6px 12px',
-                  borderRadius: '10px',
-                  border: '1px solid rgba(99,102,241,0.15)',
-                  backgroundColor: chartView === v ? '#2563eb' : '#e2e8f0',
-                  fontSize: '12px',
-                  fontWeight: '700',
-                  color: chartView === v ? '#fff' : '#334155',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                }}
-              >
-                {v === 'day' ? 'Ngày' : v === 'week' ? 'Tuần' : 'Tháng'}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {chartView === 'day' ? (
-          (chartData.length > 0 && (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'flex-end',
-                justifyContent: 'space-between',
-                height: '140px',
-                gap: '8px',
-                padding: '6px 0',
-              }}
+          <View style={styles.headerRight}>
+            <TouchableOpacity
+              onPress={() => router.push('/(tabs)/habits/AddHabitModal')}
+              style={styles.iconCirclePrimary}
             >
-              {chartData.map((item, i) => (
-                <div
-                  key={i}
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    minWidth: '36px',
-                    gap: '6px',
-                  }}
+              <Plus size={20} color="#fff" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => router.push('/(tabs)/habits/HabitStreak')}
+              style={styles.iconCircleGrey}
+            >
+              <BarChart3 size={20} color="#0f172a" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => router.push('/(tabs)/habits/HabitSurvey')}
+              style={styles.iconCircleGrey}
+            >
+              <Target size={20} color="#0f172a" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Progress Summary */}
+        <View style={styles.card}>
+          <View style={styles.progressHeaderRow}>
+            <View style={styles.todayChip}>
+              <TrendingUp size={16} color="#4338ca" />
+              <Text style={styles.todayChipText}>Tiến độ hôm nay</Text>
+            </View>
+            <Text style={styles.progressCountText}>
+              {completedCount}/{totalHabits} hoàn thành
+            </Text>
+          </View>
+
+          <View style={styles.progressBarOuter}>
+            <View style={[styles.progressBarInner, { width: `${progressPercent}%` }]} />
+          </View>
+
+          <View style={styles.progressFooterRow}>
+            <Text style={styles.progressGoalText}>Mục tiêu: hoàn thành tất cả</Text>
+            <Text style={styles.progressPercentText}>{progressPercent}%</Text>
+          </View>
+        </View>
+
+        {/* Chart (rút gọn, vẫn giữ logic) */}
+        <View style={styles.card}>
+          <View style={styles.cardHeaderRow}>
+            <Text style={styles.cardTitle}>Biểu đồ tiến bộ</Text>
+            <View style={styles.chartTabsRow}>
+              {(['day', 'week', 'month'] as const).map((v) => (
+                <TouchableOpacity
+                  key={v}
+                  onPress={() => setChartView(v)}
+                  style={[
+                    styles.chartTab,
+                    chartView === v && styles.chartTabActive,
+                  ]}
                 >
-                  <div
-                    className="fsh-bar"
-                    style={{ width: '28px', borderRadius: '8px', height: item.height }}
-                  />
-                  <span
-                    style={{
-                      fontSize: '11px',
-                      color: '#64748b',
-                      fontWeight: '600',
-                    }}
+                  <Text
+                    style={[
+                      styles.chartTabText,
+                      chartView === v && styles.chartTabTextActive,
+                    ]}
                   >
-                    {item.day}
-                  </span>
-                </div>
+                    {v === 'day' ? 'Ngày' : v === 'week' ? 'Tuần' : 'Tháng'}
+                  </Text>
+                </TouchableOpacity>
               ))}
-            </div>
-          )) || (
-            <div
-              style={{
-                padding: 12,
-                borderRadius: 12,
-                border: '1px dashed #cbd5e1',
-                fontSize: 13,
-                color: '#64748b',
-              }}
-            >
-              Chưa có dữ liệu tuần từ API.
-            </div>
-          )
-        ) : chartView === 'week' ? (
-          <div
-            style={{
-              padding: 12,
-              borderRadius: 12,
-              border: '1px dashed #cbd5e1',
-              fontSize: 13,
-              color: '#64748b',
-            }}
-          >
-            View &quot;Tuần&quot; đang dùng thẻ &quot;Tổng quan&quot; phía trên.
-          </div>
-        ) : (
-          <div
-            style={{
-              padding: 12,
-              borderRadius: 12,
-              border: '1px dashed #cbd5e1',
-              fontSize: 13,
-              color: '#64748b',
-            }}
-          >
-            View &quot;Tháng&quot; chưa có API. Có thể dùng stats/calendar nếu BE hỗ trợ.
-          </div>
-        )}
-      </div>
+            </View>
+          </View>
 
-      {/* Habits List */}
-      <div
-        className="fsh-card"
-        style={{
-          backgroundColor: '#fff',
-          borderRadius: '16px',
-          border: '1px solid rgba(203,213,225,0.6)',
-          padding: '16px',
-          margin: '0 10px',
-          marginTop: '12px',
-          boxShadow: '0 8px 12px rgba(15,23,42,0.08)',
-        }}
-      >
-        <h2
-          style={{
-            fontSize: '16px',
-            fontWeight: '800',
-            marginBottom: '12px',
-            color: '#0f172a',
-          }}
-        >
-          Danh sách thói quen
-        </h2>
+          {chartView === 'day' ? (
+            chartData.length > 0 ? (
+              <View style={styles.chartBarContainer}>
+                {chartData.map((item, i) => (
+                  <View key={i} style={styles.chartBarItem}>
+                    <View style={styles.chartBarOuter}>
+                      <View
+                        style={[
+                          styles.chartBarFill,
+                          { height: `${item.height}%` },
+                        ]}
+                      />
+                    </View>
+                    <Text style={styles.chartBarLabel}>{item.day}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <View style={styles.emptyBox}>
+                <Text style={styles.emptyText}>Chưa có dữ liệu tuần từ API.</Text>
+              </View>
+            )
+          ) : chartView === 'week' ? (
+            <View style={styles.emptyBox}>
+              <Text style={styles.emptyText}>
+                View &quot;Tuần&quot; đang dùng thẻ &quot;Tổng quan&quot; phía trên.
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.emptyBox}>
+              <Text style={styles.emptyText}>
+                View &quot;Tháng&quot; chưa có API. Có thể dùng stats/calendar nếu BE hỗ trợ.
+              </Text>
+            </View>
+          )}
+        </View>
 
-        {habitList.length === 0 ? (
-          <div
-            style={{
-              padding: 12,
-              border: '1px dashed #cbd5e1',
-              borderRadius: 12,
-              color: '#64748b',
-              fontSize: 13,
-            }}
-          >
-            Không có thói quen nào từ API.
-          </div>
-        ) : (
-          habitList.map((habit, i) => {
-            const status = computedStatus(habit.id);
-            const m = (habit.duration || '').match(/\d+/);
-            const currentDays = m ? parseInt(m[0], 10) : 0;
-            const goalDays = TARGET_DAYS;
-            const meta = unitMap[habit.id];
-            const currentVal = meta ? getCurrentCountValue(habit.id) : undefined;
-            const itemPercent =
-              meta && meta.goal > 0
-                ? Math.max(
-                    0,
-                    Math.min(100, Math.round(((currentVal ?? 0) / meta.goal) * 100))
-                  )
-                : Math.max(
-                    0,
-                    Math.min(100, Math.round((currentDays / (goalDays || 1)) * 100))
-                  );
+        {/* Habits List */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Danh sách thói quen</Text>
 
-            const emoji = (() => {
-              const t = (habit.title || '').toLowerCase();
-              if (t.includes('uống')) return '💧';
-              if (t.includes('đọc') || t.includes('doc')) return '📚';
-              if (t.includes('thiền') || t.includes('thien')) return '🧘';
-              if (t.includes('đi bộ') || t.includes('di bo')) return '🚶';
-              if (t.includes('ngủ') || t.includes('ngu')) return '🛌';
-              return '⭐';
-            })();
+          {habitList.length === 0 ? (
+            <View style={styles.emptyBox}>
+              <Text style={styles.emptyText}>Không có thói quen nào từ API.</Text>
+            </View>
+          ) : (
+            habitList.map((habit, i) => {
+              const status = computedStatus(habit.id);
+              const m = (habit.duration || '').match(/\d+/);
+              const currentDays = m ? parseInt(m[0], 10) : 0;
+              const goalDays = TARGET_DAYS;
+              const meta = unitMap[habit.id];
+              const currentVal = meta ? getCurrentCountValue(habit.id) : undefined;
 
-            const progressColor = (() => {
-              if (emoji === '💧') return '#10b981';
-              if (emoji === '🧘' || emoji === '📚') return '#3b82f6';
-              if (emoji === '🚶') return '#2563eb';
-              if (emoji === '🛌') return '#6366f1';
-              return '#2563eb';
-            })();
+              const itemPercent =
+                meta && meta.goal > 0
+                  ? Math.max(
+                      0,
+                      Math.min(100, Math.round(((currentVal ?? 0) / meta.goal) * 100))
+                    )
+                  : Math.max(
+                      0,
+                      Math.min(100, Math.round((currentDays / (goalDays || 1)) * 100))
+                    );
 
-            const noteText = (notes[habit.id] || '').trim();
-            const moodKey = moods[habit.id];
-            const moodMeta = (() => {
-              switch (moodKey) {
-                case 'great':
+              const emoji = (() => {
+                const t = (habit.title || '').toLowerCase();
+                if (t.includes('uống')) return '💧';
+                if (t.includes('đọc') || t.includes('doc')) return '📚';
+                if (t.includes('thiền') || t.includes('thien')) return '🧘';
+                if (t.includes('đi bộ') || t.includes('di bo')) return '🚶';
+                if (t.includes('ngủ') || t.includes('ngu')) return '🛌';
+                return '⭐';
+              })();
+
+              const progressColor = (() => {
+                if (emoji === '💧') return '#10b981';
+                if (emoji === '🧘' || emoji === '📚') return '#3b82f6';
+                if (emoji === '🚶') return '#2563eb';
+                if (emoji === '🛌') return '#6366f1';
+                return '#2563eb';
+              })();
+
+              let chip = (() => {
+                if (status === 'success')
                   return {
-                    emoji: '😊',
-                    label: 'Tuyệt vời',
+                    label: 'Hoàn thành',
                     bg: '#dcfce7',
                     text: '#16a34a',
-                    border: 'rgba(34,197,94,0.25)',
                   };
-                case 'good':
+                if (status === 'fail')
                   return {
-                    emoji: '🙂',
-                    label: 'Tốt',
-                    bg: '#dbeafe',
-                    text: '#2563eb',
-                    border: 'rgba(37,99,235,0.25)',
-                  };
-                case 'neutral':
-                  return {
-                    emoji: '😐',
-                    label: 'Bình thường',
-                    bg: '#f3f4f6',
-                    text: '#374151',
-                    border: 'rgba(148,163,184,0.35)',
-                  };
-                case 'bad':
-                  return {
-                    emoji: '😞',
-                    label: 'Không tốt',
+                    label: 'Thất bại',
                     bg: '#fee2e2',
                     text: '#dc2626',
-                    border: 'rgba(239,68,68,0.25)',
                   };
-                default:
-                  return undefined;
+                if (status === 'skip')
+                  return {
+                    label: 'Bỏ qua',
+                    bg: '#ffedd5',
+                    text: '#d97706',
+                  };
+                return {
+                  label: 'Chờ làm',
+                  bg: '#e5e7eb',
+                  text: '#334155',
+                };
+              })();
+
+              if (status === 'in_progress') {
+                chip = {
+                  label: 'Đang làm',
+                  bg: '#e0f2fe',
+                  text: '#0284c7',
+                };
               }
-            })();
 
-            let chip = (() => {
-              if (status === 'success')
-                return {
-                  label: 'Hoàn thành',
-                  bg: '#dcfce7',
-                  text: '#16a34a',
-                  border: 'rgba(34,197,94,0.25)',
-                  icon: 'check' as const,
-                };
-              if (status === 'fail')
-                return {
-                  label: 'Thất bại',
-                  bg: '#fee2e2',
-                  text: '#dc2626',
-                  border: 'rgba(239,68,68,0.25)',
-                  icon: 'x' as const,
-                };
-              if (status === 'skip')
-                return {
-                  label: 'Bỏ qua',
-                  bg: '#ffedd5',
-                  text: '#d97706',
-                  border: 'rgba(245,158,11,0.25)',
-                  icon: 'minus' as const,
-                };
-              return {
-                label: 'Chờ làm',
-                bg: '#e5e7eb',
-                text: '#334155',
-                border: 'rgba(148,163,184,0.35)',
-                icon: 'clock' as const,
-              };
-            })();
+              const isCountHabit = !!unitMap[habit.id];
 
-            if (status === 'in_progress') {
-              chip = {
-                label: 'Đang làm',
-                bg: '#e0f2fe',
-                text: '#0284c7',
-                border: 'rgba(2,132,199,0.25)',
-                icon: 'clock' as const,
-              };
-            }
-
-            return (
-              <div
-                key={habit.id}
-                className="fsh-fade-in"
-                style={{
-                  marginBottom: '10px',
-                  position: 'relative',
-                  animationDelay: `${i * 50}ms`,
-                }}
-              >
-                <div
-                  onClick={() => {
-                    if (meta) {
-                      setActiveCountRow(activeCountRow === habit.id ? null : habit.id);
-                    } else {
-                      setActiveRow(activeRow === habit.id ? null : habit.id);
-                    }
-                  }}
-                  className="fsh-habit"
-                  style={{
-                    width: '100%',
-                    border: '1px solid rgba(203,213,225,0.4)',
-                    borderRadius: '14px',
-                    padding: '14px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    backgroundColor:
-                      status === 'success'
-                        ? '#f0fdf4'
-                        : status === 'fail'
-                        ? '#fef2f2'
-                        : status === 'in_progress'
-                        ? '#e0f2fe'
-                        : '#ffffff',
-                    cursor: 'pointer',
-                    transition: 'background-color 0.2s',
-                  }}
-                >
-                  <div style={{ flex: 1, textAlign: 'left' }}>
-                    {/* Top row */}
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: '8px',
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '10px',
-                        }}
-                      >
-                        <div
-                          className="fsh-habit-icon"
-                          style={{
-                            width: '44px',
-                            height: '44px',
-                            borderRadius: '12px',
-                            background: '#f1f5f9',
-                            border: '1px solid #e2e8f0',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            boxShadow: '0 2px 6px rgba(15,23,42,0.06)',
-                          }}
-                        >
-                          <span style={{ fontSize: '22px' }}>{emoji}</span>
-                        </div>
-                        <div>
-                          <h3
-                            style={{
-                              fontSize: '16px',
-                              fontWeight: 800,
-                              color: '#0f172a',
-                              margin: 0,
-                              marginBottom: '4px',
-                            }}
-                          >
-                            {habit.title}
-                          </h3>
-                          <div
-                            className="fsh-chip"
-                            data-status={status || 'none'}
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '6px',
-                              backgroundColor: chip.bg,
-                              padding: '4px 8px',
-                              borderRadius: '999px',
-                              border: `1px solid ${chip.border}`,
-                            }}
-                          >
-                            {chip.icon === 'check' && <Check size={12} color={chip.text} />}
-                            {chip.icon === 'x' && <X size={12} color={chip.text} />}
-                            {chip.icon === 'minus' && <Minus size={12} color={chip.text} />}
-                            {chip.icon === 'clock' && <Clock size={12} color={chip.text} />}
-                            <span
-                              style={{
-                                color: chip.text,
-                                fontWeight: 700,
-                                fontSize: '12px',
-                              }}
-                            >
-                              {chip.label}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setActiveMenu(activeMenu === habit.id ? null : habit.id);
-                        }}
-                        className="fsh-icon-btn"
-                        style={{
-                          width: '34px',
-                          height: '34px',
-                          borderRadius: '10px',
-                          border: '1px solid rgba(203,213,225,0.7)',
-                          backgroundColor: '#ffffff',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        <MoreVertical size={18} color="#0f172a" />
-                      </button>
-                    </div>
-
-                    {/* Progress header */}
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        marginTop: '10px',
-                      }}
-                    >
-                      <span
-                        style={{
-                          fontSize: '12px',
-                          color: '#64748b',
-                          fontWeight: 700,
-                        }}
-                      >
-                        Tiến độ
-                      </span>
-                      <span
-                        style={{
-                          fontSize: '13px',
-                          color: '#0f172a',
-                          fontWeight: 800,
-                        }}
-                      >
-                        {meta
-                          ? `${currentVal ?? 0}/${meta.goal} ${meta.unit}`
-                          : `${currentDays}/${goalDays} ngày`}
-                      </span>
-                    </div>
-
-                    {/* Progress bar */}
-                    <div
-                      style={{
-                        width: '100%',
-                        height: '10px',
-                        borderRadius: '999px',
-                        overflow: 'hidden',
-                        backgroundColor: '#e5e7eb',
-                        marginTop: '6px',
-                        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6)',
-                      }}
-                    >
-                      <div
-                        style={{
-                          height: '100%',
-                          backgroundColor: progressColor,
-                          width: `${itemPercent}%`,
-                          transition: 'width 0.3s ease',
-                          borderRadius: '999px',
-                        }}
-                      />
-                    </div>
-
-                    {/* Note preview */}
-                    {noteText && (
-                      <div
-                        style={{
-                          marginTop: '10px',
-                          backgroundColor: '#f8fafc',
-                          border: '1px solid #e2e8f0',
-                          borderRadius: '10px',
-                          padding: '8px 10px',
-                        }}
-                      >
-                        <div
-                          style={{
-                            fontSize: '12px',
-                            color: '#64748b',
-                            fontWeight: 700,
-                            marginBottom: '4px',
-                          }}
-                        >
-                          Ghi chú
-                        </div>
-                        <div
-                          style={{
-                            fontSize: '13px',
-                            color: '#334155',
-                          }}
-                        >
-                          {noteText}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* mood preview */}
-                    {moodMeta && (
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          marginTop: noteText ? '8px' : '10px',
-                        }}
-                      >
-                        <span
-                          style={{
-                            fontSize: '12px',
-                            color: '#64748b',
-                            fontWeight: 700,
-                          }}
-                        >
-                          Cảm giác
-                        </span>
-                        <div
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 6,
-                            padding: '4px 8px',
-                            borderRadius: 999,
-                            backgroundColor: moodMeta.bg,
-                            border: `1px solid ${moodMeta.border}`,
-                          }}
-                        >
-                          <span style={{ fontSize: 14 }}>{moodMeta.emoji}</span>
-                          <span
-                            style={{
-                              fontSize: 12,
-                              fontWeight: 700,
-                              color: moodMeta.text,
-                            }}
-                          >
-                            {moodMeta.label}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Action row count-mode */}
-                {meta && activeCountRow === habit.id && (
-                  <>
-                    <div
-                      className="fsh-action-row"
-                      style={{
-                        paddingTop: 8,
-                        borderTop: '1px solid #e5e7eb',
-                      }}
-                    >
-                      <button
-                        onClick={() => toggleCountView(habit.id)}
-                        style={{
-                          flex: '1 1 140px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: 8,
-                          background: '#eef2ff',
-                          border: '1px solid #c7d2fe',
-                          borderRadius: 999,
-                          padding: '10px 12px',
-                          fontWeight: 800,
-                          color: '#1e40af',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        <Eye size={14} color="#1e40af" />
-                        Xem chi tiết
-                      </button>
-                      <button
-                        onClick={() => addCountEntry(habit.id)}
-                        style={{
-                          flex: '1 1 140px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: 8,
-                          background: '#ecfdf5',
-                          border: '1px solid #a7f3d0',
-                          borderRadius: 999,
-                          padding: '10px 12px',
-                          fontWeight: 800,
-                          color: '#047857',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        <Plus size={14} color="#047857" />
-                        Thêm lần
-                      </button>
-                      <button
-                        onClick={() => clearCountDay(habit.id)}
-                        style={{
-                          flex: '1 1 140px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: 8,
-                          background: '#fee2e2',
-                          border: '1px solid #fecaca',
-                          borderRadius: 999,
-                          padding: '10px 12px',
-                          fontWeight: 800,
-                          color: '#dc2626',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        <Trash2 size={14} color="#dc2626" />
-                        Xóa ngày
-                      </button>
-                      <button
-                        onClick={() => openEditModal(habit)}
-                        style={{
-                          flex: '1 1 140px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: 8,
-                          background: '#fffbeb',
-                          border: '1px solid #fde68a',
-                          borderRadius: 999,
-                          padding: '10px 12px',
-                          fontWeight: 800,
-                          color: '#b45309',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        <Pencil size={14} color="#b45309" />
-                        Sửa
-                      </button>
-                    </div>
-
-                    {countViewOpen[habit.id] && (
-                      <div style={{ marginTop: 10 }}>
-                        {(countEntries[habit.id] ?? []).length === 0 ? (
-                          <div
-                            style={{
-                              padding: 12,
-                              border: '1px dashed #cbd5e1',
-                              borderRadius: 12,
-                              color: '#64748b',
-                              fontSize: 13,
-                            }}
-                          >
-                            Chưa có lần nào cho hôm nay. Nhấn &quot;Thêm lần&quot; để bắt đầu.
-                          </div>
-                        ) : (
-                          (countEntries[habit.id] ?? []).map((en, idx) => {
-                            console.log(countEntries[habit.id]);
-                            
-                            const dur = timeDiff(en.start, en.end);
-                            const moodMetaEn = (() => {
-                              switch (en.mood) {
-                                case 'great':
-                                  return {
-                                    emoji: '😊',
-                                    label: 'Tuyệt vời',
-                                    color: '#16a34a',
-                                    bg: '#dcfce7',
-                                    border: 'rgba(34,197,94,0.25)',
-                                  };
-                                case 'good':
-                                  return {
-                                    emoji: '🙂',
-                                    label: 'Tốt',
-                                    color: '#2563eb',
-                                    bg: '#dbeafe',
-                                    border: 'rgba(37,99,235,0.25)',
-                                  };
-                                case 'neutral':
-                                  return {
-                                    emoji: '😐',
-                                    label: 'Bình thường',
-                                    color: '#374151',
-                                    bg: '#f3f4f6',
-                                    border: 'rgba(148,163,184,0.35)',
-                                  };
-                                case 'bad':
-                                  return {
-                                    emoji: '😞',
-                                    label: 'Không tốt',
-                                    color: '#dc2626',
-                                    bg: '#fee2e2',
-                                    border: 'rgba(239,68,68,0.25)',
-                                  };
-                                default:
-                                  return undefined;
-                              }
-                            })();
-
-                            const metaLocal = unitMap[habit.id];
-
-                            const tonePalette = [
-                              { bg: '#ecfeff', border: '#a5f3fc' },
-                              { bg: '#eff6ff', border: '#bfdbfe' },
-                              { bg: '#f5f3ff', border: '#c4b5fd' },
-                              { bg: '#f0fdf4', border: '#bbf7d0' },
-                              { bg: '#fffbeb', border: '#fde68a' },
-                              { bg: '#fef2f2', border: '#fecaca' },
-                            ];
-
-                            const toneByTag = (() => {
-                              const t = String(habit.tag || '').toLowerCase();
-                              if (t === 'mindful') return { bg: '#f0fdf4', border: '#bbf7d0' };
-                              if (t === 'energy') return { bg: '#fff7ed', border: '#fed7aa' };
-                              if (t === 'sleep') return { bg: '#eff6ff', border: '#bfdbfe' };
-                              return { bg: '#f8fafc', border: '#e2e8f0' };
-                            })();
-
-                            const entryTone = (() => {
-                              if (moodMetaEn)
-                                return {
-                                  bg: moodMetaEn.bg,
-                                  border: moodMetaEn.border,
-                                };
-                              if (habit.tag) return toneByTag;
-                              return tonePalette[idx % tonePalette.length];
-                            })();
-
-                            const accentColor = (() => {
-                              const t = String(habit.tag || '').toLowerCase();
-                              if (t === 'mindful') return '#22c55e';
-                              if (t === 'energy') return '#f59e0b';
-                              if (t === 'sleep') return '#3b82f6';
-                              return '#94a3b8';
-                            })();
-
-                            return (
-                              <div
-                                key={en.id}
-                                style={{
-                                  background: entryTone.bg,
-                                  border: `1px solid ${entryTone.border}`,
-                                  borderLeft: `6px solid ${accentColor}`,
-                                  borderRadius: 12,
-                                  padding: 12,
-                                  marginTop: 8,
-                                }}
-                              >
-                                <div
-                                  style={{
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                    position: 'relative',
-                                  }}
-                                >
-                                  <div
-                                    style={{
-                                      position: 'absolute',
-                                      left: 8,
-                                      top: 10,
-                                      width: 8,
-                                      height: 8,
-                                      borderRadius: 999,
-                                      background: accentColor,
-                                    }}
-                                  />
-                                  <div
-                                    style={{
-                                      fontWeight: 800,
-                                      color: '#0f172a',
-                                    }}
-                                  >
-                                    📘 Lần {idx + 1}
-                                  </div>
-                                  {en.start && en.end && (
-                                    <div
-                                      style={{
-                                        fontSize: 12,
-                                        color: '#0f172a',
-                                        background: '#f3f4f6',
-                                        border: '1px solid #e5e7eb',
-                                        borderRadius: 999,
-                                        padding: '4px 8px',
-                                      }}
-                                    >
-                                      {en.start} - {en.end}
-                                      {dur ? ` (${dur} phút)` : ''}
-                                    </div>
-                                  )}
-                                </div>
-
-                                <div style={{ marginTop: 6 }}>
-                                  <div
-                                    style={{
-                                      fontSize: 14,
-                                      fontWeight: 800,
-                                      color: '#2563eb',
-                                    }}
-                                  >
-                                    {en.qty} {metaLocal?.unit || ''}
-                                  </div>
-                                  {en.note && (
-                                    <div
-                                      style={{
-                                        marginTop: 4,
-                                        fontStyle: 'italic',
-                                        color: '#475569',
-                                      }}
-                                    >
-                                      “{en.note}”
-                                    </div>
-                                  )}
-                                  {moodMetaEn && (
-                                    <div
-                                      style={{
-                                        marginTop: 4,
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: 6,
-                                        background: moodMetaEn.bg,
-                                        border: `1px solid ${moodMetaEn.border}`,
-                                        borderRadius: 999,
-                                        padding: '4px 8px',
-                                      }}
-                                    >
-                                      <span>{moodMetaEn.emoji}</span>
-                                      <span
-                                        style={{
-                                          fontSize: 12,
-                                          fontWeight: 700,
-                                          color: moodMetaEn.color,
-                                        }}
-                                      >
-                                        {moodMetaEn.label}
-                                      </span>
-                                    </div>
-                                  )}
-                                </div>
-
-                                <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-                                  <button
-                                    onClick={() =>
-                                      setEditingEntry({
-                                        habitId: habit.id,
-                                        entryId: en.id,
-                                      })
-                                    }
-                                    style={{
-                                      background: '#fffbeb',
-                                      border: '1px solid #fde68a',
-                                      color: '#b45309',
-                                      fontWeight: 800,
-                                      borderRadius: 10,
-                                      padding: '8px 10px',
-                                      cursor: 'pointer',
-                                    }}
-                                  >
-                                    <Pencil size={14} color="#b45309" /> Sửa
-                                  </button>
-                                  <button
-                                    onClick={() => deleteCountEntry(habit.id, en.id)}
-                                    style={{
-                                      background: '#fee2e2',
-                                      border: '1px solid #fecaca',
-                                      color: '#dc2626',
-                                      fontWeight: 800,
-                                      borderRadius: 10,
-                                      padding: '8px 10px',
-                                      cursor: 'pointer',
-                                    }}
-                                  >
-                                    <Trash2 size={14} color="#dc2626" /> Xóa
-                                  </button>
-                                </div>
-
-                                {editingEntry &&
-                                  editingEntry.habitId === habit.id &&
-                                  editingEntry.entryId === en.id && (
-                                    <div
-                                      style={{
-                                        marginTop: 10,
-                                        background: '#f8fafc',
-                                        border: '1px solid #e5e7eb',
-                                        borderRadius: 12,
-                                        padding: 12,
-                                      }}
-                                    >
-                                      <div
-                                        style={{
-                                          display: 'flex',
-                                          gap: 10,
-                                          flexWrap: 'wrap',
-                                        }}
-                                      >
-                                        <div style={{ flex: '1 1 120px' }}>
-                                          <div
-                                            style={{
-                                              fontSize: 12,
-                                              fontWeight: 700,
-                                              color: '#64748b',
-                                              marginBottom: 4,
-                                            }}
-                                          >
-                                            Số lượng
-                                          </div>
-                                          <input
-                                            type="number"
-                                            min={0}
-                                            value={en.qty}
-                                            onChange={(e) =>
-                                              updateEntry(habit.id, en.id, {
-                                                qty: Math.max(
-                                                  0,
-                                                  parseInt(e.target.value || '0', 10)
-                                                ),
-                                              })
-                                            }
-                                            style={{
-                                              width: 'calc(100% - 20px)',
-                                              border: '1px solid #cbd5e1',
-                                              borderRadius: 10,
-                                              padding: 8,
-                                            }}
-                                          />
-                                        </div>
-                                        <div style={{ flex: '1 1 120px' }}>
-                                          <div
-                                            style={{
-                                              fontSize: 12,
-                                              fontWeight: 700,
-                                              color: '#64748b',
-                                              marginBottom: 4,
-                                            }}
-                                          >
-                                            Bắt đầu
-                                          </div>
-                                          <input
-                                            type="time"
-                                            value={en.start || ''}
-                                            onChange={(e) =>
-                                              updateEntry(habit.id, en.id, {
-                                                start: e.target.value,
-                                              })
-                                            }
-                                            style={{
-                                              width: 'calc(100% - 20px)',
-                                              border: '1px solid #cbd5e1',
-                                              borderRadius: 10,
-                                              padding: 8,
-                                            }}
-                                          />
-                                        </div>
-                                        <div style={{ flex: '1 1 120px' }}>
-                                          <div
-                                            style={{
-                                              fontSize: 12,
-                                              fontWeight: 700,
-                                              color: '#64748b',
-                                              marginBottom: 4,
-                                            }}
-                                          >
-                                            Kết thúc
-                                          </div>
-                                          <input
-                                            type="time"
-                                            value={en.end || ''}
-                                            onChange={(e) =>
-                                              updateEntry(habit.id, en.id, {
-                                                end: e.target.value,
-                                              })
-                                            }
-                                            style={{
-                                              width: 'calc(100% - 20px)',
-                                              border: '1px solid #cbd5e1',
-                                              borderRadius: 10,
-                                              padding: 8,
-                                            }}
-                                          />
-                                        </div>
-                                      </div>
-                                      <div style={{ marginTop: 10 }}>
-                                        <div
-                                          style={{
-                                            fontSize: 12,
-                                            fontWeight: 700,
-                                            color: '#64748b',
-                                            marginBottom: 4,
-                                          }}
-                                        >
-                                          Ghi chú
-                                        </div>
-                                        <input
-                                          type="text"
-                                          value={en.note || ''}
-                                          onChange={(e) =>
-                                            updateEntry(habit.id, en.id, {
-                                              note: e.target.value,
-                                            })
-                                          }
-                                          style={{
-                                            width: 'calc(100% - 20px)',
-                                            border: '1px solid #cbd5e1',
-                                            borderRadius: 10,
-                                            padding: 8,
-                                          }}
-                                        />
-                                      </div>
-                                      <div
-                                        style={{
-                                          marginTop: 10,
-                                          display: 'flex',
-                                          gap: 8,
-                                          flexWrap: 'wrap',
-                                        }}
-                                      >
-                                        {(['great', 'good', 'neutral', 'bad'] as const).map(
-                                          (f) => {
-                                            const selected = en.mood === f;
-                                            const label =
-                                              f === 'great'
-                                                ? 'Tuyệt vời'
-                                                : f === 'good'
-                                                ? 'Tốt'
-                                                : f === 'neutral'
-                                                ? 'Bình thường'
-                                                : 'Không tốt';
-                                            return (
-                                              <button
-                                                key={f}
-                                                onClick={() =>
-                                                  updateEntry(habit.id, en.id, {
-                                                    mood: selected ? undefined : f,
-                                                  })
-                                                }
-                                                style={{
-                                                  padding: '6px 10px',
-                                                  borderRadius: 999,
-                                                  border: `2px solid ${
-                                                    selected ? '#2563eb' : '#e5e7eb'
-                                                  }`,
-                                                  background: '#fff',
-                                                  cursor: 'pointer',
-                                                  fontWeight: 700,
-                                                  color: selected ? '#2563eb' : '#334155',
-                                                }}
-                                              >
-                                                {label}
-                                              </button>
-                                            );
-                                          }
-                                        )}
-                                      </div>
-                                      <div
-                                        style={{
-                                          display: 'flex',
-                                          justifyContent: 'flex-end',
-                                          gap: 8,
-                                          marginTop: 10,
-                                        }}
-                                      >
-                                        <button
-                                          onClick={() => setEditingEntry(null)}
-                                          style={{
-                                            background: '#e5e7eb',
-                                            border: '1px solid #cbd5e1',
-                                            color: '#0f172a',
-                                            fontWeight: 800,
-                                            borderRadius: 10,
-                                            padding: '8px 10px',
-                                            cursor: 'pointer',
-                                          }}
-                                        >
-                                          Hủy
-                                        </button>
-                                        <button
-                                          onClick={() => saveEntry(habit.id, en.id)}
-                                          style={{
-                                            background: '#2563eb',
-                                            border: '1px solid #2563eb',
-                                            color: '#fff',
-                                            fontWeight: 800,
-                                            borderRadius: 10,
-                                            padding: '8px 10px',
-                                            cursor: 'pointer',
-                                          }}
-                                        >
-                                          Lưu
-                                        </button>
-                                      </div>
-                                    </div>
-                                  )}
-                              </div>
-                            );
-                          })
-                        )}
-                      </div>
-                    )}
-                  </>
-                )}
-
-                {/* Action row habit thường */}
-                {!meta && activeRow === habit.id && (
-                  <div className="fsh-action-row">
-                    <button
-                      onClick={() => openDetail(habit)}
-                      style={{
-                        flex: 1,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 8,
-                        background: '#eef2ff',
-                        border: '1px solid #c7d2fe',
-                        borderRadius: 999,
-                        padding: '10px 12px',
-                        fontWeight: 800,
-                        color: '#1e40af',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      <Eye size={14} color="#1e40af" />
-                      Xem chi tiết
-                    </button>
-                    <button
-                      onClick={() => openEditModal(habit)}
-                      style={{
-                        flex: 1,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 8,
-                        background: '#fffbeb',
-                        border: '1px solid #fde68a',
-                        borderRadius: 999,
-                        padding: '10px 12px',
-                        fontWeight: 800,
-                        color: '#b45309',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      <Pencil size={14} color="#b45309" />
-                      Sửa
-                    </button>
-                    <button
-                      onClick={() => askDelete(habit.id, habit.title)}
-                      style={{
-                        flex: 1,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 8,
-                        background: '#fee2e2',
-                        border: '1px solid #fecaca',
-                        borderRadius: 999,
-                        padding: '10px 12px',
-                        fontWeight: 800,
-                        color: '#dc2626',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      <Trash2 size={14} color="#dc2626" />
-                      Xóa
-                    </button>
-                  </div>
-                )}
-
-                {/* Flyout menu */}
-                {activeMenu === habit.id && (
-                  <div
-                    className="fsh-card fsh-fly"
-                    style={{
-                      position: 'absolute',
-                      top: 8,
-                      right: 16,
-                      backgroundColor: '#ffffff',
-                      border: '1px solid rgba(203,213,225,0.7)',
-                      borderRadius: 12,
-                      boxShadow: '0 8px 16px rgba(15,23,42,0.15)',
-                      padding: 6,
-                      zIndex: 20,
-                      minWidth: 160,
-                    }}
-                  >
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setActiveMenu(null);
-                        openEditModal(habit);
-                      }}
-                      style={{
-                        width: '100%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 10,
-                        padding: '8px 10px',
-                        borderRadius: 10,
-                        background: 'transparent',
-                        border: 'none',
-                        cursor: 'pointer',
-                        color: '#0f172a',
-                        fontWeight: 700,
-                        fontSize: 13,
-                      }}
-                    >
-                      Sửa
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setActiveMenu(null);
-                        askDelete(habit.id, habit.title);
-                      }}
-                      style={{
-                        width: '100%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 10,
-                        padding: '8px 10px',
-                        borderRadius: 10,
-                        background: 'transparent',
-                        border: 'none',
-                        cursor: 'pointer',
-                        color: '#dc2626',
-                        fontWeight: 700,
-                        fontSize: 13,
-                      }}
-                    >
-                      Xóa
-                    </button>
-                    <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setActiveMenu(null);
-                      const bid = n2b[habit.id];
-                      if (bid) {
-                        router.push({ pathname: '/(tabs)/habits/RunningHabitTracker', params: { habitId: bid } });
+              return (
+                <View key={habit.id} style={{ marginBottom: 10 }}>
+                  {/* Habit row */}
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => {
+                      if (isCountHabit) {
+                        setActiveCountRow(
+                          activeCountRow === habit.id ? null : habit.id
+                        );
                       } else {
-                        router.push('/(tabs)/habits/RunningHabitTracker');
+                        setActiveRow(activeRow === habit.id ? null : habit.id);
                       }
                     }}
-                      style={{
-                        width: '100%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 10,
-                        padding: '8px 10px',
-                        borderRadius: 10,
-                        background: 'transparent',
-                        border: 'none',
-                        cursor: 'pointer',
-                        color: '#2563eb',
-                        fontWeight: 700,
-                        fontSize: 13,
-                      }}
-                    >
-                      Thông tin
-                    </button>
-                  </div>
-                )}
-              </div>
-            );
-          })
-        )}
-      </div>
+                    style={[
+                      styles.habitRow,
+                      status === 'success' && { backgroundColor: '#f0fdf4' },
+                      status === 'fail' && { backgroundColor: '#fef2f2' },
+                      status === 'in_progress' && { backgroundColor: '#e0f2fe' },
+                    ]}
+                  >
+                    <View style={{ flex: 1 }}>
+                      {/* top row */}
+                      <View style={styles.habitTopRow}>
+                        <View style={styles.habitTopLeft}>
+                          <View style={styles.habitIconBox}>
+                            <Text style={{ fontSize: 22 }}>{emoji}</Text>
+                          </View>
+                          <View>
+                            <Text style={styles.habitTitle}>{habit.title}</Text>
+                            <View
+                              style={[
+                                styles.statusChip,
+                                { backgroundColor: chip.bg },
+                              ]}
+                            >
+                              <Text
+                                style={[
+                                  styles.statusChipText,
+                                  { color: chip.text },
+                                ]}
+                              >
+                                {chip.label}
+                              </Text>
+                            </View>
+                          </View>
+                        </View>
+
+                        <TouchableOpacity
+                          onPress={() =>
+                            setActiveMenu(
+                              activeMenu === habit.id ? null : habit.id
+                            )
+                          }
+                          style={styles.moreButton}
+                        >
+                          <MoreVertical size={18} color="#0f172a" />
+                        </TouchableOpacity>
+                      </View>
+
+                      {/* Progress header */}
+                      <View style={styles.habitProgressHeader}>
+                        <Text style={styles.habitProgressLabel}>Tiến độ</Text>
+                        <Text style={styles.habitProgressValue}>
+                          {meta
+                            ? `${currentVal ?? 0}/${meta.goal} ${meta.unit}`
+                            : `${currentDays}/${goalDays} ngày`}
+                        </Text>
+                      </View>
+
+                      {/* Progress bar */}
+                      <View style={styles.habitProgressBarOuter}>
+                        <View
+                          style={[
+                            styles.habitProgressBarInner,
+                            {
+                              width: `${itemPercent}%`,
+                              backgroundColor: progressColor,
+                            },
+                          ]}
+                        />
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+
+                  {/* Action row cho count-mode */}
+                  {isCountHabit && activeCountRow === habit.id && (
+                    <View style={styles.actionRow}>
+                      <TouchableOpacity
+                        onPress={() => toggleCountView(habit.id)}
+                        style={[styles.actionButton, styles.actionButtonBlueSoft]}
+                      >
+                        <Eye size={14} color="#1e40af" />
+                        <Text style={styles.actionButtonBlueText}>Xem chi tiết</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => addCountEntry(habit.id)}
+                        style={[styles.actionButton, styles.actionButtonGreenSoft]}
+                      >
+                        <Plus size={14} color="#047857" />
+                        <Text style={styles.actionButtonGreenText}>Thêm lần</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => clearCountDay(habit.id)}
+                        style={[styles.actionButton, styles.actionButtonRedSoft]}
+                      >
+                        <Trash2 size={14} color="#dc2626" />
+                        <Text style={styles.actionButtonRedText}>Xóa ngày</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => openEditModal(habit)}
+                        style={[styles.actionButton, styles.actionButtonAmberSoft]}
+                      >
+                        <Pencil size={14} color="#b45309" />
+                        <Text style={styles.actionButtonAmberText}>Sửa</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+
+                  {/* Form "Thêm lần" riêng */}
+                  {newCountForm.habitId === habit.id && (
+                    <View style={styles.newCountFormBox}>
+                      <View style={styles.rowWrap}>
+                        {/* qty */}
+                        <View style={styles.formField}>
+                          <Text style={styles.formLabel}>Số lượng *</Text>
+                          <TextInput
+                            keyboardType="numeric"
+                            value={String(newCountForm.qty)}
+                            onChangeText={(text) => {
+                              const val = parseInt(text || '0', 10) || 0;
+                              setNewCountForm((prev) => ({
+                                ...prev,
+                                qty: Math.max(0, val),
+                              }));
+                            }}
+                            style={styles.input}
+                          />
+                        </View>
+
+                        {/* start */}
+                        <View style={styles.formField}>
+                          <Text style={styles.formLabel}>Bắt đầu *</Text>
+                          <TextInput
+                            placeholder="HH:MM"
+                            value={newCountForm.start}
+                            onChangeText={(text) =>
+                              setNewCountForm((prev) => ({
+                                ...prev,
+                                start: text,
+                              }))
+                            }
+                            style={styles.input}
+                          />
+                        </View>
+
+                        {/* end */}
+                        <View style={styles.formField}>
+                          <Text style={styles.formLabel}>Kết thúc (tùy chọn)</Text>
+                          <TextInput
+                            placeholder="HH:MM"
+                            value={newCountForm.end}
+                            onChangeText={(text) =>
+                              setNewCountForm((prev) => ({
+                                ...prev,
+                                end: text,
+                              }))
+                            }
+                            style={styles.input}
+                          />
+                        </View>
+                      </View>
+
+                      {/* note */}
+                      <View style={{ marginTop: 10 }}>
+                        <Text style={styles.formLabel}>Ghi chú</Text>
+                        <TextInput
+                          value={newCountForm.note}
+                          onChangeText={(text) =>
+                            setNewCountForm((prev) => ({
+                              ...prev,
+                              note: text,
+                            }))
+                          }
+                          style={styles.input}
+                          placeholder="Ghi chú thêm..."
+                        />
+                      </View>
+
+                      {/* mood */}
+                      <View style={[styles.rowWrap, { marginTop: 10 }]}>
+                        {(['great', 'good', 'neutral', 'bad'] as const).map((f) => {
+                          const selected = newCountForm.mood === f;
+                          const label =
+                            f === 'great'
+                              ? 'Tuyệt vời'
+                              : f === 'good'
+                              ? 'Tốt'
+                              : f === 'neutral'
+                              ? 'Bình thường'
+                              : 'Không tốt';
+                          return (
+                            <TouchableOpacity
+                              key={f}
+                              onPress={() =>
+                                setNewCountForm((prev) => ({
+                                  ...prev,
+                                  mood: selected ? undefined : f,
+                                }))
+                              }
+                              style={[
+                                styles.moodButton,
+                                selected && styles.moodButtonSelected,
+                              ]}
+                            >
+                              <Text
+                                style={[
+                                  styles.moodButtonText,
+                                  selected && styles.moodButtonTextSelected,
+                                ]}
+                              >
+                                {label}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+
+                      {/* buttons */}
+                      <View style={styles.formButtonRow}>
+                        <TouchableOpacity
+                          onPress={cancelNewCountEntry}
+                          style={styles.formCancelButton}
+                        >
+                          <Text style={styles.formCancelText}>Hủy</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={saveNewCountEntry}
+                          style={styles.formSaveButton}
+                        >
+                          <Text style={styles.formSaveText}>Lưu</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )}
+
+                  {/* danh sách count entries (rút gọn UI, vẫn giữ đầy đủ logic) */}
+                  {countViewOpen[habit.id] && (
+                    <View style={{ marginTop: 8 }}>
+                      {(countEntries[habit.id] ?? []).length === 0 ? (
+                        <View style={styles.emptyBox}>
+                          <Text style={styles.emptyText}>
+                            Chưa có lần nào cho hôm nay. Nhấn &quot;Thêm lần&quot; để bắt đầu.
+                          </Text>
+                        </View>
+                      ) : (
+                        (countEntries[habit.id] ?? []).map((en, idx) => {
+                          const dur = timeDiff(en.start, en.end);
+                          return (
+                            <View key={en.id} style={styles.entryBox}>
+                              <View style={styles.entryHeaderRow}>
+                                <Text style={styles.entryTitle}>
+                                  📘 Lần {idx + 1}
+                                </Text>
+                                {en.start && en.end && (
+                                  <Text style={styles.entryTime}>
+                                    {en.start} - {en.end}
+                                    {dur ? ` (${dur} phút)` : ''}
+                                  </Text>
+                                )}
+                              </View>
+                              <Text style={styles.entryQty}>
+                                {en.qty} {unitMap[habit.id]?.unit || ''}
+                              </Text>
+                              {en.note ? (
+                                <Text style={styles.entryNote}>“{en.note}”</Text>
+                              ) : null}
+
+                              <View style={styles.entryButtonRow}>
+                                <TouchableOpacity
+                                  onPress={() =>
+                                    setEditingEntry({
+                                      habitId: habit.id,
+                                      entryId: en.id,
+                                    })
+                                  }
+                                  style={styles.entryEditButton}
+                                >
+                                  <Pencil size={14} color="#b45309" />
+                                  <Text style={styles.entryEditText}>Sửa</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                  onPress={() => deleteCountEntry(habit.id, en.id)}
+                                  style={styles.entryDeleteButton}
+                                >
+                                  <Trash2 size={14} color="#dc2626" />
+                                  <Text style={styles.entryDeleteText}>Xóa</Text>
+                                </TouchableOpacity>
+                              </View>
+
+                              {/* form sửa entry */}
+                              {editingEntry &&
+                                editingEntry.habitId === habit.id &&
+                                editingEntry.entryId === en.id && (
+                                  <View style={styles.entryEditBox}>
+                                    <View style={styles.rowWrap}>
+                                      <View style={styles.formField}>
+                                        <Text style={styles.formLabel}>Số lượng</Text>
+                                        <TextInput
+                                          keyboardType="numeric"
+                                          value={String(en.qty)}
+                                          onChangeText={(text) =>
+                                            updateEntry(habit.id, en.id, {
+                                              qty:
+                                                parseInt(text || '0', 10) >= 0
+                                                  ? parseInt(text || '0', 10)
+                                                  : 0,
+                                            })
+                                          }
+                                          style={styles.input}
+                                        />
+                                      </View>
+                                      <View style={styles.formField}>
+                                        <Text style={styles.formLabel}>Bắt đầu</Text>
+                                        <TextInput
+                                          placeholder="HH:MM"
+                                          value={en.start || ''}
+                                          onChangeText={(text) =>
+                                            updateEntry(habit.id, en.id, {
+                                              start: text,
+                                            })
+                                          }
+                                          style={styles.input}
+                                        />
+                                      </View>
+                                      <View style={styles.formField}>
+                                        <Text style={styles.formLabel}>Kết thúc</Text>
+                                        <TextInput
+                                          placeholder="HH:MM"
+                                          value={en.end || ''}
+                                          onChangeText={(text) =>
+                                            updateEntry(habit.id, en.id, {
+                                              end: text,
+                                            })
+                                          }
+                                          style={styles.input}
+                                        />
+                                      </View>
+                                    </View>
+
+                                    <View style={{ marginTop: 10 }}>
+                                      <Text style={styles.formLabel}>Ghi chú</Text>
+                                      <TextInput
+                                        value={en.note || ''}
+                                        onChangeText={(text) =>
+                                          updateEntry(habit.id, en.id, {
+                                            note: text,
+                                          })
+                                        }
+                                        style={styles.input}
+                                      />
+                                    </View>
+
+                                    <View style={[styles.rowWrap, { marginTop: 10 }]}>
+                                      {(['great', 'good', 'neutral', 'bad'] as const).map(
+                                        (f) => {
+                                          const selected = en.mood === f;
+                                          const label =
+                                            f === 'great'
+                                              ? 'Tuyệt vời'
+                                              : f === 'good'
+                                              ? 'Tốt'
+                                              : f === 'neutral'
+                                              ? 'Bình thường'
+                                              : 'Không tốt';
+                                          return (
+                                            <TouchableOpacity
+                                              key={f}
+                                              onPress={() =>
+                                                updateEntry(habit.id, en.id, {
+                                                  mood: selected ? undefined : f,
+                                                })
+                                              }
+                                              style={[
+                                                styles.moodButton,
+                                                selected && styles.moodButtonSelected,
+                                              ]}
+                                            >
+                                              <Text
+                                                style={[
+                                                  styles.moodButtonText,
+                                                  selected && styles.moodButtonTextSelected,
+                                                ]}
+                                              >
+                                                {label}
+                                              </Text>
+                                            </TouchableOpacity>
+                                          );
+                                        }
+                                      )}
+                                    </View>
+
+                                    <View style={styles.formButtonRow}>
+                                      <TouchableOpacity
+                                        onPress={() => setEditingEntry(null)}
+                                        style={styles.formCancelButton}
+                                      >
+                                        <Text style={styles.formCancelText}>Hủy</Text>
+                                      </TouchableOpacity>
+                                      <TouchableOpacity
+                                        onPress={() => saveEntry(habit.id, en.id)}
+                                        style={styles.formSaveButton}
+                                      >
+                                        <Text style={styles.formSaveText}>Lưu</Text>
+                                      </TouchableOpacity>
+                                    </View>
+                                  </View>
+                                )}
+                            </View>
+                          );
+                        })
+                      )}
+                    </View>
+                  )}
+
+                  {/* Action row habit thường */}
+                  {!isCountHabit && activeRow === habit.id && (
+                    <View style={styles.actionRow}>
+                      <TouchableOpacity
+                        onPress={() => openDetail(habit)}
+                        style={[styles.actionButton, styles.actionButtonBlueSoft]}
+                      >
+                        <Eye size={14} color="#1e40af" />
+                        <Text style={styles.actionButtonBlueText}>Xem chi tiết</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => openEditModal(habit)}
+                        style={[styles.actionButton, styles.actionButtonAmberSoft]}
+                      >
+                        <Pencil size={14} color="#b45309" />
+                        <Text style={styles.actionButtonAmberText}>Sửa</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => askDelete(habit.id, habit.title)}
+                        style={[styles.actionButton, styles.actionButtonRedSoft]}
+                      >
+                        <Trash2 size={14} color="#dc2626" />
+                        <Text style={styles.actionButtonRedText}>Xóa</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+
+                  {/* Flyout menu */}
+                  {activeMenu === habit.id && (
+                    <View style={styles.flyoutMenu}>
+                      <TouchableOpacity
+                        onPress={() => {
+                          setActiveMenu(null);
+                          openEditModal(habit);
+                        }}
+                        style={styles.flyoutItem}
+                      >
+                        <Text style={styles.flyoutItemText}>Sửa</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => {
+                          setActiveMenu(null);
+                          askDelete(habit.id, habit.title);
+                        }}
+                        style={styles.flyoutItem}
+                      >
+                        <Text style={[styles.flyoutItemText, { color: '#dc2626' }]}>
+                          Xóa
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => {
+                          setActiveMenu(null);
+                          const bid = n2b[habit.id];
+                          if (bid) {
+                            router.push({
+                              pathname: '/(tabs)/habits/RunningHabitTracker',
+                              params: { habitId: bid },
+                            });
+                          } else {
+                            router.push('/(tabs)/habits/RunningHabitTracker');
+                          }
+                        }}
+                        style={styles.flyoutItem}
+                      >
+                        <Text style={[styles.flyoutItemText, { color: '#2563eb' }]}>
+                          Thông tin
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+              );
+            })
+          )}
+        </View>
+      </ScrollView>
 
       {/* Modal chi tiết */}
-      {detailOpen && detailHabitId != null && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(15,23,42,0.35)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-          }}
-          onClick={closeDetail}
-        >
-          <div
-            style={{
-              width: '92%',
-              maxWidth: 520,
-              backgroundColor: '#fff',
-              borderRadius: 20,
-              border: '1px solid rgba(203,213,225,0.6)',
-              padding: 18,
-              boxShadow: '0 20px 25px rgba(0,0,0,0.15)',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {(() => {
+      <Modal
+        visible={detailOpen && detailHabitId != null}
+        transparent
+        animationType="fade"
+        onRequestClose={closeDetail}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            {detailHabitId != null && (() => {
               const h = habitList.find((x) => x.id === detailHabitId)!;
               const status = computedStatus(h.id);
               let chip = (() => {
                 if (status === 'success')
                   return { label: 'Hoàn thành', color: '#16a34a', bg: '#dcfce7' };
-                if (status === 'fail') return { label: 'Thất bại', color: '#dc2626', bg: '#fee2e2' };
-                if (status === 'skip') return { label: 'Bỏ qua', color: '#d97706', bg: '#ffedd5' };
+                if (status === 'fail')
+                  return { label: 'Thất bại', color: '#dc2626', bg: '#fee2e2' };
+                if (status === 'skip')
+                  return { label: 'Bỏ qua', color: '#d97706', bg: '#ffedd5' };
                 return { label: 'Chờ làm', color: '#334155', bg: '#e5e7eb' };
               })();
               if (status === 'in_progress') {
@@ -2352,327 +1642,144 @@ export default function FlowStateHabits() {
               const meta = unitMap[h.id];
               const q = meta != null ? (quantities[h.id] ?? meta.current ?? 0) : 0;
 
-              const onDec = () =>
-                meta &&
-                setQuantities((prev) => ({
-                  ...prev,
-                  [h.id]: Math.max(0, (prev[h.id] ?? meta.current) - 1),
-                }));
-              const onInc = () =>
-                meta &&
-                setQuantities((prev) => ({
-                  ...prev,
-                  [h.id]: Math.min(meta.goal, (prev[h.id] ?? meta.current) + 1),
-                }));
-
               const startVal = timeStart[h.id] ?? '';
               const endVal = timeEnd[h.id] ?? '';
 
               return (
                 <>
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 12,
-                      marginBottom: 8,
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: 44,
-                        height: 44,
-                        borderRadius: 12,
-                        background: '#f1f5f9',
-                        border: '1px solid #e2e8f0',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <span style={{ fontSize: 22 }}>⭐</span>
-                    </div>
-                    <div>
-                      <h3
-                        style={{
-                          margin: 0,
-                          fontSize: 16,
-                          fontWeight: 800,
-                          color: '#0f172a',
-                        }}
-                      >
-                        {h.title}
-                      </h3>
+                  <View style={styles.detailHeaderRow}>
+                    <View style={styles.habitIconBox}>
+                      <Text style={{ fontSize: 22 }}>⭐</Text>
+                    </View>
+                    <View style={{ flex: 1, marginLeft: 8 }}>
+                      <Text style={styles.habitTitle}>{h.title}</Text>
                       {!meta && (
-                        <div
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 6,
-                            padding: '4px 8px',
-                            borderRadius: 999,
-                            backgroundColor: chip.bg,
-                            border: '1px solid rgba(148,163,184,0.35)',
-                          }}
+                        <View
+                          style={[
+                            styles.statusChip,
+                            { backgroundColor: chip.bg, marginTop: 4 },
+                          ]}
                         >
-                          <span
-                            style={{
-                              fontSize: 12,
-                              fontWeight: 700,
-                              color: chip.color,
-                            }}
+                          <Text
+                            style={[
+                              styles.statusChipText,
+                              { color: chip.color },
+                            ]}
                           >
                             Chế độ: {chip.label}
-                          </span>
-                        </div>
+                          </Text>
+                        </View>
                       )}
-                    </div>
-                    <div
-                      style={{
-                        marginLeft: 'auto',
-                        fontSize: 13,
-                        fontWeight: 800,
-                        color: '#0f172a',
-                      }}
-                    >
-                      {meta ? `${q}/${meta.goal} ${meta.unit}` : ''}
-                    </div>
-                  </div>
+                    </View>
+                    {meta && (
+                      <Text style={styles.detailQtyTop}>
+                        {q}/{meta.goal} {meta.unit}
+                      </Text>
+                    )}
+                  </View>
 
                   {meta ? (
                     <>
-                      <div style={{ marginTop: 6 }}>
-                        <div
-                          style={{
-                            fontSize: 13,
-                            fontWeight: 800,
-                            color: '#0f172a',
-                            marginBottom: 8,
-                          }}
-                        >
-                          Số lượng *
-                        </div>
-                        <div
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: 12,
-                          }}
-                        >
-                          <button
-                            onClick={onDec}
-                            aria-label="Giảm"
-                            style={{
-                              width: 36,
-                              height: 36,
-                              borderRadius: 12,
-                              border: '1px solid #e5e7eb',
-                              background: '#f3f4f6',
-                              cursor: 'pointer',
-                              fontSize: 18,
-                              fontWeight: 800,
-                              color: '#111827',
-                            }}
+                      {/* count-mode: chọn số lượng + thời gian */}
+                      <View style={{ marginTop: 10 }}>
+                        <Text style={styles.formLabel}>Số lượng *</Text>
+                        <View style={styles.detailCountRow}>
+                          <TouchableOpacity
+                            onPress={() =>
+                              setQuantities((prev) => ({
+                                ...prev,
+                                [h.id]: Math.max(
+                                  0,
+                                  (prev[h.id] ?? meta.current ?? 0) - 1
+                                ),
+                              }))
+                            }
+                            style={styles.detailCountBtnMinus}
                           >
-                            -
-                          </button>
-                          <div style={{ textAlign: 'center' }}>
-                            <div
-                              style={{
-                                fontSize: 42,
-                                fontWeight: 800,
-                                color: '#0f172a',
-                                lineHeight: 1,
-                              }}
-                            >
-                              {q}
-                            </div>
-                            <div
-                              style={{
-                                fontSize: 12,
-                                color: '#64748b',
-                                fontWeight: 700,
-                              }}
-                            >
-                              {meta.unit}
-                            </div>
-                          </div>
-                          <button
-                            onClick={onInc}
-                            aria-label="Tăng"
-                            style={{
-                              width: 36,
-                              height: 36,
-                              borderRadius: 12,
-                              border: '1px solid #10b981',
-                              background: '#10b981',
-                              cursor: 'pointer',
-                              fontSize: 20,
-                              fontWeight: 800,
-                              color: '#fff',
-                            }}
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
+                            <Text style={styles.detailCountBtnMinusText}>-</Text>
+                          </TouchableOpacity>
 
-                      {/* Thời gian thực hiện */}
-                      <div
-                        style={{
-                          marginTop: 14,
-                          background: '#f8fafc',
-                          border: '1px solid #e5e7eb',
-                          borderRadius: 12,
-                          padding: 12,
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 6,
-                            marginBottom: 10,
-                          }}
-                        >
-                          <Clock size={14} color="#0f172a" />
-                          <span
-                            style={{
-                              fontSize: 13,
-                              fontWeight: 800,
-                              color: '#0f172a',
-                            }}
+                          <View style={{ alignItems: 'center' }}>
+                            <Text style={styles.detailCountNumber}>{q}</Text>
+                            <Text style={styles.detailCountUnit}>{meta.unit}</Text>
+                          </View>
+
+                          <TouchableOpacity
+                            onPress={() =>
+                              setQuantities((prev) => ({
+                                ...prev,
+                                [h.id]: Math.min(
+                                  meta.goal,
+                                  (prev[h.id] ?? meta.current ?? 0) + 1
+                                ),
+                              }))
+                            }
+                            style={styles.detailCountBtnPlus}
                           >
-                            Thời gian thực hiện *
-                          </span>
-                        </div>
-                        <div style={{ display: 'flex', gap: 12 }}>
-                          <div style={{ flex: 1 }}>
-                            <div
-                              style={{
-                                fontSize: 12,
-                                color: '#64748b',
-                                fontWeight: 700,
-                                marginBottom: 6,
-                              }}
-                            >
-                              Bắt đầu *
-                            </div>
-                            <div
-                              style={{
-                                border: '2px solid #e5e7eb',
-                                borderRadius: 12,
-                                padding: 8,
-                                background: '#fff',
-                              }}
-                            >
-                              <input
-                                type="time"
-                                value={startVal}
-                                onChange={(e) =>
-                                  setTimeStart({
-                                    ...timeStart,
-                                    [h.id]: e.target.value,
-                                  })
-                                }
-                                style={{
-                                  width: '100%',
-                                  border: 'none',
-                                  outline: 'none',
-                                  fontWeight: 800,
-                                  fontSize: 14,
-                                  color: '#0f172a',
-                                }}
-                              />
-                            </div>
-                          </div>
-                          <div style={{ flex: 1 }}>
-                            <div
-                              style={{
-                                fontSize: 12,
-                                color: '#64748b',
-                                fontWeight: 700,
-                                marginBottom: 6,
-                              }}
-                            >
-                              Kết thúc (tùy chọn)
-                            </div>
-                            <div
-                              style={{
-                                border: '2px solid #111827',
-                                borderRadius: 12,
-                                padding: 8,
-                                background: '#fff',
-                              }}
-                            >
-                              <input
-                                type="time"
-                                value={endVal}
-                                onChange={(e) =>
-                                  setTimeEnd({
-                                    ...timeEnd,
-                                    [h.id]: e.target.value,
-                                  })
-                                }
-                                style={{
-                                  width: '100%',
-                                  border: 'none',
-                                  outline: 'none',
-                                  fontWeight: 800,
-                                  fontSize: 14,
-                                  color: '#0f172a',
-                                }}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+                            <Text style={styles.detailCountBtnPlusText}>+</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+
+                      <View style={styles.detailTimeBox}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                          <Clock size={14} color="#0f172a" />
+                          <Text style={styles.detailTimeTitle}> Thời gian thực hiện *</Text>
+                        </View>
+                        <View style={{ flexDirection: 'row', gap: 12 }}>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.detailTimeLabel}>Bắt đầu *</Text>
+                            <TextInput
+                              placeholder="HH:MM"
+                              value={startVal}
+                              onChangeText={(text) =>
+                                setTimeStart((prev) => ({ ...prev, [h.id]: text }))
+                              }
+                              style={styles.input}
+                            />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.detailTimeLabel}>Kết thúc (tùy chọn)</Text>
+                            <TextInput
+                              placeholder="HH:MM"
+                              value={endVal}
+                              onChangeText={(text) =>
+                                setTimeEnd((prev) => ({ ...prev, [h.id]: text }))
+                              }
+                              style={styles.input}
+                            />
+                          </View>
+                        </View>
+                      </View>
                     </>
                   ) : (
-                    <div>
-                      <div
-                        style={{
-                          fontSize: 13,
-                          fontWeight: 800,
-                          color: '#0f172a',
-                          marginBottom: 8,
-                        }}
-                      >
+                    <>
+                      {/* habit check-mode: chọn trạng thái */}
+                      <Text style={[styles.formLabel, { marginTop: 10 }]}>
                         Trạng thái *
-                      </div>
-                      <div style={{ display: 'flex', gap: 10 }}>
-                        <button
-                          onClick={() => handleStatusChange(h.id, 'in_progress')}
-                          style={{
-                            flex: 1,
-                            padding: 12,
-                            borderRadius: 12,
-                            cursor: 'pointer',
-                            background: '#fff',
-                            border: `2px solid ${
-                              status === 'in_progress' ? '#0284c7' : '#e5e7eb'
-                            }`,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: 8,
-                          }}
+                      </Text>
+                      <View style={styles.rowWrap}>
+                        <TouchableOpacity
+                          style={[
+                            styles.statusBtn,
+                            status === 'in_progress' && styles.statusBtnSelectedBlue,
+                          ]}
+                          onPress={() => handleStatusChange(h.id, 'in_progress')}
                         >
                           <TrendingUp
                             size={16}
                             color={status === 'in_progress' ? '#0284c7' : '#334155'}
                           />
-                          <span
-                            style={{
-                              fontSize: 13,
-                              fontWeight: 700,
-                              color: status === 'in_progress' ? '#0284c7' : '#334155',
-                            }}
+                          <Text
+                            style={[
+                              styles.statusBtnText,
+                              status === 'in_progress' && { color: '#0284c7' },
+                            ]}
                           >
                             Đang làm
-                          </span>
-                        </button>
+                          </Text>
+                        </TouchableOpacity>
+
                         {(
                           [
                             { key: 'success', label: 'Hoàn thành', color: '#16a34a' },
@@ -2682,100 +1789,56 @@ export default function FlowStateHabits() {
                         ).map((opt) => {
                           const selected = status === opt.key;
                           return (
-                            <button
+                            <TouchableOpacity
                               key={opt.key}
-                              onClick={() => handleStatusChange(h.id, opt.key)}
-                              style={{
-                                flex: 1,
-                                padding: 12,
-                                borderRadius: 12,
-                                cursor: 'pointer',
-                                background: '#fff',
-                                border: `2px solid ${selected ? opt.color : '#e5e7eb'}`,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: 8,
-                              }}
+                              style={[
+                                styles.statusBtn,
+                                selected && { borderColor: opt.color },
+                              ]}
+                              onPress={() => handleStatusChange(h.id, opt.key)}
                             >
-                              {opt.key === 'success' && <Check size={16} color={opt.color} />}
-                              {opt.key === 'skip' && <Minus size={16} color={opt.color} />}
+                              {opt.key === 'success' && (
+                                <Check size={16} color={opt.color} />
+                              )}
+                              {opt.key === 'skip' && (
+                                <Minus size={16} color={opt.color} />
+                              )}
                               {opt.key === 'fail' && <X size={16} color={opt.color} />}
-                              <span
-                                style={{
-                                  fontSize: 13,
-                                  fontWeight: 700,
-                                  color: selected ? opt.color : '#334155',
-                                }}
+                              <Text
+                                style={[
+                                  styles.statusBtnText,
+                                  selected && { color: opt.color },
+                                ]}
                               >
                                 {opt.label}
-                              </span>
-                            </button>
+                              </Text>
+                            </TouchableOpacity>
                           );
                         })}
-                      </div>
-                    </div>
+                      </View>
+                    </>
                   )}
 
                   {/* Ghi chú */}
-                  <div style={{ marginTop: 14 }}>
-                    <div
-                      style={{
-                        fontSize: 13,
-                        fontWeight: 800,
-                        color: '#0f172a',
-                        marginBottom: 8,
-                      }}
-                    >
-                      Ghi chú
-                    </div>
-                    <textarea
+                  <View style={{ marginTop: 14 }}>
+                    <Text style={styles.formLabel}>Ghi chú</Text>
+                    <TextInput
                       placeholder="Thêm ghi chú về buổi thực hiện..."
                       value={noteVal}
+                      onChangeText={(text) =>
+                        setNotes((prev) => ({ ...prev, [h.id]: text }))
+                      }
+                      multiline
                       maxLength={200}
-                      onChange={(e) => setNotes({ ...notes, [h.id]: e.target.value })}
-                      style={{
-                        width: '100%',
-                        border: '1px solid rgba(203,213,225,0.9)',
-                        borderRadius: 12,
-                        backgroundColor: '#fff',
-                        padding: 12,
-                        fontSize: 13,
-                        minHeight: 90,
-                        resize: 'vertical',
-                        fontFamily: 'inherit',
-                      }}
+                      style={styles.textarea}
                     />
-                    <div
-                      style={{
-                        fontSize: 12,
-                        color: '#94a3b8',
-                        marginTop: 6,
-                      }}
-                    >
-                      {noteVal.length}/200 ký tự
-                    </div>
-                  </div>
+                    <Text style={styles.noteCounter}>{noteVal.length}/200 ký tự</Text>
+                  </View>
 
                   {/* Cảm giác */}
-                  <div style={{ marginTop: 14 }}>
-                    <div
-                      style={{
-                        fontSize: 13,
-                        fontWeight: 800,
-                        color: '#0f172a',
-                        marginBottom: 8,
-                      }}
-                    >
-                      Cảm giác
-                    </div>
-                    <div
-                      style={{
-                        display: 'flex',
-                        gap: 10,
-                        flexWrap: 'wrap',
-                      }}
-                    >
+                  <View style={{ marginTop: 14 }}>
+                    <Text style={styles.formLabel}>Cảm giác</Text>
+                    <View style={styles.rowWrap}>
                       {(
                         [
                           { key: 'great', label: 'Tuyệt vời', emoji: '😊' },
@@ -2786,336 +1849,825 @@ export default function FlowStateHabits() {
                       ).map((opt) => {
                         const selected = moods[h.id] === opt.key;
                         return (
-                          <button
+                          <TouchableOpacity
                             key={opt.key}
-                            onClick={() =>
-                              setmoods({
-                                ...moods,
+                            style={[
+                              styles.moodButton,
+                              selected && styles.moodButtonSelected,
+                              { flexBasis: '48%' },
+                            ]}
+                            onPress={() =>
+                              setmoods((prev) => ({
+                                ...prev,
                                 [h.id]: selected ? undefined : opt.key,
-                              })
+                              }))
                             }
-                            style={{
-                              flexBasis: '48%',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: 8,
-                              padding: 12,
-                              borderRadius: 12,
-                              cursor: 'pointer',
-                              background: '#fff',
-                              border: `2px solid ${selected ? '#2563eb' : '#e5e7eb'}`,
-                            }}
                           >
-                            <span style={{ fontSize: 18 }}>{opt.emoji}</span>
-                            <span
-                              style={{
-                                fontSize: 13,
-                                fontWeight: 700,
-                                color: selected ? '#2563eb' : '#334155',
-                              }}
+                            <Text style={{ fontSize: 18 }}>{opt.emoji}</Text>
+                            <Text
+                              style={[
+                                styles.moodButtonText,
+                                selected && styles.moodButtonTextSelected,
+                              ]}
                             >
                               {opt.label}
-                            </span>
-                          </button>
+                            </Text>
+                          </TouchableOpacity>
                         );
                       })}
-                    </div>
-                  </div>
+                    </View>
+                  </View>
 
-                  {/* Actions */}
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'flex-end',
-                      gap: 8,
-                      marginTop: 16,
-                    }}
-                  >
-                    <button
-                      onClick={closeDetail}
-                      style={{
-                        background: '#e5e7eb',
-                        color: '#0f172a',
-                        border: 'none',
-                        borderRadius: 12,
-                        padding: '8px 14px',
-                        fontWeight: 800,
-                        cursor: 'pointer',
-                      }}
+                  {/* Buttons */}
+                  <View style={styles.modalButtonsRow}>
+                    <TouchableOpacity
+                      onPress={closeDetail}
+                      style={styles.formCancelButton}
                     >
-                      Hủy
-                    </button>
-                    <button
-                      onClick={() => {
+                      <Text style={styles.formCancelText}>Hủy</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => {
                         const metaLocal = unitMap[h.id];
                         if (metaLocal) {
-                          // count-mode
                           saveCountModal(h.id);
                         } else {
-                          // habit check: lưu status + note + mood + date
                           syncHabitMeta(h.id);
                         }
                         closeDetail();
                       }}
-                      style={{
-                        background: '#2563eb',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: 12,
-                        padding: '8px 14px',
-                        fontWeight: 800,
-                        cursor: 'pointer',
-                      }}
+                      style={styles.formSaveButton}
                     >
-                      Xong
-                    </button>
-                  </div>
+                      <Text style={styles.formSaveText}>Xong</Text>
+                    </TouchableOpacity>
+                  </View>
                 </>
               );
             })()}
-          </div>
-        </div>
-      )}
+          </View>
+        </View>
+      </Modal>
 
       {/* Modal chỉnh sửa */}
-      {editOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(15,23,42,0.35)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-          }}
-          onClick={closeEditModal}
-        >
-          <div
-            style={{
-              width: '92%',
-              maxWidth: '440px',
-              backgroundColor: '#fff',
-              borderRadius: '20px',
-              border: '1px solid rgba(203,213,225,0.6)',
-              padding: '18px',
-              boxShadow: '0 20px 25px rgba(0,0,0,0.15)',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2
-              style={{
-                fontSize: '18px',
-                fontWeight: '800',
-                color: '#0f172a',
-                marginBottom: '12px',
-                marginTop: 0,
-              }}
-            >
-              Chỉnh sửa thói quen
-            </h2>
-
-            <input
-              type="text"
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                border: '1px solid #cbd5e1',
-                borderRadius: '12px',
-                fontSize: '14px',
-                backgroundColor: '#fff',
-                marginBottom: '10px',
-                boxSizing: 'border-box',
-              }}
+      <Modal
+        visible={editOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={closeEditModal}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Chỉnh sửa thói quen</Text>
+            <TextInput
+              style={styles.input}
               value={editTitle}
-              onChange={(e) => setEditTitle(e.target.value)}
+              onChangeText={setEditTitle}
               placeholder="Tên thói quen"
             />
-            <input
-              type="text"
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                border: '1px solid #cbd5e1',
-                borderRadius: '12px',
-                fontSize: '14px',
-                backgroundColor: '#fff',
-                marginBottom: '10px',
-                boxSizing: 'border-box',
-              }}
+            <TextInput
+              style={styles.input}
               value={editSubtitle}
-              onChange={(e) => setEditSubtitle(e.target.value)}
+              onChangeText={setEditSubtitle}
               placeholder="Mô tả / ghi chú"
             />
-            <input
-              type="text"
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                border: '1px solid #cbd5e1',
-                borderRadius: '12px',
-                fontSize: '14px',
-                backgroundColor: '#fff',
-                marginBottom: '10px',
-                boxSizing: 'border-box',
-              }}
+            <TextInput
+              style={styles.input}
               value={editTag}
-              onChange={(e) => setEditTag(e.target.value)}
+              onChangeText={setEditTag}
               placeholder="Tag (Mindful, Energy, ...)"
             />
-
-            <div
-              style={{
-                marginTop: '6px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}
-            >
-              <button
-                onClick={() => editId != null && askDelete(editId, editTitle || '')}
-                style={{
-                  color: '#dc2626',
-                  fontWeight: '700',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                }}
+            <View style={styles.modalFooterRow}>
+              <TouchableOpacity
+                onPress={() => editId != null && askDelete(editId, editTitle || '')}
               >
-                Xóa
-              </button>
-
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button
-                  onClick={closeEditModal}
-                  style={{
-                    backgroundColor: '#e2e8f0',
-                    borderRadius: '12px',
-                    padding: '8px 12px',
-                    fontWeight: '700',
-                    color: '#0f172a',
-                    border: 'none',
-                    cursor: 'pointer',
-                  }}
+                <Text style={styles.deleteText}>Xóa</Text>
+              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TouchableOpacity
+                  onPress={closeEditModal}
+                  style={styles.formCancelButton}
                 >
-                  Hủy
-                </button>
-                <button
-                  onClick={saveEdit}
-                  style={{
-                    backgroundColor: '#2563eb',
-                    borderRadius: '12px',
-                    padding: '8px 14px',
-                    color: '#fff',
-                    fontWeight: '700',
-                    border: 'none',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Lưu
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+                  <Text style={styles.formCancelText}>Hủy</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={saveEdit} style={styles.formSaveButton}>
+                  <Text style={styles.formSaveText}>Lưu</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Modal xác nhận xóa */}
-      {confirmOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(15,23,42,0.35)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-          }}
-          onClick={closeConfirm}
-        >
-          <div
-            style={{
-              width: '92%',
-              maxWidth: '440px',
-              backgroundColor: '#fff',
-              borderRadius: '20px',
-              border: '1px solid rgba(203,213,225,0.6)',
-              padding: '22px',
-              boxShadow: '0 20px 25px rgba(0,0,0,0.15)',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2
-              style={{
-                fontSize: '18px',
-                fontWeight: '800',
-                color: '#0f172a',
-                marginBottom: '6px',
-                marginTop: 0,
-              }}
-            >
+      <Modal
+        visible={confirmOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={closeConfirm}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>
               Xóa thói quen &quot;{confirmName}&quot;?
-            </h2>
-            <p
-              style={{
-                fontSize: '14px',
-                color: '#64748b',
-                marginBottom: '16px',
-              }}
-            >
+            </Text>
+            <Text style={styles.modalSubText}>
               Hành động này không thể hoàn tác.
-            </p>
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'center',
-                gap: '12px',
-              }}
-            >
-              <button
-                onClick={closeConfirm}
-                style={{
-                  backgroundColor: '#e5e7eb',
-                  borderRadius: '999px',
-                  padding: '10px 16px',
-                  color: '#0f172a',
-                  fontWeight: '700',
-                  border: 'none',
-                  cursor: 'pointer',
-                }}
+            </Text>
+            <View style={styles.modalButtonsRow}>
+              <TouchableOpacity
+                onPress={closeConfirm}
+                style={styles.formCancelButton}
               >
-                Hủy
-              </button>
-              <button
-                onClick={() => confirmId != null && deleteHabit(confirmId)}
-                style={{
-                  backgroundColor: '#ef4444',
-                  borderRadius: '999px',
-                  padding: '10px 16px',
-                  color: '#fff',
-                  fontWeight: '700',
-                  border: 'none',
-                  cursor: 'pointer',
-                }}
+                <Text style={styles.formCancelText}>Hủy</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => confirmId != null && deleteHabit(confirmId)}
+                style={[styles.formSaveButton, { backgroundColor: '#ef4444' }]}
               >
-                Xóa
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-
-      <div className="footer" style={{ height: '10vh' }} />
-    </div>
+                <Text style={styles.formSaveText}>Xóa</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </View>
   );
 }
+
+// ============ STYLES ============
+const styles = StyleSheet.create({
+  page: {
+    flex: 1,
+    backgroundColor: '#eef2ff',
+  },
+  scrollContent: {
+    paddingBottom: 96,
+  },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(203,213,225,0.6)',
+    padding: 16,
+    marginHorizontal: 10,
+    marginTop: 12,
+  },
+  headerCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(203,213,225,0.6)',
+    marginHorizontal: 10,
+    marginTop: 12,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  headerBackButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#2563eb',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    color: '#64748b',
+  },
+  iconCirclePrimary: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#2563eb',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconCircleGrey: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#E5E7EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  progressHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  todayChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: '#e0e7ff',
+  },
+  todayChipText: {
+    color: '#4338ca',
+    fontWeight: '700',
+    fontSize: 12,
+    marginLeft: 4,
+  },
+  progressCountText: {
+    fontSize: 13,
+    color: '#334155',
+    fontWeight: '700',
+  },
+  progressBarOuter: {
+    marginTop: 8,
+    height: 10,
+    borderRadius: 999,
+    backgroundColor: '#e5e7eb',
+    overflow: 'hidden',
+  },
+  progressBarInner: {
+    height: '100%',
+    backgroundColor: '#2563eb',
+  },
+  progressFooterRow: {
+    marginTop: 8,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  progressGoalText: {
+    fontSize: 12,
+    color: '#64748b',
+  },
+  progressPercentText: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  cardHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0f172a',
+    marginBottom: 8,
+  },
+  chartTabsRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  chartTab: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(99,102,241,0.15)',
+    backgroundColor: '#e2e8f0',
+  },
+  chartTabActive: {
+    backgroundColor: '#2563eb',
+  },
+  chartTabText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  chartTabTextActive: {
+    color: '#fff',
+  },
+  chartBarContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    height: 140,
+    paddingVertical: 6,
+  },
+  chartBarItem: {
+    alignItems: 'center',
+  },
+  chartBarOuter: {
+    width: 28,
+    height: '100%',
+    borderRadius: 8,
+    backgroundColor: '#e5e7eb',
+    justifyContent: 'flex-end',
+  },
+  chartBarFill: {
+    width: '100%',
+    backgroundColor: '#2563eb',
+    borderRadius: 8,
+  },
+  chartBarLabel: {
+    fontSize: 11,
+    color: '#64748b',
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  emptyBox: {
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: '#cbd5e1',
+    marginTop: 4,
+  },
+  emptyText: {
+    fontSize: 13,
+    color: '#64748b',
+  },
+  habitRow: {
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderColor: 'rgba(203,213,225,0.4)',
+    borderRadius: 14,
+    padding: 14,
+    backgroundColor: '#ffffff',
+  },
+  habitTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  habitTopLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  habitIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#f1f5f9',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  habitTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  statusChip: {
+    marginTop: 4,
+    alignSelf: 'flex-start',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  statusChipText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  moreButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(203,213,225,0.7)',
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  habitProgressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
+  },
+  habitProgressLabel: {
+    fontSize: 12,
+    color: '#64748b',
+    fontWeight: '700',
+  },
+  habitProgressValue: {
+    fontSize: 13,
+    color: '#0f172a',
+    fontWeight: '800',
+  },
+  habitProgressBarOuter: {
+    marginTop: 6,
+    width: '100%',
+    height: 10,
+    borderRadius: 999,
+    backgroundColor: '#e5e7eb',
+  },
+  habitProgressBarInner: {
+    height: '100%',
+    borderRadius: 999,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  actionButton: {
+    flex: 1,
+    minWidth: 140,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderRadius: 999,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  actionButtonBlueSoft: {
+    backgroundColor: '#eef2ff',
+    borderWidth: 1,
+    borderColor: '#c7d2fe',
+  },
+  actionButtonGreenSoft: {
+    backgroundColor: '#ecfdf5',
+    borderWidth: 1,
+    borderColor: '#a7f3d0',
+  },
+  actionButtonRedSoft: {
+    backgroundColor: '#fee2e2',
+    borderWidth: 1,
+    borderColor: '#fecaca',
+  },
+  actionButtonAmberSoft: {
+    backgroundColor: '#fffbeb',
+    borderWidth: 1,
+    borderColor: '#fde68a',
+  },
+  actionButtonBlueText: {
+    fontWeight: '800',
+    color: '#1e40af',
+    fontSize: 13,
+  },
+  actionButtonGreenText: {
+    fontWeight: '800',
+    color: '#047857',
+    fontSize: 13,
+  },
+  actionButtonRedText: {
+    fontWeight: '800',
+    color: '#dc2626',
+    fontSize: 13,
+  },
+  actionButtonAmberText: {
+    fontWeight: '800',
+    color: '#b45309',
+    fontSize: 13,
+  },
+  newCountFormBox: {
+    marginTop: 8,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  rowWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  formField: {
+    flexBasis: '48%',
+    flexGrow: 1,
+  },
+  formLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#64748b',
+    marginBottom: 4,
+  },
+  input: {
+    width: '100%',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    fontSize: 14,
+    color: '#0f172a',
+    backgroundColor: '#fff',
+  },
+  moodButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 2,
+    borderColor: '#e5e7eb',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  moodButtonSelected: {
+    borderColor: '#2563eb',
+  },
+  moodButtonText: {
+    fontWeight: '700',
+    color: '#334155',
+    fontSize: 13,
+  },
+  moodButtonTextSelected: {
+    color: '#2563eb',
+  },
+  formButtonRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 8,
+    marginTop: 10,
+  },
+  formCancelButton: {
+    backgroundColor: '#e5e7eb',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  formCancelText: {
+    color: '#0f172a',
+    fontWeight: '800',
+    fontSize: 14,
+  },
+  formSaveButton: {
+    backgroundColor: '#2563eb',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  formSaveText: {
+    color: '#fff',
+    fontWeight: '800',
+    fontSize: 14,
+  },
+  entryBox: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    padding: 12,
+    marginTop: 8,
+  },
+  entryHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  entryTitle: {
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  entryTime: {
+    fontSize: 12,
+    color: '#0f172a',
+  },
+  entryQty: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#2563eb',
+    marginTop: 4,
+  },
+  entryNote: {
+    marginTop: 4,
+    fontStyle: 'italic',
+    color: '#475569',
+  },
+  entryButtonRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
+  entryEditButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#fffbeb',
+    borderWidth: 1,
+    borderColor: '#fde68a',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  entryDeleteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#fee2e2',
+    borderWidth: 1,
+    borderColor: '#fecaca',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  entryEditText: {
+    color: '#b45309',
+    fontWeight: '800',
+    fontSize: 13,
+  },
+  entryDeleteText: {
+    color: '#dc2626',
+    fontWeight: '800',
+    fontSize: 13,
+  },
+  entryEditBox: {
+    marginTop: 8,
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 12,
+    padding: 12,
+  },
+  flyoutMenu: {
+    position: 'absolute',
+    top: 8,
+    right: 16,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: 'rgba(203,213,225,0.7)',
+    borderRadius: 12,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+  },
+  flyoutItem: {
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+  },
+  flyoutItemText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  // modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15,23,42,0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+  },
+  modalContainer: {
+    width: '100%',
+    maxWidth: 520,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(203,213,225,0.6)',
+    padding: 18,
+  },
+  detailHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 8,
+  },
+  detailQtyTop: {
+    marginLeft: 'auto',
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  detailCountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    marginTop: 6,
+  },
+  detailCountBtnMinus: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    backgroundColor: '#f3f4f6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  detailCountBtnMinusText: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#111827',
+  },
+  detailCountBtnPlus: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#10b981',
+    backgroundColor: '#10b981',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  detailCountBtnPlusText: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#fff',
+  },
+  detailCountNumber: {
+    fontSize: 42,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  detailCountUnit: {
+    fontSize: 12,
+    color: '#64748b',
+    fontWeight: '700',
+  },
+  detailTimeBox: {
+    marginTop: 14,
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 12,
+    padding: 12,
+  },
+  detailTimeTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  detailTimeLabel: {
+    fontSize: 12,
+    color: '#64748b',
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  textarea: {
+    width: '100%',
+    borderWidth: 1,
+    borderColor: 'rgba(203,213,225,0.9)',
+    borderRadius: 12,
+    backgroundColor: '#fff',
+    padding: 12,
+    minHeight: 90,
+    textAlignVertical: 'top',
+    fontSize: 13,
+  },
+  noteCounter: {
+    fontSize: 12,
+    color: '#94a3b8',
+    marginTop: 4,
+  },
+  statusBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#e5e7eb',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    backgroundColor: '#fff',
+  },
+  statusBtnSelectedBlue: {
+    borderColor: '#0284c7',
+  },
+  statusBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  modalButtonsRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 8,
+    marginTop: 16,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0f172a',
+    marginBottom: 10,
+  },
+  modalSubText: {
+    fontSize: 14,
+    color: '#64748b',
+    marginBottom: 16,
+  },
+  modalFooterRow: {
+    marginTop: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  deleteText: {
+    color: '#dc2626',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+});

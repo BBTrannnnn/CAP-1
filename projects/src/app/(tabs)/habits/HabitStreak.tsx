@@ -1,18 +1,26 @@
-// app/(tabs)/habits/HabitStreak.tsx
 import React from 'react';
 import { Stack, Link } from 'expo-router';
 import {
-  SafeAreaView, View, Text, ScrollView, StyleSheet, Pressable,
-  TouchableOpacity, StyleProp, ViewStyle, TextStyle, ImageStyle
+  SafeAreaView,
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  Pressable,
+  TouchableOpacity,
+  StyleProp,
+  ViewStyle,
+  TextStyle,
+  ImageStyle,
 } from 'react-native';
-import { ChevronLeft, Flame, Calendar, TrendingUp } from '@tamagui/lucide-icons';
+import { ChevronLeft, Flame, Calendar, TrendingUp } from 'lucide-react-native';
 import {
   getHabits,
   getHabitStats,
   getHabitCalendar,
 } from '../../../server/habits';
 
-// Helper: flatten mọi style mảng -> object (an toàn web/DOM/SVG)
+// Helper: flatten mọi style mảng -> object
 const sx = (...styles: Array<StyleProp<ViewStyle | TextStyle | ImageStyle>>) =>
   StyleSheet.flatten(styles.filter(Boolean));
 
@@ -37,29 +45,41 @@ type StatsState = {
 type CalendarMap = Record<number, Status>;
 
 const monthNames = [
-  'Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6',
-  'Tháng 7','Tháng 8','Tháng 9','Tháng 10','Tháng 11','Tháng 12'
+  'Tháng 1',
+  'Tháng 2',
+  'Tháng 3',
+  'Tháng 4',
+  'Tháng 5',
+  'Tháng 6',
+  'Tháng 7',
+  'Tháng 8',
+  'Tháng 9',
+  'Tháng 10',
+  'Tháng 11',
+  'Tháng 12',
 ];
-const dayNames   = ['CN','T2','T3','T4','T5','T6','T7'];
+const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 
 const categoryMeta: Record<string, { tag: string; color: string }> = {
-  health:   { tag: 'Health',   color: '#ec4899' },
-  fitness:  { tag: 'Energy',   color: '#10b981' },
+  health: { tag: 'Health', color: '#ec4899' },
+  fitness: { tag: 'Energy', color: '#10b981' },
   learning: { tag: 'Learning', color: '#10b981' },
-  mindful:  { tag: 'Mindful',  color: '#8b5cf6' },
-  finance:  { tag: 'Finance',  color: '#10b981' },
-  digital:  { tag: 'Digital',  color: '#6b7280' },
-  social:   { tag: 'Social',   color: '#f59e0b' },
-  control:  { tag: 'Control',  color: '#ef4444' },
-  sleep:    { tag: 'Sleep',    color: '#8b5cf6' },
-  energy:   { tag: 'Energy',   color: '#f59e0b' },
+  mindful: { tag: 'Mindful', color: '#8b5cf6' },
+  finance: { tag: 'Finance', color: '#10b981' },
+  digital: { tag: 'Digital', color: '#6b7280' },
+  social: { tag: 'Social', color: '#f59e0b' },
+  control: { tag: 'Control', color: '#ef4444' },
+  sleep: { tag: 'Sleep', color: '#8b5cf6' },
+  energy: { tag: 'Energy', color: '#f59e0b' },
 };
 
 const CELL_PCT = '14.2857%';
 
 export default function HabitStreak() {
   const [habits, setHabits] = React.useState<HabitChip[]>([]);
-  const [selectedHabitId, setSelectedHabitId] = React.useState<string | number | null>(null);
+  const [selectedHabitId, setSelectedHabitId] = React.useState<
+    string | number | null
+  >(null);
   const [currentDate, setCurrentDate] = React.useState(new Date());
 
   const [stats, setStats] = React.useState<StatsState>({
@@ -90,7 +110,7 @@ export default function HabitStreak() {
   for (let day = 1; day <= daysInMonth; day++) calendarDays.push(day);
 
   const changeMonth = (delta: number) => {
-    setCurrentDate(d => new Date(d.getFullYear(), d.getMonth() + delta, 1));
+    setCurrentDate((d) => new Date(d.getFullYear(), d.getMonth() + delta, 1));
   };
 
   const getStatusForDay = (day: number | null): Status => {
@@ -100,19 +120,27 @@ export default function HabitStreak() {
 
   const getStatusColor = (status: Status, tagColor: string) => {
     switch (status) {
-      case 'completed': return tagColor;
-      case 'failed':    return '#ef4444';
-      case 'skipped':   return '#f59e0b';
-      default:          return '#f3f4f6';
+      case 'completed':
+        return tagColor;
+      case 'failed':
+        return '#ef4444';
+      case 'skipped':
+        return '#f59e0b';
+      default:
+        return '#f3f4f6';
     }
   };
 
   const getStatusLabel = (status: Status) => {
     switch (status) {
-      case 'completed': return '✓';
-      case 'failed':    return '✗';
-      case 'skipped':   return '–';
-      default:          return '';
+      case 'completed':
+        return '✓';
+      case 'failed':
+        return '✗';
+      case 'skipped':
+        return '–';
+      default:
+        return '';
     }
   };
 
@@ -132,7 +160,8 @@ export default function HabitStreak() {
 
             const name = h.name ?? 'Thói quen không tên';
             const catKey = (h.category ?? '').toString().toLowerCase();
-            const meta = categoryMeta[catKey] ?? { tag: 'Habit', color: '#6366f1' };
+            const meta =
+              categoryMeta[catKey] ?? { tag: 'Habit', color: '#6366f1' };
 
             return {
               id,
@@ -155,8 +184,7 @@ export default function HabitStreak() {
     };
 
     loadHabits();
-
-  }, [location.pathname]);
+  }, []);
 
   // ====== Load stats + calendar theo habit + tháng ======
   React.useEffect(() => {
@@ -170,38 +198,42 @@ export default function HabitStreak() {
         const pad = (n: number) => String(n).padStart(2, '0');
         const from = `${year}-${pad(month)}-01`;
         const to = `${year}-${pad(month)}-${pad(daysInMonth)}`;
+        console.log('range', from, to);
 
         const [statsRes, calRes]: any[] = await Promise.all([
           getHabitStats(selectedHabitId, { month, year }),
           getHabitCalendar(selectedHabitId, { month, year }),
         ]);
-        console.log('data', statsRes.data);
+        console.log('data', statsRes?.data || statsRes);
         console.log('data2', calRes);
 
         // ---- map stats ----
         const s = statsRes?.data || statsRes || {};
+        const streaks = s.streaks ?? {};
+        const statsObj = s.stats ?? {};
+
         const streak =
-          s.streaks.current??
-          s.streaks.streak ??
+          streaks.current ??
+          streaks.streak ??
           0;
         const bestStreak =
-          s.streaks.best??
+          streaks.best ??
           0;
         const completed =
-          s.stats.completedCount ??
-          s.stats.completed ??
+          statsObj.completedCount ??
+          statsObj.completed ??
           0;
         const failed =
-          s.stats.failedCount ??
-          s.stats.failed ??
+          statsObj.failedCount ??
+          statsObj.failed ??
           0;
         const skipped =
-          s.stats.skippedCount ??
-          s.stats.skipped ??
+          statsObj.skippedCount ??
+          statsObj.skipped ??
           0;
         const total =
-          s.stats.totalCount ??
-          s.stats.total ??
+          statsObj.totalCount ??
+          statsObj.total ??
           completed + failed + skipped;
 
         setStats({
@@ -221,21 +253,27 @@ export default function HabitStreak() {
           calRes?.data?.calendar?.days ??
           calRes?.data?.calendar ??
           [];
+
         const map: CalendarMap = {};
 
         if (Array.isArray(rawDays)) {
           rawDays.forEach((d: any) => {
             // d: { date: '2025-10-01', status: 'completed' } hoặc tương tự
             const dateStr: string = d.date ?? d.day ?? d.dateStr ?? '';
-            const statusStr: string = (d.status ?? d.result ?? d.state ?? '').toLowerCase();
+            const statusStr: string = (
+              d.status ?? d.result ?? d.state ?? ''
+            ).toLowerCase();
             if (!dateStr) return;
 
             const dt = new Date(dateStr);
             const day = dt.getDate();
             let st: Status = 'none';
-            if (statusStr === 'completed' || statusStr === 'success') st = 'completed';
-            else if (statusStr === 'failed' || statusStr === 'fail') st = 'failed';
-            else if (statusStr === 'skipped' || statusStr === 'skip') st = 'skipped';
+            if (statusStr === 'completed' || statusStr === 'success')
+              st = 'completed';
+            else if (statusStr === 'failed' || statusStr === 'fail')
+              st = 'failed';
+            else if (statusStr === 'skipped' || statusStr === 'skip')
+              st = 'skipped';
 
             if (day >= 1 && day <= daysInMonth) {
               map[day] = st;
@@ -265,7 +303,7 @@ export default function HabitStreak() {
 
   const habit = React.useMemo(() => {
     if (!habits.length) return null;
-    const found = habits.find(h => h.id === selectedHabitId);
+    const found = habits.find((h) => h.id === selectedHabitId);
     return found ?? habits[0];
   }, [habits, selectedHabitId]);
 
@@ -295,12 +333,15 @@ export default function HabitStreak() {
       {habits.length === 0 && !loadingHabits ? (
         <View style={{ padding: 16 }}>
           <Text style={{ fontSize: 14, color: '#6b7280' }}>
-            Bạn chưa có thói quen nào hoặc dữ liệu chưa sẵn sàng. Hãy tạo thói quen trước.
+            Bạn chưa có thói quen nào hoặc dữ liệu chưa sẵn sàng. Hãy tạo thói quen
+            trước.
           </Text>
         </View>
       ) : !habit ? (
         <View style={{ padding: 16 }}>
-          <Text style={{ fontSize: 14, color: '#6b7280' }}>Đang tải dữ liệu...</Text>
+          <Text style={{ fontSize: 14, color: '#6b7280' }}>
+            Đang tải dữ liệu...
+          </Text>
         </View>
       ) : (
         <ScrollView contentContainerStyle={{ paddingBottom: 20 }}>
@@ -310,25 +351,21 @@ export default function HabitStreak() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.hSelector}
           >
-            {habits.map(h => {
+            {habits.map((h) => {
               const active = habit && habit.id === h.id;
               return (
                 <TouchableOpacity
                   key={String(h.id)}
                   onPress={() => setSelectedHabitId(h.id)}
-                  style={sx(
-                    styles.hChip,
-                    {
-                      borderColor: active ? h.tagColor : '#e5e7eb',
-                      backgroundColor: active ? '#00000008' : '#fff',
-                    }
-                  )}
+                  style={sx(styles.hChip, {
+                    borderColor: active ? h.tagColor : '#e5e7eb',
+                    backgroundColor: active ? '#00000008' : '#fff',
+                  })}
                 >
                   <Text
-                    style={sx(
-                      styles.hChipText,
-                      { color: active ? h.tagColor : '#6b7280' }
-                    )}
+                    style={sx(styles.hChipText, {
+                      color: active ? h.tagColor : '#6b7280',
+                    })}
                   >
                     {h.title}
                   </Text>
@@ -340,7 +377,9 @@ export default function HabitStreak() {
           {/* Loading detail hint */}
           {loadingDetail && (
             <View style={{ paddingHorizontal: 16, paddingBottom: 4 }}>
-              <Text style={{ fontSize: 12, color: '#9ca3af' }}>Đang cập nhật dữ liệu...</Text>
+              <Text style={{ fontSize: 12, color: '#9ca3af' }}>
+                Đang cập nhật dữ liệu...
+              </Text>
             </View>
           )}
 
@@ -348,12 +387,16 @@ export default function HabitStreak() {
           <View style={sx(styles.card, styles.centerCard)}>
             <View style={styles.streakRow}>
               <Flame size={32} color={habit.tagColor} />
-              <Text style={sx(styles.streakNumber, { color: habit.tagColor })}>
+              <Text
+                style={sx(styles.streakNumber, { color: habit.tagColor })}
+              >
                 {stats.streak}
               </Text>
             </View>
             <Text style={styles.streakLabel}>Chuỗi Hiện Tại</Text>
-            <Text style={styles.muted}>Chuỗi tốt nhất: {stats.bestStreak} ngày</Text>
+            <Text style={styles.muted}>
+              Chuỗi tốt nhất: {stats.bestStreak} ngày
+            </Text>
 
             <View style={styles.statsGrid}>
               <View style={styles.statBox}>
@@ -389,7 +432,8 @@ export default function HabitStreak() {
               <View style={styles.rowCenter}>
                 <Calendar size={16} color="#0f172a" />
                 <Text style={styles.monthTitle}>
-                  {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
+                  {monthNames[currentDate.getMonth()]}{' '}
+                  {currentDate.getFullYear()}
                 </Text>
               </View>
               <View style={styles.rowCenter}>
@@ -425,24 +469,25 @@ export default function HabitStreak() {
                       style={sx(
                         styles.dayCircle,
                         { backgroundColor: isDay ? color : 'transparent' },
-                        isDay && status === 'none' && { backgroundColor: '#f3f4f6' }
+                        isDay &&
+                          status === 'none' && { backgroundColor: '#f3f4f6' },
                       )}
                     >
                       {isDay && (
                         <>
                           <Text
-                            style={sx(
-                              styles.dayLabel,
-                              { color: status === 'none' ? '#6b7280' : '#fff' }
-                            )}
+                            style={sx(styles.dayLabel, {
+                              color:
+                                status === 'none' ? '#6b7280' : '#ffffff',
+                            })}
                           >
                             {label}
                           </Text>
                           <Text
-                            style={sx(
-                              styles.dayNum,
-                              { color: status === 'none' ? '#6b7280' : '#fff' }
-                            )}
+                            style={sx(styles.dayNum, {
+                              color:
+                                status === 'none' ? '#6b7280' : '#ffffff',
+                            })}
                           >
                             {day}
                           </Text>
@@ -456,10 +501,18 @@ export default function HabitStreak() {
 
             {/* Legend */}
             <View style={styles.legend}>
-              <Text style={sx(styles.legendText, { color: '#10b981' })}>✓ = Hoàn thành</Text>
-              <Text style={sx(styles.legendText, { color: '#ef4444' })}>✗ = Thất bại</Text>
-              <Text style={sx(styles.legendText, { color: '#f59e0b' })}>– = Bỏ qua</Text>
-              <Text style={sx(styles.legendText, { color: '#6b7280' })}>Trắng = Chưa ghi nhận</Text>
+              <Text style={sx(styles.legendText, { color: '#10b981' })}>
+                ✓ = Hoàn thành
+              </Text>
+              <Text style={sx(styles.legendText, { color: '#ef4444' })}>
+                ✗ = Thất bại
+              </Text>
+              <Text style={sx(styles.legendText, { color: '#f59e0b' })}>
+                – = Bỏ qua
+              </Text>
+              <Text style={sx(styles.legendText, { color: '#6b7280' })}>
+                Trắng = Chưa ghi nhận
+              </Text>
             </View>
           </View>
 
@@ -485,9 +538,9 @@ export default function HabitStreak() {
               </View>
             </View>
           </View>
-          <footer style={{height: '10vh'}}>
 
-          </footer>
+          {/* Spacer thay cho footer 10vh web */}
+          <View style={{ height: 40 }} />
         </ScrollView>
       )}
     </SafeAreaView>
@@ -510,50 +563,95 @@ const styles = StyleSheet.create({
   },
 
   header: {
-    marginHorizontal: 12, marginTop: 8, padding: 12,
-    flexDirection: 'row', alignItems: 'center', gap: 12,
+    marginHorizontal: 12,
+    marginTop: 8,
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   iconBtn: {
-    width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: '#2563eb',
+    marginRight: 12,
   },
   headerTitle: { fontSize: 18, fontWeight: '700', color: '#0f172a' },
   headerSub: { fontSize: 12, color: '#9ca3af' },
 
-  hSelector: { paddingHorizontal: 12, paddingVertical: 8, gap: 8 },
+  hSelector: { paddingHorizontal: 12, paddingVertical: 8 },
   hChip: {
-    paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8,
-    borderWidth: 1, marginRight: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginRight: 8,
   },
   hChipText: { fontSize: 13, fontWeight: '600' },
 
-  centerCard: { marginHorizontal: 12, marginTop: 8, padding: 20, alignItems: 'center' },
-  streakRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
-  streakNumber: { fontSize: 44, fontWeight: '800' },
+  centerCard: {
+    marginHorizontal: 12,
+    marginTop: 8,
+    padding: 20,
+    alignItems: 'center',
+  },
+  streakRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  streakNumber: { fontSize: 44, fontWeight: '800', marginLeft: 8 },
   streakLabel: { fontSize: 16, fontWeight: '700', marginBottom: 4, color: '#0f172a' },
   muted: { fontSize: 13, color: '#6b7280', marginBottom: 14 },
 
   statsGrid: {
-    flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'space-between',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
     width: '100%',
+    rowGap: 12,
   },
   statBox: {
     flexBasis: '48%',
-    backgroundColor: '#fff', borderRadius: 8, padding: 12,
-    shadowColor: '#000', shadowOpacity: 0.05, shadowOffset: { width: 0, height: 2 }, shadowRadius: 6, elevation: 1,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 6,
+    elevation: 1,
+    marginBottom: 12,
   },
   statLabel: { fontSize: 11, color: '#6b7280', marginBottom: 4 },
   statValue: { fontSize: 22, fontWeight: '800' },
 
   section: { marginHorizontal: 12, marginTop: 8, padding: 16 },
-  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  rowCenter: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  monthTitle: { marginLeft: 6, fontSize: 14, fontWeight: '700', color: '#0f172a' },
+  rowBetween: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  rowCenter: { flexDirection: 'row', alignItems: 'center' },
+  monthTitle: {
+    marginLeft: 6,
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
 
   navBtn: {
-    width: 32, height: 32, borderRadius: 6,
-    borderWidth: 1, borderColor: '#e5e7eb',
-    alignItems: 'center', justifyContent: 'center', marginLeft: 8, backgroundColor: '#fff',
+    width: 32,
+    height: 32,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+    backgroundColor: '#fff',
   },
   navBtnText: { fontSize: 16, color: '#374151', fontWeight: '700' },
 
@@ -564,17 +662,33 @@ const styles = StyleSheet.create({
   gridWrap: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 8 },
   dayCellWrap: { width: CELL_PCT, alignItems: 'center', marginVertical: 4 },
   dayCircle: {
-    width: 40, aspectRatio: 1, borderRadius: 20,
-    alignItems: 'center', justifyContent: 'center',
+    width: 40,
+    aspectRatio: 1,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   dayLabel: { fontSize: 14, fontWeight: '800' },
   dayNum: { fontSize: 10, fontWeight: '700', marginTop: 1 },
 
   legend: {
-    backgroundColor: '#f9fafb', borderRadius: 8, padding: 12, marginTop: 10,
+    backgroundColor: '#f9fafb',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 10,
   },
   legendText: { fontSize: 12, fontWeight: '700', marginBottom: 4 },
 
-  sumTitle: { marginLeft: 6, fontSize: 14, fontWeight: '700', color: '#0f172a' },
-  twoGrid: { flexDirection: 'row', gap: 12, justifyContent: 'space-between', marginTop: 10 },
+  sumTitle: {
+    marginLeft: 6,
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  twoGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
+    gap: 12,
+  },
 });

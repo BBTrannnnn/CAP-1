@@ -1,11 +1,23 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  ActivityIndicator,
+  Alert,
+  StyleSheet,
+} from 'react-native';
 import { router } from 'expo-router';
 import { ChevronLeft, ChevronRight, Target, Check, TrendingUp } from 'lucide-react-native';
-import '../../styles/FlowStateHabits.css';
-import './HabitSurvey.css';
 
 // 🔗 NỐI API
-import { recommendHabits, getQuestionSurvey, submitSurvey } from '../../../server/habits';
+import {
+  recommendHabits,
+  getQuestionSurvey,
+  submitSurvey,
+  createHabit,
+} from '../../../server/habits';
 
 // ===== Types cho UI =====
 type Option = { value: number; label: string; emoji?: string };
@@ -40,6 +52,19 @@ type SurveySessionResponse = {
   message?: string;
 };
 
+// Gợi ý thói quen
+type Suggestion = {
+  id?: string;
+  _id?: string;
+  name: string;
+  title: string;
+  description: string;
+  difficulty: 'Dễ' | 'Trung bình' | 'Khó';
+  time: string;
+  category: 'mindful' | 'energy' | 'sleep' | 'productivity' | 'social' | 'personal';
+  score: number;
+};
+
 // Map category slug -> nhãn đẹp
 const CATEGORY_LABELS: Record<string, string> = {
   digital: 'Digital',
@@ -54,14 +79,25 @@ const CATEGORY_LABELS: Record<string, string> = {
   control: 'Kỷ luật',
 };
 
-export default function HabitSurvey() {
+type ViewMode = 'survey' | 'summary' | 'suggestions';
+
+const defaultDomainScores = {
+  mental: 60,
+  physical: 60,
+  social: 60,
+  personal: 60,
+};
+
+export default function HabitSurveyMobile() {
+  // ================== STATE CHUNG ==================
+  const [view, setView] = useState<ViewMode>('survey');
+
   const [questions, setQuestions] = useState<SurveyQuestion[]>([]);
   const [idx, setIdx] = useState(0);
 
   // ✅ answers: questionId -> numeric value (1–4)
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [done, setDone] = useState(false);
-
   const [sessionId, setSessionId] = useState<string | null>(null);
 
   const [isLoadingQuestions, setIsLoadingQuestions] = useState(false);
@@ -71,10 +107,20 @@ export default function HabitSurvey() {
   const total = questions.length;
   const current = total > 0 ? questions[idx] : undefined;
   const progress = useMemo(
-    () => (total > 0 ? Math.round((idx / total) * 100) : 0),
-    [idx, total]
+    () => (total > 0 ? Math.round(((idx + 1) / total) * 100) : 0),
+    [idx, total],
   );
-  const selected = current ? answers[current.id] : undefined;
+  const selectedOptionValue = current ? answers[current.id] : undefined;
+
+  // ================== STATE GỢI Ý THÓI QUEN ==================
+  const [domainScores, setDomainScores] = useState(defaultDomainScores);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [selectedHabits, setSelectedHabits] = useState<Record<string, boolean>>({});
+
+  const selectedCount = useMemo(
+    () => Object.values(selectedHabits).filter(Boolean).length,
+    [selectedHabits],
+  );
 
   // ================== LOAD CÂU HỎI TỪ BE ==================
   useEffect(() => {
@@ -112,6 +158,7 @@ export default function HabitSurvey() {
             setIdx(0);
             setAnswers({});
             setDone(false);
+            setView('survey');
             return;
           }
         }
@@ -145,8 +192,13 @@ export default function HabitSurvey() {
 
   const goNext = () => {
     if (total === 0) return;
-    if (idx < total - 1) setIdx((x) => x + 1);
-    else setDone(true);
+    if (!selectedOptionValue) return;
+    if (idx < total - 1) {
+      setIdx((x) => x + 1);
+    } else {
+      setDone(true);
+      setView('summary');
+    }
   };
 
   const goPrev = () => {
@@ -161,6 +213,7 @@ export default function HabitSurvey() {
     setDone(false);
     setErrorMsg(null);
     setIsLoading(false);
+    setView('survey');
   };
 
   // ================== GỌI API GỢI Ý THÓI QUEN ==================
@@ -169,23 +222,38 @@ export default function HabitSurvey() {
       setIsLoading(true);
       setErrorMsg(null);
 
-      // hiện tại wrapper recommendHabits(answers, limit)
       const res: any = await recommendHabits(answers, 5);
       console.log('[HabitSurvey] recommendHabits response:', res);
-      sessionStorage.setItem("suggestion", JSON.stringify(res));
-      let suggestions: any[] = [];
-      if (Array.isArray(res)) suggestions = res;
-      else if (Array.isArray(res?.habits)) suggestions = res.habits;
-      else if (Array.isArray(res?.recommendations)) suggestions = res.recommendations;
-      else if (Array.isArray(res?.data)) suggestions = res.data;
 
-      const payload = { sessionId, answers, suggestions };
-      const data = encodeURIComponent(JSON.stringify(payload));
+      // Parse mảng habits từ nhiều định dạng BE
+      let base: Suggestion[] = [];
+      if (Array.isArray(res)) base = res;
+      else if (Array.isArray(res?.habits)) base = res.habits;
+      else if (Array.isArray(res?.recommendations?.habits))
+        base = res.recommendations.habits;
+      else if (Array.isArray(res?.recommendations)) base = res.recommendations;
+      else if (Array.isArray(res?.data)) base = res.data;
 
-      router.push({
-        pathname: '/(tabs)/habits/HabitSuggestions',
-        params: { data },
-      });
+      if (!base || base.length === 0) {
+        setErrorMsg('Không tìm thấy gợi ý thói quen phù hợp.');
+        return;
+      }
+
+      // Ở đây tạm dùng domainScores mặc định (có thể sau này tính theo answers)
+      const ds = defaultDomainScores;
+      setDomainScores(ds);
+
+      const weight = (s: Suggestion) => {
+        if (s.category === 'mindful') return 100 - ds.mental;
+        if (s.category === 'energy') return 100 - ds.physical;
+        if (s.category === 'sleep') return 100 - ds.personal;
+        return 80 - (ds.social + ds.personal) / 2;
+      };
+
+      const sorted = [...base].sort((a, b) => weight(b) - weight(a));
+      setSuggestions(sorted);
+      setSelectedHabits({});
+      setView('suggestions');
     } catch (err) {
       console.error('[HabitSurvey] recommendHabits error:', err);
       setErrorMsg('Không thể tải gợi ý thói quen. Vui lòng thử lại.');
@@ -212,519 +280,856 @@ export default function HabitSurvey() {
     submit();
   }, [done, answers, sessionId]);
 
-  // ================== UI: ĐANG LOAD CÂU HỎI ==================
-  if (isLoadingQuestions) {
-    return (
-      <div
-        className="fsh-page"
-        style={{ height: '100vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}
-      >
-        <div
-          className="fsh-card fsh-header-card"
-          style={{
-            margin: 10,
-            marginTop: 12,
-            padding: 16,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            borderRadius: 20,
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <button
-              onClick={() => router.push('/(tabs)/habits')}
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: '#2563eb',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: 'none',
-                cursor: 'pointer',
-              }}
-            >
-              <ChevronLeft size={20} color="#fff" />
-            </button>
-            <div>
-              <div style={{ fontSize: 20, fontWeight: 800, color: '#0f172a' }}>
-                Khảo sát thói quen
-              </div>
-              <div
-                style={{
-                  fontSize: 12,
-                  color: '#64748b',
-                  fontWeight: 700,
-                }}
-              >
-                Đang tải bộ câu hỏi...
-              </div>
-            </div>
-          </div>
-          <div
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 20,
-              background: '#E5E7EB',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
+  // ================== THÊM THÓI QUEN ==================
+  const toggleHabit = (habit: Suggestion) => {
+    const key = habit._id || habit.id || habit.name;
+    setSelectedHabits((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
+
+  const addSelectedToHabits = async () => {
+    const list = suggestions.filter((s) => {
+      const key = s._id || s.id || s.name;
+      return selectedHabits[key];
+    });
+
+    if (list.length === 0) {
+      Alert.alert('Thông báo', 'Hãy chọn ít nhất 1 thói quen để thêm.');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      for (const s of list) {
+        await createHabit(s);
+      }
+      Alert.alert('Thành công', 'Đã thêm thói quen vào danh sách.', [
+        {
+          text: 'OK',
+          onPress: () => router.push('/(tabs)/habits'),
+        },
+      ]);
+    } catch (e) {
+      console.error('[HabitSuggestions] createHabit error:', e);
+      Alert.alert('Lỗi', 'Không thể thêm thói quen. Vui lòng thử lại.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // ================== UI CHUNG HEADER ==================
+  const renderHeader = (title: string, subtitle?: string, showBackToHabits = true) => (
+    <View style={styles.headerCard}>
+      <View style={styles.headerLeft}>
+        {showBackToHabits && (
+          <TouchableOpacity
+            onPress={() => router.push('/(tabs)/habits')}
+            style={styles.headerBackBtn}
           >
-            <Target size={20} color="#0f172a" />
-          </div>
-        </div>
-        <div
-          className="fsh-card"
-          style={{
-            margin: '12px 10px',
-            padding: 18,
-            borderRadius: 24,
-            background: '#F8FAFF',
-            border: '1px solid rgba(148,163,184,0.4)',
-          }}
-        >
-          <div style={{ fontSize: 14, color: '#334155' }}>Vui lòng chờ trong giây lát...</div>
-        </div>
-      </div>
+            <ChevronLeft size={20} color="#fff" />
+          </TouchableOpacity>
+        )}
+        <View>
+          <Text style={styles.headerTitle}>{title}</Text>
+          {subtitle ? <Text style={styles.headerSubtitle}>{subtitle}</Text> : null}
+        </View>
+      </View>
+      <View style={styles.headerIconWrapper}>
+        <Target size={20} color="#0f172a" />
+      </View>
+    </View>
+  );
+
+  // ================== UI: ĐANG LOAD CÂU HỎI ==================
+  if (isLoadingQuestions && view === 'survey') {
+    return (
+      <View style={styles.page}>
+        {renderHeader('Khảo sát thói quen', 'Đang tải bộ câu hỏi...')}
+        <View style={styles.card}>
+          <Text style={styles.textNormal}>Vui lòng chờ trong giây lát...</Text>
+          <ActivityIndicator style={{ marginTop: 12 }} />
+        </View>
+      </View>
     );
   }
 
   // ================== UI: KHÔNG CÓ CÂU HỎI ==================
-  if (!current) {
+  if (!current && (view === 'survey' || view === 'summary')) {
     return (
-      <div
-        className="fsh-page"
-        style={{ height: '100vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}
-      >
-        <div
-          className="fsh-card fsh-header-card"
-          style={{
-            margin: 10,
-            marginTop: 12,
-            padding: 16,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            borderRadius: 20,
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <button
-              onClick={() => router.push('/(tabs)/habits')}
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: '#2563eb',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: 'none',
-                cursor: 'pointer',
-              }}
-            >
-              <ChevronLeft size={20} color="#fff" />
-            </button>
-            <div>
-              <div style={{ fontSize: 20, fontWeight: 800, color: '#0f172a' }}>
-                Khảo sát thói quen
-              </div>
-              <div
-                style={{
-                  fontSize: 12,
-                  color: '#64748b',
-                  fontWeight: 700,
-                }}
-              >
-                Không có câu hỏi để hiển thị
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div
-          className="fsh-card"
-          style={{
-            margin: '12px 10px',
-            padding: 18,
-            borderRadius: 24,
-            background: '#FEF2F2',
-            border: '1px solid #FECACA',
-          }}
-        >
-          <div style={{ fontSize: 14, color: '#B91C1C', marginBottom: 8 }}>
+      <View style={styles.page}>
+        {renderHeader('Khảo sát thói quen', 'Không có câu hỏi để hiển thị')}
+        <View style={[styles.card, styles.cardError]}>
+          <Text style={styles.errorText}>
             {errorMsg || 'Không tải được bộ câu hỏi khảo sát.'}
-          </div>
-          <button
-            onClick={() => router.push('/(tabs)/habits')}
-            style={{
-              marginTop: 8,
-              padding: '10px 14px',
-              borderRadius: 12,
-              border: 'none',
-              background: '#2563eb',
-              color: '#fff',
-              fontWeight: 800,
-              cursor: 'pointer',
-            }}
+          </Text>
+          <TouchableOpacity
+            onPress={() => router.push('/(tabs)/habits')}
+            style={[styles.btnPrimary, { marginTop: 8 }]}
           >
-            Quay lại
-          </button>
-        </div>
-      </div>
+            <Text style={styles.btnPrimaryText}>Quay lại</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
     );
   }
 
-  // ================== UI: ĐÃ HOÀN TẤT ==================
-  if (done) {
+  // ================== UI: ĐÃ HOÀN TẤT (SUMMARY) ==================
+  if (view === 'summary') {
     return (
-      <div
-        className="fsh-page"
-        style={{ height: '100vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}
-      >
-        <div
-          className="fsh-card fsh-header-card"
-          style={{
-            margin: 10,
-            marginTop: 12,
-            padding: 16,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            borderRadius: 20,
-          }}
-        >
-          <button
-            onClick={() => router.push('/(tabs)/habits')}
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 20,
-              backgroundColor: '#2563eb',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              border: 'none',
-              cursor: 'pointer',
-            }}
-          >
-            <ChevronLeft size={20} color="#fff" />
-          </button>
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontWeight: 800, fontSize: 18, color: '#0f172a' }}>
-              Hoàn tất khảo sát
-            </div>
-            <div style={{ fontSize: 12, color: '#64748b' }}>Cảm ơn bạn đã trả lời</div>
-          </div>
-        </div>
+      <ScrollView style={styles.page} contentContainerStyle={{ paddingBottom: 32 }}>
+        {renderHeader('Hoàn tất khảo sát', 'Cảm ơn bạn đã trả lời', false)}
 
-        <div
-          className="fsh-card"
-          style={{ margin: '0 10px', padding: 16, borderRadius: 20 }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              background: '#dcfce7',
-              border: '1px solid #bbf7d0',
-              borderRadius: 12,
-              padding: '8px 10px',
-              marginBottom: 10,
-            }}
-          >
+        <View style={styles.card}>
+          <View style={styles.summaryBadge}>
             <Check size={16} color="#16a34a" />
-            <div style={{ fontWeight: 800, color: '#16a34a' }}>
-              Đã hoàn thành {total} câu hỏi
-            </div>
-          </div>
-          <div style={{ fontSize: 14, color: '#334155' }}>
-            Dựa trên câu trả lời của bạn, ứng dụng sẽ gợi ý các thói quen phù hợp ở màn hình Habits.
-          </div>
+            <Text style={styles.summaryBadgeText}>Đã hoàn thành {total} câu hỏi</Text>
+          </View>
 
-          {/* Hiển thị lỗi API nếu có */}
+          <Text style={styles.textNormal}>
+            Dựa trên câu trả lời của bạn, ứng dụng sẽ gợi ý các thói quen phù hợp.
+          </Text>
+
           {errorMsg && (
-            <div
-              style={{
-                marginTop: 12,
-                padding: '8px 10px',
-                borderRadius: 10,
-                background: '#fef2f2',
-                border: '1px solid #fecaca',
-                color: '#b91c1c',
-                fontSize: 12,
-                fontWeight: 700,
-              }}
-            >
-              {errorMsg}
-            </div>
+            <View style={styles.errorBox}>
+              <Text style={styles.errorText}>{errorMsg}</Text>
+            </View>
           )}
 
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'flex-end',
-              gap: 8,
-              marginTop: 16,
-              flexWrap: 'wrap',
-            }}
-          >
-            <button
-              onClick={() => router.push('/(tabs)/habits')}
-              style={{
-                background: '#e5e7eb',
-                color: '#0f172a',
-                border: '1px solid #cbd5e1',
-                borderRadius: 12,
-                padding: '10px 14px',
-                fontWeight: 800,
-                cursor: 'pointer',
-              }}
+          <View style={styles.summaryButtonsRow}>
+            <TouchableOpacity
+              onPress={() => router.push('/(tabs)/habits')}
+              style={styles.btnGray}
             >
-              Về danh sách thói quen
-            </button>
+              <Text style={styles.btnGrayText}>Về danh sách thói quen</Text>
+            </TouchableOpacity>
 
-            {/* 🔁 NÚT LÀM LẠI KHẢO SÁT */}
-            <button
-              onClick={handleRedo}
-              style={{
-                background: '#f97316',
-                color: '#fff',
-                border: 'none',
-                borderRadius: 12,
-                padding: '10px 14px',
-                fontWeight: 800,
-                cursor: 'pointer',
-              }}
-            >
-              Làm lại khảo sát
-            </button>
+            <TouchableOpacity onPress={handleRedo} style={styles.btnWarning}>
+              <Text style={styles.btnWarningText}>Làm lại khảo sát</Text>
+            </TouchableOpacity>
 
-            <button
-              onClick={handleViewSuggestions}
+            <TouchableOpacity
+              onPress={handleViewSuggestions}
               disabled={isLoading}
-              style={{
-                background: '#2563eb',
-                opacity: isLoading ? 0.7 : 1,
-                color: '#fff',
-                border: 'none',
-                borderRadius: 12,
-                padding: '10px 14px',
-                fontWeight: 800,
-                cursor: isLoading ? 'wait' : 'pointer',
-              }}
+              style={[
+                styles.btnPrimary,
+                isLoading ? { opacity: 0.7 } : null,
+              ]}
             >
-              {isLoading ? 'Đang tải gợi ý...' : 'Xem gợi ý'}
-            </button>
-          </div>
-        </div>
-      </div>
+              <Text style={styles.btnPrimaryText}>
+                {isLoading ? 'Đang tải gợi ý...' : 'Xem gợi ý'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </ScrollView>
     );
   }
 
-  // ================== UI: MÀN HỎI CÂU HỎI ==================
-  return (
-    <div
-      className="fsh-page"
-      style={{ height: '100vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}
-    >
-      <div
-        className="fsh-card fsh-header-card"
-        style={{
-          margin: 10,
-          marginTop: 12,
-          padding: 16,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          borderRadius: 20,
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <button
-            onClick={() => router.push('/(tabs)/habits')}
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 20,
-              backgroundColor: '#2563eb',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              border: 'none',
-              cursor: 'pointer',
-            }}
-          >
-            <ChevronLeft size={20} color="#fff" />
-          </button>
-          <div>
-            <div style={{ fontSize: 20, fontWeight: 800, color: '#0f172a' }}>
-              Khảo sát thói quen
-            </div>
-            <div
-              style={{
-                fontSize: 12,
-                color: '#64748b',
-                fontWeight: 700,
-              }}
-            >
-              Trả lời {total} câu hỏi để nhận gợi ý phù hợp
-            </div>
-          </div>
-        </div>
-        <div
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 20,
-            background: '#E5E7EB',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Target size={20} color="#0f172a" />
-        </div>
-      </div>
+  // ================== UI: GỢI Ý THÓI QUEN ==================
+  if (view === 'suggestions') {
+    return (
+      <ScrollView style={styles.page} contentContainerStyle={{ paddingBottom: 80 }}>
+        {/* Header gợi ý */}
+        {renderHeader(
+          'Thói quen được gợi ý',
+          `Dựa trên phân tích ${Object.keys(answers).length || 0} câu trả lời của bạn`,
+        )}
 
-      <div
-        className="fsh-card hs-sticky-progress"
-        style={{ margin: '0 10px', padding: 12, borderRadius: 20 }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
-        >
-          <div style={{ fontSize: 12, fontWeight: 800, color: '#334155' }}>
-            Câu hỏi {idx + 1}/{total}
-          </div>
-          <div style={{ fontSize: 12, fontWeight: 800, color: '#334155' }}>
-            {progress}% hoàn thành
-          </div>
-        </div>
-        <div className="fsh-progress" style={{ marginTop: 6, background: '#e5e7eb' }}>
-          <div
-            className="fsh-progress-fill"
-            style={{
-              width: `${progress}%`,
-              background: 'linear-gradient(90deg, #6366f1, #7c3aed)',
-            }}
-          />
-        </div>
-      </div>
+        {/* Hồ sơ + tóm tắt */}
+        <View style={styles.profileBanner}>
+          <Text style={styles.profileTitle}>Hồ sơ của bạn</Text>
+          <Text style={styles.profileSubtitle}>Người bận rộn cần cân bằng</Text>
+          <View style={styles.profileTagsRow}>
+            <View style={styles.profileTag}>
+              <Text style={styles.profileTagText}>
+                {Object.keys(answers).length || 0}/{total} câu hỏi đã trả lời
+              </Text>
+            </View>
+            <View style={styles.profileTag}>
+              <Text style={styles.profileTagText}>
+                {suggestions.length} gợi ý thói quen
+              </Text>
+            </View>
+          </View>
+        </View>
 
-      <div
-        className="fsh-card"
-        style={{
-          margin: '12px 10px',
-          padding: 18,
-          borderRadius: 24,
-          background: '#F8FAFF',
-          border: '1px solid rgba(99,102,241,0.15)',
-        }}
-      >
-        <div
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 8,
-            background: '#e9fce9',
-            border: '1px solid #bbf7d0',
-            color: '#16a34a',
-            fontWeight: 800,
-            padding: '6px 10px',
-            borderRadius: 12,
-            marginBottom: 10,
-          }}
-        >
-          <TrendingUp size={14} color="#16a34a" /> {current.category}
-        </div>
-        <div
-          style={{
-            fontSize: 20,
-            fontWeight: 900,
-            color: '#0f172a',
-            marginBottom: 16,
-          }}
-        >
-          {current.title}
-        </div>
+        {/* 4 scores */}
+        <View style={styles.scoreGrid}>
+          {renderScoreBar('Mental', domainScores.mental)}
+          {renderScoreBar('Physical', domainScores.physical)}
+          {renderScoreBar('Social', domainScores.social)}
+          {renderScoreBar('Personal', domainScores.personal)}
+        </View>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {current.options.map((opt) => {
-            const isSelected = selected === opt.value;
-            return (
-              <button
-                key={opt.value}
-                onClick={() => selectOption(opt)}
-                className="hs-option"
-                data-selected={isSelected ? 'true' : 'false'}
-                style={{
-                  color: isSelected ? '#4f46e5' : '#334155',
-                }}
-              >
-                {opt.emoji && <span style={{ fontSize: 18 }}>{opt.emoji}</span>}
-                <span className="hs-label" style={{ fontSize: 15 }}>
-                  {opt.label}
-                </span>
-                {isSelected && (
-                  <span
-                    style={{
-                      position: 'absolute',
-                      right: 12,
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                    }}
+        {/* Note */}
+        <View style={styles.improveNote}>
+          <Text style={styles.improveNoteText}>
+            Các lĩnh vực cần cải thiện: Sức khỏe thể chất, Quản lý stress — Các thói quen dưới
+            đây sẽ giúp bạn cải thiện những lĩnh vực này.
+          </Text>
+        </View>
+
+        {/* Tóm tắt chọn */}
+        <View style={styles.selectionSummary}>
+          <View style={styles.selectionSummaryLeft}>
+            <Check size={16} color="#2563eb" />
+            <Text style={styles.selectionSummaryText}>
+              Đã chọn {selectedCount} thói quen
+            </Text>
+          </View>
+          <Text style={styles.selectionSummaryHint}>
+            Chọn các thói quen bạn muốn bắt đầu
+          </Text>
+        </View>
+
+        {/* Danh sách gợi ý */}
+        {suggestions.map((s, i) => {
+          const key = s._id || s.id || s.name;
+          const isSelected = !!selectedHabits[key];
+
+          return (
+            <View key={key} style={styles.suggestionCard}>
+              <View style={styles.suggestionHeaderRow}>
+                <Text style={styles.suggestionTitle}>
+                  #{i + 1} {s.title}
+                </Text>
+                <Text style={styles.suggestionScore}>{s.score}</Text>
+              </View>
+              <Text style={styles.suggestionName}>{s.name}</Text>
+
+              <View style={styles.suggestionTagsRow}>
+                <View style={styles.suggestionDiffTag}>
+                  <Text style={styles.suggestionDiffText}>{s.difficulty}</Text>
+                </View>
+                <View style={styles.suggestionDescTag}>
+                  <Text style={styles.suggestionDescText}>{s.description}</Text>
+                </View>
+              </View>
+
+              <View style={styles.suggestionBottomRow}>
+                <Text style={styles.suggestionCategory}>
+                  Danh mục: {s.category}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => toggleHabit(s)}
+                  style={[
+                    styles.selectHabitBtn,
+                    isSelected && { borderColor: '#2563eb' },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.selectHabitText,
+                      isSelected && { color: '#2563eb' },
+                    ]}
                   >
+                    {isSelected ? 'Đã chọn' : 'Chọn'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          );
+        })}
+
+        {/* Bottom bar */}
+        <View style={styles.bottomBar}>
+          <TouchableOpacity
+            onPress={() => setView('summary')}
+            style={styles.btnGhost}
+          >
+            <View style={styles.bottomBtnRow}>
+              <ChevronLeft size={16} />
+              <Text style={styles.btnGhostText}>Quay lại</Text>
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={addSelectedToHabits}
+            disabled={selectedCount === 0 || isLoading}
+            style={[
+              styles.btnPrimary,
+              (selectedCount === 0 || isLoading) && { opacity: 0.6 },
+            ]}
+          >
+            <View style={styles.bottomBtnRow}>
+              <Text style={styles.btnPrimaryText}>Hoàn tất & thêm vào danh sách</Text>
+              <ChevronRight size={16} color="#fff" />
+            </View>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    );
+  }
+
+  // ================== UI: MÀN HỎI CÂU HỎI (SURVEY) ==================
+  return (
+    <ScrollView style={styles.page} contentContainerStyle={{ paddingBottom: 32 }}>
+      {renderHeader(
+        'Khảo sát thói quen',
+        `Trả lời ${total} câu hỏi để nhận gợi ý phù hợp`,
+      )}
+
+      {/* Progress */}
+      <View style={styles.progressCard}>
+        <View style={styles.progressHeaderRow}>
+          <Text style={styles.progressText}>
+            Câu hỏi {idx + 1}/{total}
+          </Text>
+          <Text style={styles.progressText}>{progress}% hoàn thành</Text>
+        </View>
+        <View style={styles.progressBarBg}>
+          <View style={[styles.progressFill, { width: `${progress}%` }]} />
+        </View>
+      </View>
+
+      {/* Câu hỏi */}
+      <View style={styles.questionCard}>
+        <View style={styles.questionCategoryBadge}>
+          <TrendingUp size={14} color="#16a34a" />
+          <Text style={styles.questionCategoryText}>{current?.category}</Text>
+        </View>
+        <Text style={styles.questionTitle}>{current?.title}</Text>
+
+        <View style={{ flexDirection: 'column', gap: 12 }}>
+          {current?.options.map((opt) => {
+            const isSelected = selectedOptionValue === opt.value;
+            return (
+              <TouchableOpacity
+                key={opt.value}
+                onPress={() => selectOption(opt)}
+                style={[
+                  styles.optionBtn,
+                  isSelected && styles.optionBtnSelected,
+                ]}
+              >
+                {opt.emoji && <Text style={{ fontSize: 18 }}>{opt.emoji}</Text>}
+                <Text
+                  style={[
+                    styles.optionLabel,
+                    isSelected && { color: '#4f46e5' },
+                  ]}
+                >
+                  {opt.label}
+                </Text>
+                {isSelected && (
+                  <View style={styles.optionCheckIcon}>
                     <Check size={18} color="#6366f1" />
-                  </span>
+                  </View>
                 )}
-              </button>
+              </TouchableOpacity>
             );
           })}
-        </div>
-      </div>
+        </View>
+      </View>
 
-      {/* Bottom sticky action bar */}
-      <div className="hs-bottom-bar" style={{ margin: '0 10px' }}>
-        <button
-          onClick={goPrev}
+      {/* Bottom bar */}
+      <View style={styles.bottomBar}>
+        <TouchableOpacity
+          onPress={goPrev}
           disabled={idx === 0}
-          className="hs-btn-ghost"
-          style={{
-            opacity: idx === 0 ? 0.6 : 1,
-            cursor: idx === 0 ? 'not-allowed' : 'pointer',
-          }}
+          style={[
+            styles.btnGhost,
+            idx === 0 && { opacity: 0.6 },
+          ]}
         >
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <ChevronLeft size={16} /> Quay lại
-          </span>
-        </button>
-        <button
-          onClick={goNext}
-          disabled={!selected}
-          className="hs-btn-primary"
-          style={{
-            opacity: !selected ? 0.6 : 1,
-            cursor: !selected ? 'not-allowed' : 'pointer',
-          }}
+          <View style={styles.bottomBtnRow}>
+            <ChevronLeft size={16} />
+            <Text style={styles.btnGhostText}>Quay lại</Text>
+          </View>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={goNext}
+          disabled={!selectedOptionValue}
+          style={[
+            styles.btnPrimary,
+            !selectedOptionValue && { opacity: 0.6 },
+          ]}
         >
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            {idx === total - 1 ? 'Hoàn tất' : 'Tiếp theo'}{' '}
+          <View style={styles.bottomBtnRow}>
+            <Text style={styles.btnPrimaryText}>
+              {idx === total - 1 ? 'Hoàn tất' : 'Tiếp theo'}
+            </Text>
             <ChevronRight size={16} color="#fff" />
-          </span>
-        </button>
-      </div>
-
-      <div className="footer" style={{ height: '10vh' }} />
-    </div>
+          </View>
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
   );
 }
+
+// =============== COMPONENT PHỤ ===============
+function renderScoreBar(label: string, value: number) {
+  return (
+    <View style={styles.scoreCard}>
+      <View style={styles.scoreHeaderRow}>
+        <View style={styles.scoreLabelRow}>
+          <TrendingUp size={14} color="#334155" />
+          <Text style={styles.scoreLabelText}>{label}</Text>
+        </View>
+        <Text style={styles.scoreValue}>{value}</Text>
+      </View>
+      <View style={styles.progressBarBg}>
+        <View
+          style={[
+            styles.progressFill,
+            { width: `${value}%`, backgroundColor: '#3b82f6' },
+          ]}
+        />
+      </View>
+    </View>
+  );
+}
+
+// =============== STYLES ===============
+const styles = StyleSheet.create({
+  page: {
+    flex: 1,
+    backgroundColor: '#f1f5f9',
+  },
+  headerCard: {
+    marginHorizontal: 10,
+    marginTop: 12,
+    padding: 16,
+    borderRadius: 20,
+    backgroundColor: '#ffffff',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    elevation: 2,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  headerBackBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#2563eb',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    color: '#64748b',
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  headerIconWrapper: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#e5e7eb',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  card: {
+    marginHorizontal: 10,
+    marginTop: 12,
+    padding: 16,
+    borderRadius: 20,
+    backgroundColor: '#ffffff',
+    elevation: 1,
+  },
+  textNormal: {
+    fontSize: 14,
+    color: '#334155',
+  },
+  cardError: {
+    backgroundColor: '#fef2f2',
+    borderWidth: 1,
+    borderColor: '#fecaca',
+  },
+  errorBox: {
+    marginTop: 12,
+    padding: 8,
+    borderRadius: 10,
+    backgroundColor: '#fef2f2',
+    borderWidth: 1,
+    borderColor: '#fecaca',
+  },
+  errorText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#b91c1c',
+  },
+  summaryBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#dcfce7',
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginBottom: 10,
+  },
+  summaryBadgeText: {
+    fontWeight: '800',
+    color: '#16a34a',
+  },
+  summaryButtonsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
+    gap: 8,
+    marginTop: 16,
+  },
+  btnPrimary: {
+    backgroundColor: '#2563eb',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    width:'48%'
+  },
+  btnPrimaryText: {
+    color: '#ffffff',
+    fontWeight: '800',
+    fontSize: 13,
+  },
+  btnGray: {
+    backgroundColor: '#e5e7eb',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+  },
+  btnGrayText: {
+    color: '#0f172a',
+    fontWeight: '800',
+    fontSize: 13,
+  },
+  btnWarning: {
+    backgroundColor: '#f97316',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  btnWarningText: {
+    color: '#ffffff',
+    fontWeight: '800',
+    fontSize: 13,
+  },
+
+  profileBanner: {
+    marginHorizontal: 10,
+    marginTop: 8,
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: '#3b82f6',
+  },
+  profileTitle: {
+    fontWeight: '800',
+    fontSize: 14,
+    color: '#ffffff',
+    opacity: 0.9,
+  },
+  profileSubtitle: {
+    fontWeight: '900',
+    fontSize: 16,
+    color: '#ffffff',
+    marginTop: 4,
+  },
+  profileTagsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  profileTag: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  profileTagText: {
+    fontWeight: '800',
+    color: '#ffffff',
+    fontSize: 12,
+  },
+
+  scoreGrid: {
+    marginHorizontal: 10,
+    marginTop: 10,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  scoreCard: {
+    flex: 1,
+    minWidth: '48%',
+    padding: 12,
+    borderRadius: 14,
+    backgroundColor: '#ffffff',
+  },
+  scoreHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  scoreLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  scoreLabelText: {
+    color: '#334155',
+    fontWeight: '800',
+    fontSize: 12,
+  },
+  scoreValue: {
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+
+  improveNote: {
+    marginHorizontal: 10,
+    marginTop: 8,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: '#fff7ed',
+    borderWidth: 1,
+    borderColor: '#fed7aa',
+  },
+  improveNoteText: {
+    color: '#b45309',
+    fontWeight: '700',
+    fontSize: 13,
+  },
+
+  selectionSummary: {
+    marginHorizontal: 10,
+    marginTop: 10,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: '#ffffff',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  selectionSummaryLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  selectionSummaryText: {
+    color: '#334155',
+    fontWeight: '800',
+  },
+  selectionSummaryHint: {
+    fontSize: 12,
+    color: '#64748b',
+  },
+
+  suggestionCard: {
+    marginHorizontal: 10,
+    marginTop: 10,
+    padding: 14,
+    borderRadius: 16,
+    backgroundColor: '#ffffff',
+  },
+  suggestionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  suggestionTitle: {
+    fontWeight: '900',
+    color: '#0f172a',
+    fontSize: 14,
+  },
+  suggestionScore: {
+    fontWeight: '900',
+    color: '#2563eb',
+  },
+  suggestionName: {
+    marginTop: 6,
+    color: '#475569',
+    fontSize: 13,
+  },
+  suggestionTagsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  suggestionDiffTag: {
+    backgroundColor: '#dcfce7',
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  suggestionDiffText: {
+    color: '#16a34a',
+    fontWeight: '800',
+    fontSize: 12,
+  },
+  suggestionDescTag: {
+    backgroundColor: '#e0e7ff',
+    borderWidth: 1,
+    borderColor: '#c7d2fe',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  suggestionDescText: {
+    color: '#4338ca',
+    fontWeight: '800',
+    fontSize: 12,
+  },
+  suggestionBottomRow: {
+    marginTop: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  suggestionCategory: {
+    fontSize: 12,
+    color: '#64748b',
+    fontWeight: '700',
+  },
+  selectHabitBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+  },
+  selectHabitText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#334155',
+  },
+
+  bottomBar: {
+    marginHorizontal: 10,
+    marginTop: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+    alignItems: 'center',
+  },
+  bottomBtnRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    textAlign: 'center',
+    justifyContent: 'center',
+  },
+  btnGhost: {
+    flex: 1,
+    backgroundColor: '#e5e7eb',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnGhostText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+
+  progressCard: {
+    marginHorizontal: 10,
+    marginTop: 8,
+    padding: 12,
+    borderRadius: 20,
+    backgroundColor: '#ffffff',
+  },
+  progressHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  progressText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#334155',
+  },
+  progressBarBg: {
+    marginTop: 6,
+    height: 8,
+    borderRadius: 999,
+    backgroundColor: '#e5e7eb',
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 999,
+    backgroundColor: '#6366f1',
+  },
+
+  questionCard: {
+    marginHorizontal: 10,
+    marginTop: 12,
+    padding: 18,
+    borderRadius: 24,
+    backgroundColor: '#F8FAFF',
+    borderWidth: 1,
+    borderColor: 'rgba(99,102,241,0.15)',
+  },
+  questionCategoryBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#e9fce9',
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginBottom: 10,
+  },
+  questionCategoryText: {
+    color: '#16a34a',
+    fontWeight: '800',
+    fontSize: 12,
+  },
+  questionTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#0f172a',
+    marginBottom: 16,
+  },
+  optionBtn: {
+    position: 'relative',
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    backgroundColor: '#ffffff',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  optionBtnSelected: {
+    borderColor: '#6366f1',
+    backgroundColor: '#eef2ff',
+  },
+  optionLabel: {
+    fontSize: 15,
+    color: '#334155',
+    flex: 1,
+  },
+  optionCheckIcon: {
+    position: 'absolute',
+    right: 12,
+    top: '50%',
+    marginTop: -9,
+  },
+});
