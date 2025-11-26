@@ -1,9 +1,6 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
-import * as CryptoJS from 'crypto-js';
-
-
 
 const userSchema = new mongoose.Schema({
     name:{
@@ -19,32 +16,26 @@ const userSchema = new mongoose.Schema({
         unique:true,
         match:[/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,'Vui lòng nhập đúng định dạng email']
     },
-    // Bỏ phân quyền admin/user – chỉ giữ các trường cần thiết cho Sleep & Auth
     phone: {
         type: String,
         unique: true,
-        sparse: true, // cho phép nhiều document có null
-        required: function () {
-            // Chỉ yêu cầu phone khi login local
-            return this.loginProvider !== 'google' && this.isNew;
-        },
+        sparse: true,
+        required: true,
         trim: true,
         match: [/^[0-9]{10,11}$/, 'Vui lòng nhập đúng định dạng số điện thoại']
-        },
+    },
+    gender: {
+        type: String,
+        enum: ['male', 'female'],
+    },
     password: {
         type: String,
-        required: function() {
-            // Chỉ yêu cầu password nếu không phải Google login
-            return this.loginProvider !== 'google' && this.isNew;
-        },
+        required: [true, 'Vui lòng nhập mật khẩu'],
         minLength: [6, 'Mật khẩu của bạn phải có ít nhất 6 ký tự']
     },
     confirmPassword:{
         type:String,
-        required: function() {
-    // Chỉ require khi không phải Google login
-    return this.loginProvider !== 'google' && this.isNew;
-  },
+        required: [true, 'Vui lòng xác nhận mật khẩu'],
         minLength:[6,'Mật khẩu của bạn phải có ít nhất 6 ký tự'],
         validate:{
             validator:function(value){
@@ -53,46 +44,68 @@ const userSchema = new mongoose.Schema({
             message:'Mật khẩu xác nhận không khớp'  
         }
     },
-    loginProvider: {
-        type: String,
-        default: 'local'
+    address:{
+        type:String,
+        maxLength:[100,'Địa chỉ của bạn không được vượt quá 100 ký tự'],        
+    },
+    dateOfBirth: {
+        type: Date,
     },
     fcmTokens: [{
-    token: { 
-      type: String, 
-      required: true 
-    },
-    device: { 
-      type: String, 
-      enum: ['ios', 'android', 'web', 'unknown'],
-      default: 'unknown' 
-    },
-    deviceId: String,
-    createdAt: { 
-      type: Date, 
-      default: Date.now 
-    },
-    lastUsed: { 
-      type: Date, 
-      default: Date.now 
-    }
-  }],
+        token: { 
+            type: String, 
+            required: true 
+        },
+        device: { 
+            type: String, 
+            enum: ['ios', 'android', 'web', 'unknown'],
+            default: 'unknown' 
+        },
+        deviceId: String,
+        createdAt: { 
+            type: Date, 
+            default: Date.now 
+        },
+        lastUsed: { 
+            type: Date, 
+            default: Date.now 
+        },
+    }],
 
-    // Role: 'user' | 'admin' - cho phép quản lý nội dung bởi admin
+    // ✅ THÊM MỚI: Inventory
+  inventory: {
+    streakShields: { type: Number, default: 0, min: 0 },
+    freezeTokens: { type: Number, default: 0, min: 0 },
+    reviveTokens: { type: Number, default: 0, min: 0 }
+  },
+  
+  // ✅ THÊM MỚI: Lịch sử dùng items
+  itemUsageHistory: [{
+    itemType: { type: String, required: true },
+    habitId: { type: mongoose.Schema.Types.ObjectId, ref: 'Habit' },
+    usedAt: { type: Date, default: Date.now },
+    streakSaved: Number,
+    autoUsed: { type: Boolean, default: false }
+  }],
+  
+  // ✅ THÊM MỚI: Settings streak protection
+  streakProtectionSettings: {
+    enabled: { type: Boolean, default: true },
+    autoUseShield: { type: Boolean, default: false },
+    minStreakToAutoProtect: { type: Number, default: 7 },
+    notificationTime: { type: String, default: '21:00' }
+  },
+
     role: { type: String, enum: ['user', 'admin'], default: 'user' },
     isActive: {
         type: Boolean,
         default: true
     },
-    //OTP cho việc reset password
     resetOTP: { type: String },
     resetOTPExpires: { type: Number },
     isOTPVerified: { type: Boolean, default: false },
-    // Danh sách nội dung thư giãn/truyện yêu thích
-    // favorites moved to separate collection UserFavoriteSound (see models/UserFavoriteSound.js)
-},  { timestamps: true
-    
-});
+},  { timestamps: true });
+
 // Hashpassword before saving the user
 userSchema.pre('save',async function(next){
     // Nếu password không được thay đổi thì không cần hash lại

@@ -182,11 +182,10 @@ export function getHabitTemplates(query) {
   return apiRequest(`/api/habits/templates${q}`, { auth: true });
 }
 
-export function createHabitFromTemplate(templateId, payload) {
+export function createHabitFromTemplate(templateId) {
   // POST /api/habits/templates/:templateId
   return apiRequest(`/api/habits/templates/${templateId}`, {
     method: 'POST',
-    body: payload,
     auth: true,
   });
 }

@@ -1,0 +1,1710 @@
+[
+  {
+    "id": "health_1",
+    "text": "Bạn thường xuyên tập thể dục không?",
+    "type": "single",
+    "category": "health",
+    "options": [
+      {
+        "id": "h1_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "h1_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "h1_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "h1_4",
+        "text": "Mỗi ngày",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "health_2",
+    "text": "Bạn thường xuyên ăn rau và trái cây không?",
+    "type": "single",
+    "category": "health",
+    "options": [
+      {
+        "id": "h2_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "h2_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "h2_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "h2_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "health_3",
+    "text": "Bạn thường xuyên uống đủ nước không?",
+    "type": "single",
+    "category": "health",
+    "options": [
+      {
+        "id": "h3_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "h3_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "h3_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "h3_4",
+        "text": "Mỗi ngày",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "health_4",
+    "text": "Bạn thường xuyên đi khám sức khỏe không?",
+    "type": "single",
+    "category": "health",
+    "options": [
+      {
+        "id": "h4_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "h4_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "h4_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "h4_4",
+        "text": "Định kỳ",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "health_5",
+    "text": "Bạn thường xuyên ngủ đủ giấc không?",
+    "type": "single",
+    "category": "health",
+    "options": [
+      {
+        "id": "h5_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "h5_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "h5_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "h5_4",
+        "text": "Mỗi ngày",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "health_6",
+    "text": "Bạn thường xuyên quản lý stress không?",
+    "type": "single",
+    "category": "health",
+    "options": [
+      {
+        "id": "h6_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "h6_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "h6_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "h6_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "productivity_1",
+    "text": "Bạn thường dành bao nhiêu thời gian mỗi ngày để lên kế hoạch và tổ chức công việc?",
+    "type": "single",
+    "category": "productivity",
+    "options": [
+      {
+        "id": "p1_1",
+        "text": "Ít hơn 15 phút",
+        "value": 1
+      },
+      {
+        "id": "p1_2",
+        "text": "15-30 phút",
+        "value": 2
+      },
+      {
+        "id": "p1_3",
+        "text": "30-60 phút",
+        "value": 3
+      },
+      {
+        "id": "p1_4",
+        "text": "Trên 60 phút",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "productivity_2",
+    "text": "Bạn thường bắt đầu công việc vào lúc nào trong ngày?",
+    "type": "single",
+    "category": "productivity",
+    "options": [
+      {
+        "id": "p2_1",
+        "text": "Sau 10h sáng",
+        "value": 1
+      },
+      {
+        "id": "p2_2",
+        "text": "8-10h sáng",
+        "value": 2
+      },
+      {
+        "id": "p2_3",
+        "text": "7-8h sáng",
+        "value": 3
+      },
+      {
+        "id": "p2_4",
+        "text": "Trước 7h sáng",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "productivity_3",
+    "text": "Bạn thường dành bao nhiêu thời gian mỗi ngày để học hỏi và phát triển kỹ năng mới?",
+    "type": "single",
+    "category": "productivity",
+    "options": [
+      {
+        "id": "p3_1",
+        "text": "Ít hơn 15 phút",
+        "value": 1
+      },
+      {
+        "id": "p3_2",
+        "text": "15-30 phút",
+        "value": 2
+      },
+      {
+        "id": "p3_3",
+        "text": "30-60 phút",
+        "value": 3
+      },
+      {
+        "id": "p3_4",
+        "text": "Trên 60 phút",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "productivity_4",
+    "text": "Bạn thường xử lý bao nhiêu công việc cùng lúc?",
+    "type": "single",
+    "category": "productivity",
+    "options": [
+      {
+        "id": "p4_1",
+        "text": "Trên 5 công việc",
+        "value": 1
+      },
+      {
+        "id": "p4_2",
+        "text": "3-5 công việc",
+        "value": 2
+      },
+      {
+        "id": "p4_3",
+        "text": "2 công việc",
+        "value": 3
+      },
+      {
+        "id": "p4_4",
+        "text": "1 công việc",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "productivity_5",
+    "text": "Bạn thường dành bao nhiêu thời gian mỗi tuần để xem xét và điều chỉnh kế hoạch?",
+    "type": "single",
+    "category": "productivity",
+    "options": [
+      {
+        "id": "p5_1",
+        "text": "Ít hơn 30 phút",
+        "value": 1
+      },
+      {
+        "id": "p5_2",
+        "text": "30 phút đến 1 giờ",
+        "value": 2
+      },
+      {
+        "id": "p5_3",
+        "text": "1-2 giờ",
+        "value": 3
+      },
+      {
+        "id": "p5_4",
+        "text": "Trên 2 giờ",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "productivity_6",
+    "text": "Bạn thường cảm thấy mức độ tập trung khi làm việc như thế nào?",
+    "type": "single",
+    "category": "productivity",
+    "options": [
+      {
+        "id": "p6_1",
+        "text": "Rất dễ bị phân tâm",
+        "value": 1
+      },
+      {
+        "id": "p6_2",
+        "text": "Dễ bị phân tâm",
+        "value": 2
+      },
+      {
+        "id": "p6_3",
+        "text": "Khá tập trung",
+        "value": 3
+      },
+      {
+        "id": "p6_4",
+        "text": "Rất tập trung",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "learning_1",
+    "text": "Bạn thường dành bao nhiêu thời gian mỗi ngày để đọc sách hoặc tài liệu không liên quan đến công việc?",
+    "type": "single",
+    "category": "learning",
+    "options": [
+      {
+        "id": "l1_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "l1_2",
+        "text": "Dưới 30 phút",
+        "value": 2
+      },
+      {
+        "id": "l1_3",
+        "text": "Từ 30 phút đến 1 giờ",
+        "value": 3
+      },
+      {
+        "id": "l1_4",
+        "text": "Trên 1 giờ",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "learning_2",
+    "text": "Bạn tham gia các khóa học trực tuyến hoặc offline để cải thiện kỹ năng của mình bao nhiêu lần trong năm?",
+    "type": "single",
+    "category": "learning",
+    "options": [
+      {
+        "id": "l2_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "l2_2",
+        "text": "1-2 lần",
+        "value": 2
+      },
+      {
+        "id": "l2_3",
+        "text": "3-5 lần",
+        "value": 3
+      },
+      {
+        "id": "l2_4",
+        "text": "Trên 5 lần",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "learning_3",
+    "text": "Bạn thường thảo luận về chủ đề phát triển cá nhân hoặc học hỏi với bạn bè hoặc đồng nghiệp bao nhiêu lần trong tuần?",
+    "type": "single",
+    "category": "learning",
+    "options": [
+      {
+        "id": "l3_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "l3_2",
+        "text": "1-2 lần",
+        "value": 2
+      },
+      {
+        "id": "l3_3",
+        "text": "3-4 lần",
+        "value": 3
+      },
+      {
+        "id": "l3_4",
+        "text": "Trên 4 lần",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "learning_4",
+    "text": "Bạn thường dành bao nhiêu thời gian để xem video hoặc podcast giáo dục ngoài công việc?",
+    "type": "single",
+    "category": "learning",
+    "options": [
+      {
+        "id": "l4_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "l4_2",
+        "text": "Dưới 30 phút",
+        "value": 2
+      },
+      {
+        "id": "l4_3",
+        "text": "Từ 30 phút đến 1 giờ",
+        "value": 3
+      },
+      {
+        "id": "l4_4",
+        "text": "Trên 1 giờ",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "learning_5",
+    "text": "Bạn thường ghi chú và xem lại những nội dung quan trọng từ các nguồn học tập bao nhiêu lần trong tuần?",
+    "type": "single",
+    "category": "learning",
+    "options": [
+      {
+        "id": "l5_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "l5_2",
+        "text": "1-2 lần",
+        "value": 2
+      },
+      {
+        "id": "l5_3",
+        "text": "3-4 lần",
+        "value": 3
+      },
+      {
+        "id": "l5_4",
+        "text": "Trên 4 lần",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "mindful_1",
+    "text": "Bạn thường dành thời gian mỗi ngày để thiền hoặc thực hành thở sâu không?",
+    "type": "single",
+    "category": "mindful",
+    "options": [
+      {
+        "id": "m1_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "m1_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "m1_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "m1_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "mindful_2",
+    "text": "Khi đối mặt với tình huống khó khăn, bạn thường cố gắng giữ bình tĩnh và tập trung vào giải pháp không?",
+    "type": "single",
+    "category": "mindful",
+    "options": [
+      {
+        "id": "m2_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "m2_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "m2_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "m2_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "mindful_3",
+    "text": "Bạn thường dành thời gian để quan sát và đánh giá cảm xúc của mình không?",
+    "type": "single",
+    "category": "mindful",
+    "options": [
+      {
+        "id": "m3_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "m3_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "m3_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "m3_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "mindful_4",
+    "text": "Khi làm việc hoặc học tập, bạn thường tập trung vào nhiệm vụ hiện tại và tránh phân tâm không?",
+    "type": "single",
+    "category": "mindful",
+    "options": [
+      {
+        "id": "m4_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "m4_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "m4_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "m4_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "mindful_5",
+    "text": "Bạn thường thực hành lòng biết ơn và trân trọng những gì mình có không?",
+    "type": "single",
+    "category": "mindful",
+    "options": [
+      {
+        "id": "m5_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "m5_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "m5_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "m5_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "mindful_6",
+    "text": "Khi giao tiếp với người khác, bạn thường cố gắng lắng nghe và hiểu quan điểm của họ không?",
+    "type": "single",
+    "category": "mindful",
+    "options": [
+      {
+        "id": "m6_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "m6_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "m6_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "m6_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "finance_1",
+    "text": "Bạn thường xuyên kiểm tra tài khoản ngân hàng của mình?",
+    "type": "single",
+    "category": "finance",
+    "options": [
+      {
+        "id": "f1_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "f1_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "f1_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "f1_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "finance_2",
+    "text": "Bạn có lập ngân sách hàng tháng cho chi tiêu của mình?",
+    "type": "single",
+    "category": "finance",
+    "options": [
+      {
+        "id": "f2_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "f2_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "f2_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "f2_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "finance_3",
+    "text": "Bạn có tiết kiệm một phần thu nhập hàng tháng?",
+    "type": "single",
+    "category": "finance",
+    "options": [
+      {
+        "id": "f3_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "f3_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "f3_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "f3_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "finance_4",
+    "text": "Bạn thường xuyên đầu tư vào các tài sản như chứng khoán, bất động sản?",
+    "type": "single",
+    "category": "finance",
+    "options": [
+      {
+        "id": "f4_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "f4_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "f4_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "f4_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "finance_5",
+    "text": "Bạn có tránh mua những thứ không cần thiết để tiết kiệm tiền?",
+    "type": "single",
+    "category": "finance",
+    "options": [
+      {
+        "id": "f5_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "f5_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "f5_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "f5_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "digital_1",
+    "text": "Bạn thường xuyên sử dụng điện thoại di động để truy cập internet?",
+    "type": "single",
+    "category": "digital",
+    "options": [
+      {
+        "id": "d1_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "d1_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "d1_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "d1_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "digital_2",
+    "text": "Bạn thường cập nhật các thông tin mới về công nghệ?",
+    "type": "single",
+    "category": "digital",
+    "options": [
+      {
+        "id": "d2_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "d2_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "d2_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "d2_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "digital_3",
+    "text": "Bạn thường sử dụng các ứng dụng trực tuyến để quản lý công việc?",
+    "type": "single",
+    "category": "digital",
+    "options": [
+      {
+        "id": "d3_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "d3_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "d3_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "d3_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "digital_4",
+    "text": "Bạn thường chia sẻ thông tin trên mạng xã hội?",
+    "type": "single",
+    "category": "digital",
+    "options": [
+      {
+        "id": "d4_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "d4_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "d4_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "d4_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "digital_5",
+    "text": "Bạn thường sử dụng các dịch vụ trực tuyến để thanh toán hóa đơn?",
+    "type": "single",
+    "category": "digital",
+    "options": [
+      {
+        "id": "d5_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "d5_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "d5_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "d5_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "digital_6",
+    "text": "Bạn thường sử dụng các công cụ trực tuyến để học tập và phát triển kỹ năng?",
+    "type": "single",
+    "category": "digital",
+    "options": [
+      {
+        "id": "d6_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "d6_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "d6_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "d6_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "social_1",
+    "text": "Tôi thường xuyên tham gia vào các hoạt động xã hội như tình nguyện, hội thảo, hoặc các sự kiện cộng đồng?",
+    "type": "single",
+    "category": "social",
+    "options": [
+      {
+        "id": "s1_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "s1_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "s1_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "s1_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "social_2",
+    "text": "Tôi sẵn sàng giúp đỡ bạn bè, gia đình khi họ cần?",
+    "type": "single",
+    "category": "social",
+    "options": [
+      {
+        "id": "s2_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "s2_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "s2_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "s2_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "social_3",
+    "text": "Tôi thường xuyên giữ liên lạc với bạn bè, người thân qua điện thoại, thư từ, hoặc các phương tiện trực tuyến?",
+    "type": "single",
+    "category": "social",
+    "options": [
+      {
+        "id": "s3_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "s3_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "s3_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "s3_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "social_4",
+    "text": "Tôi sẵn sàng tham gia vào các cuộc thảo luận, tranh luận về các vấn đề xã hội?",
+    "type": "single",
+    "category": "social",
+    "options": [
+      {
+        "id": "s4_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "s4_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "s4_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "s4_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "social_5",
+    "text": "Tôi thường xuyên thể hiện sự quan tâm, chăm sóc đến những người xung quanh?",
+    "type": "single",
+    "category": "social",
+    "options": [
+      {
+        "id": "s5_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "s5_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "s5_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "s5_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "fitness_1",
+    "text": "Bạn thường tập thể dục bao nhiêu lần trong tuần?",
+    "type": "single",
+    "category": "fitness",
+    "options": [
+      {
+        "id": "f1_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "f1_2",
+        "text": "1-2 lần",
+        "value": 2
+      },
+      {
+        "id": "f1_3",
+        "text": "3-4 lần",
+        "value": 3
+      },
+      {
+        "id": "f1_4",
+        "text": "Trên 4 lần",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "fitness_2",
+    "text": "Bạn thường dành bao nhiêu thời gian cho việc tập thể dục mỗi lần?",
+    "type": "single",
+    "category": "fitness",
+    "options": [
+      {
+        "id": "f2_1",
+        "text": "Dưới 30 phút",
+        "value": 1
+      },
+      {
+        "id": "f2_2",
+        "text": "30-60 phút",
+        "value": 2
+      },
+      {
+        "id": "f2_3",
+        "text": "1-2 giờ",
+        "value": 3
+      },
+      {
+        "id": "f2_4",
+        "text": "Trên 2 giờ",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "fitness_3",
+    "text": "Bạn thường ăn bao nhiêu bữa mỗi ngày?",
+    "type": "single",
+    "category": "fitness",
+    "options": [
+      {
+        "id": "f3_1",
+        "text": "Dưới 3 bữa",
+        "value": 1
+      },
+      {
+        "id": "f3_2",
+        "text": "3 bữa",
+        "value": 2
+      },
+      {
+        "id": "f3_3",
+        "text": "4 bữa",
+        "value": 3
+      },
+      {
+        "id": "f3_4",
+        "text": "Trên 4 bữa",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "fitness_4",
+    "text": "Bạn thường uống bao nhiêu lít nước mỗi ngày?",
+    "type": "single",
+    "category": "fitness",
+    "options": [
+      {
+        "id": "f4_1",
+        "text": "Dưới 1 lít",
+        "value": 1
+      },
+      {
+        "id": "f4_2",
+        "text": "1-2 lít",
+        "value": 2
+      },
+      {
+        "id": "f4_3",
+        "text": "2-3 lít",
+        "value": 3
+      },
+      {
+        "id": "f4_4",
+        "text": "Trên 3 lít",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "fitness_5",
+    "text": "Bạn thường đi ngủ vào lúc mấy giờ?",
+    "type": "single",
+    "category": "fitness",
+    "options": [
+      {
+        "id": "f5_1",
+        "text": "Sau 12h đêm",
+        "value": 1
+      },
+      {
+        "id": "f5_2",
+        "text": "11-12h đêm",
+        "value": 2
+      },
+      {
+        "id": "f5_3",
+        "text": "10-11h đêm",
+        "value": 3
+      },
+      {
+        "id": "f5_4",
+        "text": "Trước 10h đêm",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "fitness_6",
+    "text": "Bạn thường dành bao nhiêu thời gian cho việc nghỉ ngơi mỗi ngày?",
+    "type": "single",
+    "category": "fitness",
+    "options": [
+      {
+        "id": "f6_1",
+        "text": "Dưới 30 phút",
+        "value": 1
+      },
+      {
+        "id": "f6_2",
+        "text": "30-60 phút",
+        "value": 2
+      },
+      {
+        "id": "f6_3",
+        "text": "1-2 giờ",
+        "value": 3
+      },
+      {
+        "id": "f6_4",
+        "text": "Trên 2 giờ",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "sleep_1",
+    "text": "Bạn thường đi ngủ vào lúc mấy giờ?",
+    "type": "single",
+    "category": "sleep",
+    "options": [
+      {
+        "id": "s1_1",
+        "text": "Sau 12 giờ đêm",
+        "value": 1
+      },
+      {
+        "id": "s1_2",
+        "text": "Từ 10 giờ đến 12 giờ đêm",
+        "value": 2
+      },
+      {
+        "id": "s1_3",
+        "text": "Từ 9 giờ đến 10 giờ tối",
+        "value": 3
+      },
+      {
+        "id": "s1_4",
+        "text": "Trước 9 giờ tối",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "sleep_2",
+    "text": "Bạn thường ngủ bao nhiêu giờ mỗi đêm?",
+    "type": "single",
+    "category": "sleep",
+    "options": [
+      {
+        "id": "s2_1",
+        "text": "Ít hơn 5 giờ",
+        "value": 1
+      },
+      {
+        "id": "s2_2",
+        "text": "Từ 5 đến 6 giờ",
+        "value": 2
+      },
+      {
+        "id": "s2_3",
+        "text": "Từ 7 đến 8 giờ",
+        "value": 3
+      },
+      {
+        "id": "s2_4",
+        "text": "Trên 8 giờ",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "sleep_3",
+    "text": "Bạn thường thức dậy vào lúc mấy giờ?",
+    "type": "single",
+    "category": "sleep",
+    "options": [
+      {
+        "id": "s3_1",
+        "text": "Sau 9 giờ sáng",
+        "value": 1
+      },
+      {
+        "id": "s3_2",
+        "text": "Từ 8 giờ đến 9 giờ sáng",
+        "value": 2
+      },
+      {
+        "id": "s3_3",
+        "text": "Từ 7 giờ đến 8 giờ sáng",
+        "value": 3
+      },
+      {
+        "id": "s3_4",
+        "text": "Trước 7 giờ sáng",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "sleep_4",
+    "text": "Bạn có thường xuyên bị mất ngủ không?",
+    "type": "single",
+    "category": "sleep",
+    "options": [
+      {
+        "id": "s4_1",
+        "text": "Luôn luôn",
+        "value": 1
+      },
+      {
+        "id": "s4_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "s4_3",
+        "text": "Hiếm khi",
+        "value": 3
+      },
+      {
+        "id": "s4_4",
+        "text": "Không bao giờ",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "sleep_5",
+    "text": "Bạn có thường tạo không gian ngủ thoải mái không?",
+    "type": "single",
+    "category": "sleep",
+    "options": [
+      {
+        "id": "s5_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "s5_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "s5_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "s5_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "energy_1",
+    "text": "Tôi thường xuyên tập thể dục vào buổi sáng?",
+    "type": "single",
+    "category": "energy",
+    "options": [
+      {
+        "id": "e1_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "e1_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "e1_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "e1_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "energy_2",
+    "text": "Tôi thường xuyên uống đủ nước trong ngày?",
+    "type": "single",
+    "category": "energy",
+    "options": [
+      {
+        "id": "e2_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "e2_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "e2_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "e2_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "energy_3",
+    "text": "Tôi thường xuyên đi ngủ sớm trước 11 giờ tối?",
+    "type": "single",
+    "category": "energy",
+    "options": [
+      {
+        "id": "e3_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "e3_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "e3_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "e3_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "energy_4",
+    "text": "Tôi thường xuyên ăn sáng đầy đủ?",
+    "type": "single",
+    "category": "energy",
+    "options": [
+      {
+        "id": "e4_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "e4_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "e4_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "e4_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "energy_5",
+    "text": "Tôi thường xuyên thực hiện các hoạt động thư giãn như thiền hoặc yoga?",
+    "type": "single",
+    "category": "energy",
+    "options": [
+      {
+        "id": "e5_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "e5_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "e5_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "e5_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "energy_6",
+    "text": "Tôi thường xuyên dành thời gian cho các hoạt động ngoài trời?",
+    "type": "single",
+    "category": "energy",
+    "options": [
+      {
+        "id": "e6_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "e6_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "e6_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "e6_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "control_1",
+    "text": "Bạn thường kiểm soát cảm xúc của mình khi gặp tình huống khó chịu?",
+    "type": "single",
+    "category": "control",
+    "options": [
+      {
+        "id": "c1_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "c1_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "c1_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "c1_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "control_2",
+    "text": "Bạn có thường xuyên lên kế hoạch và tổ chức công việc của mình?",
+    "type": "single",
+    "category": "control",
+    "options": [
+      {
+        "id": "c2_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "c2_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "c2_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "c2_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "control_3",
+    "text": "Bạn thường kiểm soát việc chi tiêu của mình?",
+    "type": "single",
+    "category": "control",
+    "options": [
+      {
+        "id": "c3_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "c3_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "c3_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "c3_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "control_4",
+    "text": "Bạn có thường xuyên đặt mục tiêu và theo đuổi chúng?",
+    "type": "single",
+    "category": "control",
+    "options": [
+      {
+        "id": "c4_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "c4_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "c4_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "c4_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "control_5",
+    "text": "Bạn thường kiểm soát thời gian của mình để đạt được hiệu quả cao?",
+    "type": "single",
+    "category": "control",
+    "options": [
+      {
+        "id": "c5_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "c5_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "c5_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "c5_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
+    ]
+  }
+]
