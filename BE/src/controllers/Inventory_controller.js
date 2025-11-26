@@ -22,13 +22,46 @@ const useShield = asyncHandler(async (req, res) => {
         });
     }
 
-    const result = await streakProtectionService.useShieldManually(req.user.id, habitId);
+    // Kiểm tra user có đủ shield không
+    const user = await User.findById(req.user.id);
 
-    if (!result.success) {
-        return res.status(400).json(result);
+    if (!user) {
+        return res.status(404).json({
+            success: false,
+            message: 'User not found'
+        });
     }
 
-    res.json(result);
+    if (user.inventory.streakShields <= 0) {
+        return res.status(400).json({
+            success: false,
+            message: 'Không đủ Shield để sử dụng'
+        });
+    }
+    const updatedUser = await User.findByIdAndUpdate(
+        req.user.id,
+        {
+            $inc: { 'inventory.streakShields': -1 },
+            $push: {
+                itemUsageHistory: {
+                    itemType: 'shield',
+                    habitId: habitId,
+                    usedAt: new Date(),
+                    autoUsed: false
+                }
+            }
+        },
+        {
+            new: true,
+            runValidators: false
+        }
+    );
+
+    res.json({
+        success: true,
+        message: 'Đã sử dụng Shield thành công',
+        inventory: updatedUser.inventory
+    });
 });
 
 const useFreezeToken = asyncHandler(async (req, res) => {
@@ -48,13 +81,52 @@ const useFreezeToken = asyncHandler(async (req, res) => {
         });
     }
 
-    const result = await streakProtectionService.useFreezeToken(req.user.id, habitId, days);
+    if (days < 1 || days > 30) {
+        return res.status(400).json({
+            success: false,
+            message: 'days phải từ 1 đến 30'
+        });
+    }
+    const user = await User.findById(req.user.id);
 
-    if (!result.success) {
-        return res.status(400).json(result);
+    if (!user) {
+        return res.status(404).json({
+            success: false,
+            message: 'User not found'
+        });
     }
 
-    res.json(result);
+    if (user.inventory.freezeTokens <= 0) {
+        return res.status(400).json({
+            success: false,
+            message: 'Không đủ Freeze Token để sử dụng'
+        });
+    }
+    const updatedUser = await User.findByIdAndUpdate(
+        req.user.id,
+        {
+            $inc: { 'inventory.freezeTokens': -1 },
+            $push: {
+                itemUsageHistory: {
+                    itemType: 'freezeToken',
+                    habitId: habitId,
+                    usedAt: new Date(),
+                    autoUsed: false,
+                    freezeDays: days
+                }
+            }
+        },
+        {
+            new: true,
+            runValidators: false
+        }
+    );
+
+    res.json({
+        success: true,
+        message: `Đã đóng băng habit ${days} ngày`,
+        inventory: updatedUser.inventory
+    });
 });
 
 const useReviveToken = asyncHandler(async (req, res) => {
@@ -67,13 +139,48 @@ const useReviveToken = asyncHandler(async (req, res) => {
         });
     }
 
-    const result = await streakProtectionService.useReviveToken(req.user.id, habitId);
+    // Kiểm tra user có đủ revive token không
+    const user = await User.findById(req.user.id);
 
-    if (!result.success) {
-        return res.status(400).json(result);
+    if (!user) {
+        return res.status(404).json({
+            success: false,
+            message: 'User not found'
+        });
     }
 
-    res.json(result);
+    if (user.inventory.reviveTokens <= 0) {
+        return res.status(400).json({
+            success: false,
+            message: 'Không đủ Revive Token để sử dụng'
+        });
+    }
+
+    // ✅ Update trực tiếp không qua validation
+    const updatedUser = await User.findByIdAndUpdate(
+        req.user.id,
+        {
+            $inc: { 'inventory.reviveTokens': -1 },
+            $push: {
+                itemUsageHistory: {
+                    itemType: 'reviveToken',
+                    habitId: habitId,
+                    usedAt: new Date(),
+                    autoUsed: false
+                }
+            }
+        },
+        {
+            new: true,
+            runValidators: false
+        }
+    );
+
+    res.json({
+        success: true,
+        message: 'Đã hồi sinh streak thành công',
+        inventory: updatedUser.inventory
+    });
 });
 
 const getProtectionSettings = asyncHandler(async (req, res) => {
