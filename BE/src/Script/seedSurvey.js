@@ -2,1621 +2,3509 @@
 // Survey Questions
 // Survey Questions
 const surveyQuestions = [
-  // ==================== HEALTH ====================
   {
-    id: 'health_1',
-    text: 'Mức độ hoạt động thể chất hiện tại của bạn như thế nào?',
-    type: 'single',
-    category: 'health',
-    options: [
-      { id: 'h1_1', text: 'Rất thấp (hiếm khi tập)', value: 1 },
-      { id: 'h1_2', text: 'Thấp (1-2 lần/tuần)', value: 2 },
-      { id: 'h1_3', text: 'Trung bình (3-4 lần/tuần)', value: 3 },
-      { id: 'h1_4', text: 'Cao (5+ lần/tuần)', value: 4 }
+    "id": "health_1",
+    "text": "Bạn thường xuyên tập thể dục không?",
+    "type": "single",
+    "category": "health",
+    "options": [
+      {
+        "id": "h1_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "h1_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "h1_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "h1_4",
+        "text": "Mỗi ngày",
+        "value": 4
+      }
     ]
   },
   {
-    id: 'health_2',
-    text: 'Chất lượng giấc ngủ của bạn như thế nào?',
-    type: 'single',
-    category: 'health',
-    options: [
-      { id: 'h2_1', text: 'Kém (dưới 6 tiếng, thường xuyên thức giấc)', value: 1 },
-      { id: 'h2_2', text: 'Khá (6-7 tiếng, đôi khi thức giấc)', value: 2 },
-      { id: 'h2_3', text: 'Tốt (7-8 tiếng, ngủ khá ngon)', value: 3 },
-      { id: 'h2_4', text: 'Xuất sắc (trên 8 tiếng, ngủ rất ngon)', value: 4 }
+    "id": "health_2",
+    "text": "Bạn thường xuyên ăn rau và trái cây không?",
+    "type": "single",
+    "category": "health",
+    "options": [
+      {
+        "id": "h2_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "h2_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "h2_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "h2_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
     ]
   },
   {
-    id: 'health_3',
-    text: 'Bạn uống đủ nước mỗi ngày không?',
-    type: 'single',
-    category: 'health',
-    options: [
-      { id: 'h3_1', text: 'Hiếm khi nhớ uống nước (dưới 1L)', value: 1 },
-      { id: 'h3_2', text: 'Uống nhưng chưa đủ (1-1.5L)', value: 2 },
-      { id: 'h3_3', text: 'Uống đủ 1.5-2L/ngày', value: 3 },
-      { id: 'h3_4', text: 'Luôn duy trì đủ nước (trên 2L)', value: 4 }
+    "id": "health_3",
+    "text": "Bạn thường xuyên uống đủ nước không?",
+    "type": "single",
+    "category": "health",
+    "options": [
+      {
+        "id": "h3_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "h3_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "h3_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "h3_4",
+        "text": "Mỗi ngày",
+        "value": 4
+      }
     ]
   },
   {
-    id: 'health_4',
-    text: 'Chế độ ăn uống của bạn như thế nào?',
-    type: 'single',
-    category: 'health',
-    options: [
-      { id: 'h4_1', text: 'Ăn uống tùy tiện, nhiều đồ ăn nhanh', value: 1 },
-      { id: 'h4_2', text: 'Cố gắng ăn uống lành mạnh nhưng chưa đều đặn', value: 2 },
-      { id: 'h4_3', text: 'Ăn uống cân bằng, có rau quả', value: 3 },
-      { id: 'h4_4', text: 'Chế độ ăn rất lành mạnh và khoa học', value: 4 }
+    "id": "health_4",
+    "text": "Bạn thường xuyên đi khám sức khỏe không?",
+    "type": "single",
+    "category": "health",
+    "options": [
+      {
+        "id": "h4_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "h4_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "h4_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "h4_4",
+        "text": "Định kỳ",
+        "value": 4
+      }
     ]
   },
   {
-    id: 'health_5',
-    text: 'Bạn có thường xuyên khám sức khỏe định kỳ không?',
-    type: 'single',
-    category: 'health',
-    options: [
-      { id: 'h5_1', text: 'Chưa bao giờ', value: 1 },
-      { id: 'h5_2', text: 'Vài năm một lần', value: 2 },
-      { id: 'h5_3', text: 'Mỗi năm một lần', value: 3 },
-      { id: 'h5_4', text: 'Đều đặn 6 tháng/lần', value: 4 }
+    "id": "health_5",
+    "text": "Bạn thường xuyên ngủ đủ giấc không?",
+    "type": "single",
+    "category": "health",
+    "options": [
+      {
+        "id": "h5_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "h5_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "h5_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "h5_4",
+        "text": "Mỗi ngày",
+        "value": 4
+      }
     ]
   },
   {
-    id: 'health_6',
-    text: 'Bạn có uống vitamin hoặc thực phẩm bổ sung không?',
-    type: 'single',
-    category: 'health',
-    options: [
-      { id: 'h6_1', text: 'Không bao giờ', value: 1 },
-      { id: 'h6_2', text: 'Thỉnh thoảng khi nhớ', value: 2 },
-      { id: 'h6_3', text: 'Khá đều đặn', value: 3 },
-      { id: 'h6_4', text: 'Rất đều đặn mỗi ngày', value: 4 }
-    ]
-  },
-
-  // ==================== PRODUCTIVITY ====================
-  {
-    id: 'productivity_1',
-    text: 'Bạn quản lý công việc hằng ngày như thế nào?',
-    type: 'single',
-    category: 'productivity',
-    options: [
-      { id: 'p1_1', text: 'Thường cảm thấy quá tải, không có hệ thống', value: 1 },
-      { id: 'p1_2', text: 'Quản lý được nhưng có thể tốt hơn', value: 2 },
-      { id: 'p1_3', text: 'Có hệ thống tổ chức tốt', value: 3 },
-      { id: 'p1_4', text: 'Rất có tổ chức và hiệu quả', value: 4 }
-    ]
-  },
-  {
-    id: 'productivity_2',
-    text: 'Khả năng tập trung của bạn khi làm việc?',
-    type: 'single',
-    category: 'productivity',
-    options: [
-      { id: 'p2_1', text: 'Dễ bị phân tâm, khó tập trung', value: 1 },
-      { id: 'p2_2', text: 'Tập trung được 30-45 phút', value: 2 },
-      { id: 'p2_3', text: 'Tập trung tốt trong 1-2 giờ', value: 3 },
-      { id: 'p2_4', text: 'Có thể tập trung sâu nhiều giờ', value: 4 }
+    "id": "health_6",
+    "text": "Bạn thường xuyên quản lý stress không?",
+    "type": "single",
+    "category": "health",
+    "options": [
+      {
+        "id": "h6_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "h6_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "h6_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "h6_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
     ]
   },
   {
-    id: 'productivity_3',
-    text: 'Bạn có danh sách việc cần làm (to-do list) không?',
-    type: 'single',
-    category: 'productivity',
-    options: [
-      { id: 'p3_1', text: 'Không có, làm việc tùy hứng', value: 1 },
-      { id: 'p3_2', text: 'Thỉnh thoảng ghi chép', value: 2 },
-      { id: 'p3_3', text: 'Có to-do list hằng ngày', value: 3 },
-      { id: 'p3_4', text: 'Có hệ thống quản lý công việc chi tiết', value: 4 }
+    "id": "productivity_1",
+    "text": "Bạn thường dành bao nhiêu thời gian mỗi ngày để lên kế hoạch và tổ chức công việc?",
+    "type": "single",
+    "category": "productivity",
+    "options": [
+      {
+        "id": "p1_1",
+        "text": "Ít hơn 15 phút",
+        "value": 1
+      },
+      {
+        "id": "p1_2",
+        "text": "15-30 phút",
+        "value": 2
+      },
+      {
+        "id": "p1_3",
+        "text": "30-60 phút",
+        "value": 3
+      },
+      {
+        "id": "p1_4",
+        "text": "Trên 60 phút",
+        "value": 4
+      }
     ]
   },
   {
-    id: 'productivity_4',
-    text: 'Bạn có thường xuyên trì hoãn công việc không?',
-    type: 'single',
-    category: 'productivity',
-    options: [
-      { id: 'p4_1', text: 'Thường xuyên trì hoãn', value: 1 },
-      { id: 'p4_2', text: 'Thỉnh thoảng trì hoãn', value: 2 },
-      { id: 'p4_3', text: 'Hiếm khi trì hoãn', value: 3 },
-      { id: 'p4_4', text: 'Không bao giờ trì hoãn', value: 4 }
+    "id": "productivity_2",
+    "text": "Bạn thường bắt đầu công việc vào lúc nào trong ngày?",
+    "type": "single",
+    "category": "productivity",
+    "options": [
+      {
+        "id": "p2_1",
+        "text": "Sau 10h sáng",
+        "value": 1
+      },
+      {
+        "id": "p2_2",
+        "text": "8-10h sáng",
+        "value": 2
+      },
+      {
+        "id": "p2_3",
+        "text": "7-8h sáng",
+        "value": 3
+      },
+      {
+        "id": "p2_4",
+        "text": "Trước 7h sáng",
+        "value": 4
+      }
     ]
   },
   {
-    id: 'productivity_5',
-    text: 'Không gian làm việc của bạn như thế nào?',
-    type: 'single',
-    category: 'productivity',
-    options: [
-      { id: 'p5_1', text: 'Lộn xộn, bừa bộn', value: 1 },
-      { id: 'p5_2', text: 'Khá ngăn nắp nhưng chưa tối ưu', value: 2 },
-      { id: 'p5_3', text: 'Ngăn nắp và tổ chức tốt', value: 3 },
-      { id: 'p5_4', text: 'Rất sạch sẽ, tối ưu hóa', value: 4 }
+    "id": "productivity_3",
+    "text": "Bạn thường dành bao nhiêu thời gian mỗi ngày để học hỏi và phát triển kỹ năng mới?",
+    "type": "single",
+    "category": "productivity",
+    "options": [
+      {
+        "id": "p3_1",
+        "text": "Ít hơn 15 phút",
+        "value": 1
+      },
+      {
+        "id": "p3_2",
+        "text": "15-30 phút",
+        "value": 2
+      },
+      {
+        "id": "p3_3",
+        "text": "30-60 phút",
+        "value": 3
+      },
+      {
+        "id": "p3_4",
+        "text": "Trên 60 phút",
+        "value": 4
+      }
     ]
   },
   {
-    id: 'productivity_6',
-    text: 'Bạn có thói quen dậy sớm không?',
-    type: 'single',
-    category: 'productivity',
-    options: [
-      { id: 'p6_1', text: 'Thường dậy muộn (sau 8h)', value: 1 },
-      { id: 'p6_2', text: 'Dậy khoảng 7-8h', value: 2 },
-      { id: 'p6_3', text: 'Dậy khoảng 6-7h', value: 3 },
-      { id: 'p6_4', text: 'Dậy rất sớm (trước 6h)', value: 4 }
-    ]
-  },
-
-  // ==================== LEARNING ====================
-  {
-    id: 'learning_1',
-    text: 'Bạn có thường xuyên học hỏi điều mới không?',
-    type: 'single',
-    category: 'learning',
-    options: [
-      { id: 'l1_1', text: 'Hiếm khi', value: 1 },
-      { id: 'l1_2', text: 'Thỉnh thoảng', value: 2 },
-      { id: 'l1_3', text: 'Thường xuyên', value: 3 },
-      { id: 'l1_4', text: 'Hằng ngày', value: 4 }
-    ]
-  },
-  {
-    id: 'learning_2',
-    text: 'Bạn đọc sách bao lâu một lần?',
-    type: 'single',
-    category: 'learning',
-    options: [
-      { id: 'l2_1', text: 'Hiếm khi đọc sách', value: 1 },
-      { id: 'l2_2', text: 'Vài tháng một lần', value: 2 },
-      { id: 'l2_3', text: 'Mỗi tháng 1-2 cuốn', value: 3 },
-      { id: 'l2_4', text: 'Đọc sách hằng ngày', value: 4 }
+    "id": "productivity_4",
+    "text": "Bạn thường xử lý bao nhiêu công việc cùng lúc?",
+    "type": "single",
+    "category": "productivity",
+    "options": [
+      {
+        "id": "p4_1",
+        "text": "Trên 5 công việc",
+        "value": 1
+      },
+      {
+        "id": "p4_2",
+        "text": "3-5 công việc",
+        "value": 2
+      },
+      {
+        "id": "p4_3",
+        "text": "2 công việc",
+        "value": 3
+      },
+      {
+        "id": "p4_4",
+        "text": "1 công việc",
+        "value": 4
+      }
     ]
   },
   {
-    id: 'learning_3',
-    text: 'Bạn có học ngoại ngữ hoặc kỹ năng mới không?',
-    type: 'single',
-    category: 'learning',
-    options: [
-      { id: 'l3_1', text: 'Chưa có kế hoạch học', value: 1 },
-      { id: 'l3_2', text: 'Có ý định nhưng chưa bắt đầu', value: 2 },
-      { id: 'l3_3', text: 'Đang học 1-2 lần/tuần', value: 3 },
-      { id: 'l3_4', text: 'Học đều đặn mỗi ngày', value: 4 }
+    "id": "productivity_5",
+    "text": "Bạn thường dành bao nhiêu thời gian mỗi tuần để xem xét và điều chỉnh kế hoạch?",
+    "type": "single",
+    "category": "productivity",
+    "options": [
+      {
+        "id": "p5_1",
+        "text": "Ít hơn 30 phút",
+        "value": 1
+      },
+      {
+        "id": "p5_2",
+        "text": "30 phút đến 1 giờ",
+        "value": 2
+      },
+      {
+        "id": "p5_3",
+        "text": "1-2 giờ",
+        "value": 3
+      },
+      {
+        "id": "p5_4",
+        "text": "Trên 2 giờ",
+        "value": 4
+      }
     ]
   },
   {
-    id: 'learning_4',
-    text: 'Bạn có nghe podcast hoặc xem video giáo dục không?',
-    type: 'single',
-    category: 'learning',
-    options: [
-      { id: 'l4_1', text: 'Không bao giờ', value: 1 },
-      { id: 'l4_2', text: 'Thỉnh thoảng', value: 2 },
-      { id: 'l4_3', text: 'Thường xuyên', value: 3 },
-      { id: 'l4_4', text: 'Hầu như mỗi ngày', value: 4 }
+    "id": "productivity_6",
+    "text": "Bạn thường cảm thấy mức độ tập trung khi làm việc như thế nào?",
+    "type": "single",
+    "category": "productivity",
+    "options": [
+      {
+        "id": "p6_1",
+        "text": "Rất dễ bị phân tâm",
+        "value": 1
+      },
+      {
+        "id": "p6_2",
+        "text": "Dễ bị phân tâm",
+        "value": 2
+      },
+      {
+        "id": "p6_3",
+        "text": "Khá tập trung",
+        "value": 3
+      },
+      {
+        "id": "p6_4",
+        "text": "Rất tập trung",
+        "value": 4
+      }
     ]
   },
   {
-    id: 'learning_5',
-    text: 'Bạn có ghi chép lại những gì học được không?',
-    type: 'single',
-    category: 'learning',
-    options: [
-      { id: 'l5_1', text: 'Không bao giờ ghi chép', value: 1 },
-      { id: 'l5_2', text: 'Thỉnh thoảng ghi chép', value: 2 },
-      { id: 'l5_3', text: 'Thường xuyên ghi chép', value: 3 },
-      { id: 'l5_4', text: 'Luôn ghi chép mọi thứ', value: 4 }
-    ]
-  },
-
-  // ==================== MINDFUL ====================
-  {
-    id: 'mindful_1',
-    text: 'Bạn quản lý stress như thế nào?',
-    type: 'single',
-    category: 'mindful',
-    options: [
-      { id: 'm1_1', text: 'Khó kiểm soát stress, thường lo âu', value: 1 },
-      { id: 'm1_2', text: 'Có một vài cách đối phó', value: 2 },
-      { id: 'm1_3', text: 'Quản lý stress khá tốt', value: 3 },
-      { id: 'm1_4', text: 'Rất tốt trong việc thư giãn', value: 4 }
-    ]
-  },
-  {
-    id: 'mindful_2',
-    text: 'Bạn có thực hành thiền, yoga hay các hoạt động mindfulness không?',
-    type: 'single',
-    category: 'mindful',
-    options: [
-      { id: 'm2_1', text: 'Chưa từng thử', value: 1 },
-      { id: 'm2_2', text: 'Thỉnh thoảng', value: 2 },
-      { id: 'm2_3', text: 'Vài lần mỗi tuần', value: 3 },
-      { id: 'm2_4', text: 'Thực hành đều đặn hằng ngày', value: 4 }
+    "id": "learning_1",
+    "text": "Bạn thường dành bao nhiêu thời gian mỗi ngày để đọc sách hoặc tài liệu không liên quan đến công việc?",
+    "type": "single",
+    "category": "learning",
+    "options": [
+      {
+        "id": "l1_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "l1_2",
+        "text": "Dưới 30 phút",
+        "value": 2
+      },
+      {
+        "id": "l1_3",
+        "text": "Từ 30 phút đến 1 giờ",
+        "value": 3
+      },
+      {
+        "id": "l1_4",
+        "text": "Trên 1 giờ",
+        "value": 4
+      }
     ]
   },
   {
-    id: 'mindful_3',
-    text: 'Bạn có viết nhật ký hoặc ghi lại cảm xúc không?',
-    type: 'single',
-    category: 'mindful',
-    options: [
-      { id: 'm3_1', text: 'Không bao giờ', value: 1 },
-      { id: 'm3_2', text: 'Thỉnh thoảng khi buồn', value: 2 },
-      { id: 'm3_3', text: 'Vài lần mỗi tuần', value: 3 },
-      { id: 'm3_4', text: 'Viết nhật ký hằng ngày', value: 4 }
+    "id": "learning_2",
+    "text": "Bạn tham gia các khóa học trực tuyến hoặc offline để cải thiện kỹ năng của mình bao nhiêu lần trong năm?",
+    "type": "single",
+    "category": "learning",
+    "options": [
+      {
+        "id": "l2_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "l2_2",
+        "text": "1-2 lần",
+        "value": 2
+      },
+      {
+        "id": "l2_3",
+        "text": "3-5 lần",
+        "value": 3
+      },
+      {
+        "id": "l2_4",
+        "text": "Trên 5 lần",
+        "value": 4
+      }
     ]
   },
   {
-    id: 'mindful_4',
-    text: 'Bạn có dành thời gian ra ngoài tiếp xúc thiên nhiên không?',
-    type: 'single',
-    category: 'mindful',
-    options: [
-      { id: 'm4_1', text: 'Hiếm khi ra ngoài', value: 1 },
-      { id: 'm4_2', text: 'Thỉnh thoảng', value: 2 },
-      { id: 'm4_3', text: 'Thường xuyên', value: 3 },
-      { id: 'm4_4', text: 'Hằng ngày', value: 4 }
+    "id": "learning_3",
+    "text": "Bạn thường thảo luận về chủ đề phát triển cá nhân hoặc học hỏi với bạn bè hoặc đồng nghiệp bao nhiêu lần trong tuần?",
+    "type": "single",
+    "category": "learning",
+    "options": [
+      {
+        "id": "l3_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "l3_2",
+        "text": "1-2 lần",
+        "value": 2
+      },
+      {
+        "id": "l3_3",
+        "text": "3-4 lần",
+        "value": 3
+      },
+      {
+        "id": "l3_4",
+        "text": "Trên 4 lần",
+        "value": 4
+      }
     ]
   },
   {
-    id: 'mindful_5',
-    text: 'Bạn có thực hành biết ơn (gratitude) không?',
-    type: 'single',
-    category: 'mindful',
-    options: [
-      { id: 'm5_1', text: 'Chưa từng nghĩ đến', value: 1 },
-      { id: 'm5_2', text: 'Thỉnh thoảng', value: 2 },
-      { id: 'm5_3', text: 'Khá thường xuyên', value: 3 },
-      { id: 'm5_4', text: 'Mỗi ngày', value: 4 }
+    "id": "learning_4",
+    "text": "Bạn thường dành bao nhiêu thời gian để xem video hoặc podcast giáo dục ngoài công việc?",
+    "type": "single",
+    "category": "learning",
+    "options": [
+      {
+        "id": "l4_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "l4_2",
+        "text": "Dưới 30 phút",
+        "value": 2
+      },
+      {
+        "id": "l4_3",
+        "text": "Từ 30 phút đến 1 giờ",
+        "value": 3
+      },
+      {
+        "id": "l4_4",
+        "text": "Trên 1 giờ",
+        "value": 4
+      }
     ]
   },
   {
-    id: 'mindful_6',
-    text: 'Bạn có ngắt kết nối với công nghệ để thư giãn không?',
-    type: 'single',
-    category: 'mindful',
-    options: [
-      { id: 'm6_1', text: 'Luôn online', value: 1 },
-      { id: 'm6_2', text: 'Thỉnh thoảng', value: 2 },
-      { id: 'm6_3', text: 'Thường xuyên', value: 3 },
-      { id: 'm6_4', text: 'Mỗi ngày có thời gian digital detox', value: 4 }
-    ]
-  },
-
-  // ==================== FINANCE ====================
-  {
-    id: 'finance_1',
-    text: 'Tình hình tài chính cá nhân của bạn?',
-    type: 'single',
-    category: 'finance',
-    options: [
-      { id: 'f1_1', text: 'Không theo dõi chi tiêu', value: 1 },
-      { id: 'f1_2', text: 'Theo dõi nhưng chưa có kế hoạch', value: 2 },
-      { id: 'f1_3', text: 'Có ngân sách và tiết kiệm', value: 3 },
-      { id: 'f1_4', text: 'Quản lý tài chính rất tốt', value: 4 }
-    ]
-  },
-  {
-    id: 'finance_2',
-    text: 'Bạn có tiết kiệm đều đặn không?',
-    type: 'single',
-    category: 'finance',
-    options: [
-      { id: 'f2_1', text: 'Không có tiết kiệm', value: 1 },
-      { id: 'f2_2', text: 'Tiết kiệm khi có dư', value: 2 },
-      { id: 'f2_3', text: 'Tiết kiệm 10-20% thu nhập', value: 3 },
-      { id: 'f2_4', text: 'Tiết kiệm trên 20% thu nhập', value: 4 }
+    "id": "learning_5",
+    "text": "Bạn thường ghi chú và xem lại những nội dung quan trọng từ các nguồn học tập bao nhiêu lần trong tuần?",
+    "type": "single",
+    "category": "learning",
+    "options": [
+      {
+        "id": "l5_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "l5_2",
+        "text": "1-2 lần",
+        "value": 2
+      },
+      {
+        "id": "l5_3",
+        "text": "3-4 lần",
+        "value": 3
+      },
+      {
+        "id": "l5_4",
+        "text": "Trên 4 lần",
+        "value": 4
+      }
     ]
   },
   {
-    id: 'finance_3',
-    text: 'Bạn có theo dõi chi tiêu hằng ngày không?',
-    type: 'single',
-    category: 'finance',
-    options: [
-      { id: 'f3_1', text: 'Không theo dõi', value: 1 },
-      { id: 'f3_2', text: 'Thỉnh thoảng ghi chép', value: 2 },
-      { id: 'f3_3', text: 'Ghi chép đều đặn', value: 3 },
-      { id: 'f3_4', text: 'Có app tự động theo dõi', value: 4 }
+    "id": "mindful_1",
+    "text": "Bạn thường dành thời gian mỗi ngày để thiền hoặc thực hành thở sâu không?",
+    "type": "single",
+    "category": "mindful",
+    "options": [
+      {
+        "id": "m1_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "m1_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "m1_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "m1_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
     ]
   },
   {
-    id: 'finance_4',
-    text: 'Bạn có mua sắm impulsive (mua theo cảm xúc) không?',
-    type: 'single',
-    category: 'finance',
-    options: [
-      { id: 'f4_1', text: 'Thường xuyên mua không cần thiết', value: 1 },
-      { id: 'f4_2', text: 'Thỉnh thoảng mua vội', value: 2 },
-      { id: 'f4_3', text: 'Hiếm khi mua vội', value: 3 },
-      { id: 'f4_4', text: 'Luôn suy nghĩ kỹ trước khi mua', value: 4 }
+    "id": "mindful_2",
+    "text": "Khi đối mặt với tình huống khó khăn, bạn thường cố gắng giữ bình tĩnh và tập trung vào giải pháp không?",
+    "type": "single",
+    "category": "mindful",
+    "options": [
+      {
+        "id": "m2_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "m2_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "m2_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "m2_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
     ]
   },
   {
-    id: 'finance_5',
-    text: 'Bạn có cập nhật kiến thức về tài chính không?',
-    type: 'single',
-    category: 'finance',
-    options: [
-      { id: 'f5_1', text: 'Không quan tâm', value: 1 },
-      { id: 'f5_2', text: 'Thỉnh thoảng đọc', value: 2 },
-      { id: 'f5_3', text: 'Thường xuyên cập nhật', value: 3 },
-      { id: 'f5_4', text: 'Đọc tin tức tài chính hằng ngày', value: 4 }
-    ]
-  },
-
-  // ==================== DIGITAL ====================
-  {
-    id: 'digital_1',
-    text: 'Bạn sử dụng mạng xã hội bao nhiêu giờ mỗi ngày?',
-    type: 'single',
-    category: 'digital',
-    options: [
-      { id: 'd1_1', text: 'Trên 4 giờ/ngày', value: 1 },
-      { id: 'd1_2', text: '2-4 giờ/ngày', value: 2 },
-      { id: 'd1_3', text: '1-2 giờ/ngày', value: 3 },
-      { id: 'd1_4', text: 'Dưới 1 giờ/ngày', value: 4 }
-    ]
-  },
-  {
-    id: 'digital_2',
-    text: 'Bạn có sử dụng điện thoại trước khi ngủ không?',
-    type: 'single',
-    category: 'digital',
-    options: [
-      { id: 'd2_1', text: 'Luôn luôn, cho đến khi ngủ', value: 1 },
-      { id: 'd2_2', text: 'Thường xuyên', value: 2 },
-      { id: 'd2_3', text: 'Thỉnh thoảng', value: 3 },
-      { id: 'd2_4', text: 'Không, tắt điện thoại trước 1 tiếng', value: 4 }
+    "id": "mindful_3",
+    "text": "Bạn thường dành thời gian để quan sát và đánh giá cảm xúc của mình không?",
+    "type": "single",
+    "category": "mindful",
+    "options": [
+      {
+        "id": "m3_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "m3_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "m3_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "m3_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
     ]
   },
   {
-    id: 'digital_3',
-    text: 'Email inbox của bạn như thế nào?',
-    type: 'single',
-    category: 'digital',
-    options: [
-      { id: 'd3_1', text: 'Hàng nghìn email chưa đọc', value: 1 },
-      { id: 'd3_2', text: 'Vài trăm email chưa đọc', value: 2 },
-      { id: 'd3_3', text: 'Thỉnh thoảng dọn dẹp', value: 3 },
-      { id: 'd3_4', text: 'Luôn giữ inbox sạch sẽ', value: 4 }
+    "id": "mindful_4",
+    "text": "Khi làm việc hoặc học tập, bạn thường tập trung vào nhiệm vụ hiện tại và tránh phân tâm không?",
+    "type": "single",
+    "category": "mindful",
+    "options": [
+      {
+        "id": "m4_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "m4_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "m4_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "m4_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
     ]
   },
   {
-    id: 'digital_4',
-    text: 'Bạn có sao lưu dữ liệu quan trọng không?',
-    type: 'single',
-    category: 'digital',
-    options: [
-      { id: 'd4_1', text: 'Chưa bao giờ backup', value: 1 },
-      { id: 'd4_2', text: 'Rất hiếm khi', value: 2 },
-      { id: 'd4_3', text: 'Thỉnh thoảng backup', value: 3 },
-      { id: 'd4_4', text: 'Backup đều đặn', value: 4 }
+    "id": "mindful_5",
+    "text": "Bạn thường thực hành lòng biết ơn và trân trọng những gì mình có không?",
+    "type": "single",
+    "category": "mindful",
+    "options": [
+      {
+        "id": "m5_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "m5_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "m5_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "m5_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
     ]
   },
   {
-    id: 'digital_5',
-    text: 'Bạn có học các công cụ digital mới để nâng cao năng suất không?',
-    type: 'single',
-    category: 'digital',
-    options: [
-      { id: 'd5_1', text: 'Không bao giờ', value: 1 },
-      { id: 'd5_2', text: 'Rất hiếm', value: 2 },
-      { id: 'd5_3', text: 'Thỉnh thoảng', value: 3 },
-      { id: 'd5_4', text: 'Thường xuyên học công cụ mới', value: 4 }
+    "id": "mindful_6",
+    "text": "Khi giao tiếp với người khác, bạn thường cố gắng lắng nghe và hiểu quan điểm của họ không?",
+    "type": "single",
+    "category": "mindful",
+    "options": [
+      {
+        "id": "m6_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "m6_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "m6_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "m6_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
     ]
   },
   {
-    id: 'digital_6',
-    text: 'Bạn có kiểm soát thông báo trên điện thoại không?',
-    type: 'single',
-    category: 'digital',
-    options: [
-      { id: 'd6_1', text: 'Bật hết thông báo', value: 1 },
-      { id: 'd6_2', text: 'Tắt một số thông báo', value: 2 },
-      { id: 'd6_3', text: 'Chỉ giữ thông báo quan trọng', value: 3 },
-      { id: 'd6_4', text: 'Tắt hầu hết thông báo', value: 4 }
-    ]
-  },
-
-  // ==================== SOCIAL ====================
-  {
-    id: 'social_1',
-    text: 'Bạn duy trì mối quan hệ với gia đình thế nào?',
-    type: 'single',
-    category: 'social',
-    options: [
-      { id: 's1_1', text: 'Hiếm khi liên lạc', value: 1 },
-      { id: 's1_2', text: 'Liên lạc vài lần mỗi tháng', value: 2 },
-      { id: 's1_3', text: 'Liên lạc mỗi tuần', value: 3 },
-      { id: 's1_4', text: 'Liên lạc hằng ngày', value: 4 }
-    ]
-  },
-  {
-    id: 'social_2',
-    text: 'Bạn gặp gỡ bạn bè bao lâu một lần?',
-    type: 'single',
-    category: 'social',
-    options: [
-      { id: 's2_1', text: 'Rất hiếm, vài tháng/lần', value: 1 },
-      { id: 's2_2', text: 'Mỗi tháng 1-2 lần', value: 2 },
-      { id: 's2_3', text: 'Mỗi tuần', value: 3 },
-      { id: 's2_4', text: 'Vài lần mỗi tuần', value: 4 }
+    "id": "finance_1",
+    "text": "Bạn thường xuyên kiểm tra tài khoản ngân hàng của mình?",
+    "type": "single",
+    "category": "finance",
+    "options": [
+      {
+        "id": "f1_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "f1_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "f1_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "f1_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
     ]
   },
   {
-    id: 'social_3',
-    text: 'Bạn có khen ngợi hoặc động viên người khác không?',
-    type: 'single',
-    category: 'social',
-    options: [
-      { id: 's3_1', text: 'Hiếm khi nghĩ đến', value: 1 },
-      { id: 's3_2', text: 'Thỉnh thoảng', value: 2 },
-      { id: 's3_3', text: 'Khá thường xuyên', value: 3 },
-      { id: 's3_4', text: 'Rất thường xuyên', value: 4 }
+    "id": "finance_2",
+    "text": "Bạn có lập ngân sách hàng tháng cho chi tiêu của mình?",
+    "type": "single",
+    "category": "finance",
+    "options": [
+      {
+        "id": "f2_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "f2_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "f2_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "f2_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
     ]
   },
   {
-    id: 'social_4',
-    text: 'Bạn có tham gia hoạt động cộng đồng không?',
-    type: 'single',
-    category: 'social',
-    options: [
-      { id: 's4_1', text: 'Chưa bao giờ', value: 1 },
-      { id: 's4_2', text: 'Rất hiếm', value: 2 },
-      { id: 's4_3', text: 'Thỉnh thoảng', value: 3 },
-      { id: 's4_4', text: 'Thường xuyên', value: 4 }
+    "id": "finance_3",
+    "text": "Bạn có tiết kiệm một phần thu nhập hàng tháng?",
+    "type": "single",
+    "category": "finance",
+    "options": [
+      {
+        "id": "f3_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "f3_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "f3_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "f3_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
     ]
   },
   {
-    id: 'social_5',
-    text: 'Bạn có chủ động nhắn tin hỏi thăm bạn bè không?',
-    type: 'single',
-    category: 'social',
-    options: [
-      { id: 's5_1', text: 'Hiếm khi chủ động', value: 1 },
-      { id: 's5_2', text: 'Thỉnh thoảng', value: 2 },
-      { id: 's5_3', text: 'Thường xuyên', value: 3 },
-      { id: 's5_4', text: 'Rất thường xuyên', value: 4 }
-    ]
-  },
-
-  // ==================== FITNESS ====================
-  {
-    id: 'fitness_1',
-    text: 'Bạn tập gym hoặc cardio bao lâu một lần?',
-    type: 'single',
-    category: 'fitness',
-    options: [
-      { id: 'fit1_1', text: 'Không bao giờ', value: 1 },
-      { id: 'fit1_2', text: '1-2 lần/tuần', value: 2 },
-      { id: 'fit1_3', text: '3-4 lần/tuần', value: 3 },
-      { id: 'fit1_4', text: '5+ lần/tuần', value: 4 }
-    ]
-  },
-  {
-    id: 'fitness_2',
-    text: 'Bạn đi bộ bao nhiêu bước mỗi ngày?',
-    type: 'single',
-    category: 'fitness',
-    options: [
-      { id: 'fit2_1', text: 'Dưới 3000 bước', value: 1 },
-      { id: 'fit2_2', text: '3000-6000 bước', value: 2 },
-      { id: 'fit2_3', text: '6000-10000 bước', value: 3 },
-      { id: 'fit2_4', text: 'Trên 10000 bước', value: 4 }
+    "id": "finance_4",
+    "text": "Bạn thường xuyên đầu tư vào các tài sản như chứng khoán, bất động sản?",
+    "type": "single",
+    "category": "finance",
+    "options": [
+      {
+        "id": "f4_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "f4_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "f4_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "f4_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
     ]
   },
   {
-    id: 'fitness_3',
-    text: 'Bạn có tập yoga hoặc pilates không?',
-    type: 'single',
-    category: 'fitness',
-    options: [
-      { id: 'fit3_1', text: 'Chưa bao giờ', value: 1 },
-      { id: 'fit3_2', text: 'Thỉnh thoảng', value: 2 },
-      { id: 'fit3_3', text: 'Vài lần mỗi tuần', value: 3 },
-      { id: 'fit3_4', text: 'Đều đặn hằng ngày', value: 4 }
+    "id": "finance_5",
+    "text": "Bạn có tránh mua những thứ không cần thiết để tiết kiệm tiền?",
+    "type": "single",
+    "category": "finance",
+    "options": [
+      {
+        "id": "f5_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "f5_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "f5_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "f5_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
     ]
   },
   {
-    id: 'fitness_4',
-    text: 'Bạn có tập các bài tập sức bền (strength training) không?',
-    type: 'single',
-    category: 'fitness',
-    options: [
-      { id: 'fit4_1', text: 'Không bao giờ', value: 1 },
-      { id: 'fit4_2', text: '1-2 lần/tuần', value: 2 },
-      { id: 'fit4_3', text: '3-4 lần/tuần', value: 3 },
-      { id: 'fit4_4', text: 'Trên 5 lần/tuần', value: 4 }
+    "id": "digital_1",
+    "text": "Bạn thường xuyên sử dụng điện thoại di động để truy cập internet?",
+    "type": "single",
+    "category": "digital",
+    "options": [
+      {
+        "id": "d1_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "d1_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "d1_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "d1_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
     ]
   },
   {
-    id: 'fitness_5',
-    text: 'Bạn có tham gia các môn thể thao nào không?',
-    type: 'single',
-    category: 'fitness',
-    options: [
-      { id: 'fit5_1', text: 'Không chơi thể thao', value: 1 },
-      { id: 'fit5_2', text: 'Thỉnh thoảng', value: 2 },
-      { id: 'fit5_3', text: 'Thường xuyên', value: 3 },
-      { id: 'fit5_4', text: 'Rất đều đặn', value: 4 }
+    "id": "digital_2",
+    "text": "Bạn thường cập nhật các thông tin mới về công nghệ?",
+    "type": "single",
+    "category": "digital",
+    "options": [
+      {
+        "id": "d2_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "d2_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "d2_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "d2_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
     ]
   },
   {
-    id: 'fitness_6',
-    text: 'Bạn có khởi động và giãn cơ trước/sau khi tập không?',
-    type: 'single',
-    category: 'fitness',
-    options: [
-      { id: 'fit6_1', text: 'Không bao giờ', value: 1 },
-      { id: 'fit6_2', text: 'Thỉnh thoảng', value: 2 },
-      { id: 'fit6_3', text: 'Thường xuyên', value: 3 },
-      { id: 'fit6_4', text: 'Luôn luôn', value: 4 }
-    ]
-  },
-
-  // ==================== SLEEP ====================
-  {
-    id: 'sleep_1',
-    text: 'Bạn ngủ bao nhiêu giờ mỗi đêm?',
-    type: 'single',
-    category: 'sleep',
-    options: [
-      { id: 'sl1_1', text: 'Dưới 6 giờ', value: 1 },
-      { id: 'sl1_2', text: '6-7 giờ', value: 2 },
-      { id: 'sl1_3', text: '7-8 giờ', value: 3 },
-      { id: 'sl1_4', text: 'Trên 8 giờ', value: 4 }
-    ]
-  },
-  {
-    id: 'sleep_2',
-    text: 'Giờ giấc ngủ của bạn có đều đặn không?',
-    type: 'single',
-    category: 'sleep',
-    options: [
-      { id: 'sl2_1', text: 'Mỗi ngày khác nhau', value: 1 },
-      { id: 'sl2_2', text: 'Tương đối đều', value: 2 },
-      { id: 'sl2_3', text: 'Khá đều đặn', value: 3 },
-      { id: 'sl2_4', text: 'Rất đều đặn', value: 4 }
+    "id": "digital_3",
+    "text": "Bạn thường sử dụng các ứng dụng trực tuyến để quản lý công việc?",
+    "type": "single",
+    "category": "digital",
+    "options": [
+      {
+        "id": "d3_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "d3_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "d3_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "d3_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
     ]
   },
   {
-    id: 'sleep_3',
-    text: 'Bạn có ngủ trưa không?',
-    type: 'single',
-    category: 'sleep',
-    options: [
-      { id: 'sl3_1', text: 'Không bao giờ', value: 1 },
-      { id: 'sl3_2', text: 'Thỉnh thoảng', value: 2 },
-      { id: 'sl3_3', text: 'Ngủ trưa dưới 30 phút', value: 3 },
-      { id: 'sl3_4', text: 'Ngủ trưa hợp lý (20-30 phút)', value: 4 }
+    "id": "digital_4",
+    "text": "Bạn thường chia sẻ thông tin trên mạng xã hội?",
+    "type": "single",
+    "category": "digital",
+    "options": [
+      {
+        "id": "d4_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "d4_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "d4_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "d4_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
     ]
   },
   {
-    id: 'sleep_4',
-    text: 'Môi trường phòng ngủ của bạn như thế nào?',
-    type: 'single',
-    category: 'sleep',
-    options: [
-      { id: 'sl4_1', text: 'Ồn ào, có nhiều ánh sáng', value: 1 },
-      { id: 'sl4_2', text: 'Khá ổn nhưng chưa tối ưu', value: 2 },
-      { id: 'sl4_3', text: 'Yên tĩnh, tối', value: 3 },
-      { id: 'sl4_4', text: 'Rất lý tưởng cho giấc ngủ', value: 4 }
+    "id": "digital_5",
+    "text": "Bạn thường sử dụng các dịch vụ trực tuyến để thanh toán hóa đơn?",
+    "type": "single",
+    "category": "digital",
+    "options": [
+      {
+        "id": "d5_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "d5_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "d5_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "d5_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
     ]
   },
   {
-    id: 'sleep_5',
-    text: 'Bạn có uống caffeine sau 2 giờ chiều không?',
-    type: 'single',
-    category: 'sleep',
-    options: [
-      { id: 'sl5_1', text: 'Thường xuyên uống caffeine buổi chiều/tối', value: 1 },
-      { id: 'sl5_2', text: 'Thỉnh thoảng uống', value: 2 },
-      { id: 'sl5_3', text: 'Hiếm khi uống sau 2 giờ chiều', value: 3 },
-      { id: 'sl5_4', text: 'Không bao giờ uống sau 2 giờ chiều', value: 4 }
-    ]
-  },
-
-  // ==================== ENERGY ====================
-  {
-    id: 'energy_1',
-    text: 'Mức năng lượng của bạn trong ngày như thế nào?',
-    type: 'single',
-    category: 'energy',
-    options: [
-      { id: 'e1_1', text: 'Thường xuyên mệt mỏi', value: 1 },
-      { id: 'e1_2', text: 'Đôi khi mệt mỏi', value: 2 },
-      { id: 'e1_3', text: 'Năng lượng ổn định', value: 3 },
-      { id: 'e1_4', text: 'Luôn tràn đầy năng lượng', value: 4 }
-    ]
-  },
-  {
-    id: 'energy_2',
-    text: 'Bạn có nghỉ ngơi giữa giờ làm việc không?',
-    type: 'single',
-    category: 'energy',
-    options: [
-      { id: 'e2_1', text: 'Không bao giờ nghỉ, làm liên tục', value: 1 },
-      { id: 'e2_2', text: 'Thỉnh thoảng nghỉ', value: 2 },
-      { id: 'e2_3', text: 'Nghỉ đều đặn', value: 3 },
-      { id: 'e2_4', text: 'Có hệ thống nghỉ ngơi tối ưu', value: 4 }
+    "id": "digital_6",
+    "text": "Bạn thường sử dụng các công cụ trực tuyến để học tập và phát triển kỹ năng?",
+    "type": "single",
+    "category": "digital",
+    "options": [
+      {
+        "id": "d6_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "d6_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "d6_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "d6_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
     ]
   },
   {
-    id: 'energy_3',
-    text: 'Bạn uống cà phê bao nhiêu tách mỗi ngày?',
-    type: 'single',
-    category: 'energy',
-    options: [
-      { id: 'e3_1', text: 'Trên 4 tách/ngày', value: 1 },
-      { id: 'e3_2', text: '2-3 tách/ngày', value: 2 },
-      { id: 'e3_3', text: '1 tách/ngày', value: 3 },
-      { id: 'e3_4', text: 'Không uống cà phê', value: 4 }
+    "id": "social_1",
+    "text": "Tôi thường xuyên tham gia vào các hoạt động xã hội như tình nguyện, hội thảo, hoặc các sự kiện cộng đồng?",
+    "type": "single",
+    "category": "social",
+    "options": [
+      {
+        "id": "s1_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "s1_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "s1_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "s1_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
     ]
   },
   {
-    id: 'energy_4',
-    text: 'Bạn có ăn nhẹ lành mạnh giữa các bữa không?',
-    type: 'single',
-    category: 'energy',
-    options: [
-      { id: 'e4_1', text: 'Thường ăn đồ ăn vặt không lành mạnh', value: 1 },
-      { id: 'e4_2', text: 'Thỉnh thoảng ăn lành mạnh', value: 2 },
-      { id: 'e4_3', text: 'Thường ăn nhẹ lành mạnh', value: 3 },
-      { id: 'e4_4', text: 'Luôn chọn đồ ăn nhẹ lành mạnh', value: 4 }
+    "id": "social_2",
+    "text": "Tôi sẵn sàng giúp đỡ bạn bè, gia đình khi họ cần?",
+    "type": "single",
+    "category": "social",
+    "options": [
+      {
+        "id": "s2_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "s2_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "s2_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "s2_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
     ]
   },
   {
-    id: 'energy_5',
-    text: 'Bạn có vận động nhẹ vào buổi sáng không?',
-    type: 'single',
-    category: 'energy',
-    options: [
-      { id: 'e5_1', text: 'Không bao giờ', value: 1 },
-      { id: 'e5_2', text: 'Thỉnh thoảng', value: 2 },
-      { id: 'e5_3', text: 'Thường xuyên', value: 3 },
-      { id: 'e5_4', text: 'Hằng ngày', value: 4 }
+    "id": "social_3",
+    "text": "Tôi thường xuyên giữ liên lạc với bạn bè, người thân qua điện thoại, thư từ, hoặc các phương tiện trực tuyến?",
+    "type": "single",
+    "category": "social",
+    "options": [
+      {
+        "id": "s3_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "s3_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "s3_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "s3_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
     ]
   },
   {
-    id: 'energy_6',
-    text: 'Bạn có kiểm soát lượng đường tiêu thụ không?',
-    type: 'single',
-    category: 'energy',
-    options: [
-      { id: 'e6_1', text: 'Ăn nhiều đường, đồ ngọt', value: 1 },
-      { id: 'e6_2', text: 'Cố gắng giảm nhưng chưa đều', value: 2 },
-      { id: 'e6_3', text: 'Kiểm soát khá tốt', value: 3 },
-      { id: 'e6_4', text: 'Hạn chế đường rất tốt', value: 4 }
-    ]
-  },
-
-  // ==================== CONTROL ====================
-  {
-    id: 'control_1',
-    text: 'Bạn có kỷ luật trong việc thực hiện mục tiêu không?',
-    type: 'single',
-    category: 'control',
-    options: [
-      { id: 'c1_1', text: 'Thường bỏ dở giữa chừng', value: 1 },
-      { id: 'c1_2', text: 'Đôi khi kiên trì được', value: 2 },
-      { id: 'c1_3', text: 'Khá kiên định', value: 3 },
-      { id: 'c1_4', text: 'Rất kỷ luật', value: 4 }
-    ]
-  },
-  {
-    id: 'control_2',
-    text: 'Bạn có thói quen dậy sớm không?',
-    type: 'single',
-    category: 'control',
-    options: [
-      { id: 'c2_1', text: 'Thường dậy muộn (sau 8h)', value: 1 },
-      { id: 'c2_2', text: 'Dậy khoảng 7-8h', value: 2 },
-      { id: 'c2_3', text: 'Dậy khoảng 6-7h', value: 3 },
-      { id: 'c2_4', text: 'Dậy rất sớm (trước 6h)', value: 4 }
+    "id": "social_4",
+    "text": "Tôi sẵn sàng tham gia vào các cuộc thảo luận, tranh luận về các vấn đề xã hội?",
+    "type": "single",
+    "category": "social",
+    "options": [
+      {
+        "id": "s4_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "s4_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "s4_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "s4_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
     ]
   },
   {
-    id: 'control_3',
-    text: 'Không gian làm việc của bạn như thế nào?',
-    type: 'single',
-    category: 'control',
-    options: [
-      { id: 'c3_1', text: 'Lộn xộn, bừa bộn', value: 1 },
-      { id: 'c3_2', text: 'Khá ngăn nắp nhưng chưa tối ưu', value: 2 },
-      { id: 'c3_3', text: 'Ngăn nắp và tổ chức tốt', value: 3 },
-      { id: 'c3_4', text: 'Rất sạch sẽ, tối ưu hóa', value: 4 }
+    "id": "social_5",
+    "text": "Tôi thường xuyên thể hiện sự quan tâm, chăm sóc đến những người xung quanh?",
+    "type": "single",
+    "category": "social",
+    "options": [
+      {
+        "id": "s5_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "s5_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "s5_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "s5_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
     ]
   },
   {
-    id: 'control_4',
-    text: 'Bạn có lập kế hoạch cho ngày hôm sau không?',
-    type: 'single',
-    category: 'control',
-    options: [
-      { id: 'c4_1', text: 'Không bao giờ', value: 1 },
-      { id: 'c4_2', text: 'Thỉnh thoảng', value: 2 },
-      { id: 'c4_3', text: 'Thường xuyên', value: 3 },
-      { id: 'c4_4', text: 'Hằng ngày', value: 4 }
+    "id": "fitness_1",
+    "text": "Bạn thường tập thể dục bao nhiêu lần trong tuần?",
+    "type": "single",
+    "category": "fitness",
+    "options": [
+      {
+        "id": "f1_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "f1_2",
+        "text": "1-2 lần",
+        "value": 2
+      },
+      {
+        "id": "f1_3",
+        "text": "3-4 lần",
+        "value": 3
+      },
+      {
+        "id": "f1_4",
+        "text": "Trên 4 lần",
+        "value": 4
+      }
     ]
   },
   {
-    id: 'control_5',
-    text: 'Bạn có xu hướng trì hoãn công việc khó không?',
-    type: 'single',
-    category: 'control',
-    options: [
-      { id: 'c5_1', text: 'Luôn trì hoãn việc khó', value: 1 },
-      { id: 'c5_2', text: 'Thường trì hoãn', value: 2 },
-      { id: 'c5_3', text: 'Thỉnh thoảng trì hoãn', value: 3 },
-      { id: 'c5_4', text: 'Làm ngay việc khó trước', value: 4 }
+    "id": "fitness_2",
+    "text": "Bạn thường dành bao nhiêu thời gian cho việc tập thể dục mỗi lần?",
+    "type": "single",
+    "category": "fitness",
+    "options": [
+      {
+        "id": "f2_1",
+        "text": "Dưới 30 phút",
+        "value": 1
+      },
+      {
+        "id": "f2_2",
+        "text": "30-60 phút",
+        "value": 2
+      },
+      {
+        "id": "f2_3",
+        "text": "1-2 giờ",
+        "value": 3
+      },
+      {
+        "id": "f2_4",
+        "text": "Trên 2 giờ",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "fitness_3",
+    "text": "Bạn thường ăn bao nhiêu bữa mỗi ngày?",
+    "type": "single",
+    "category": "fitness",
+    "options": [
+      {
+        "id": "f3_1",
+        "text": "Dưới 3 bữa",
+        "value": 1
+      },
+      {
+        "id": "f3_2",
+        "text": "3 bữa",
+        "value": 2
+      },
+      {
+        "id": "f3_3",
+        "text": "4 bữa",
+        "value": 3
+      },
+      {
+        "id": "f3_4",
+        "text": "Trên 4 bữa",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "fitness_4",
+    "text": "Bạn thường uống bao nhiêu lít nước mỗi ngày?",
+    "type": "single",
+    "category": "fitness",
+    "options": [
+      {
+        "id": "f4_1",
+        "text": "Dưới 1 lít",
+        "value": 1
+      },
+      {
+        "id": "f4_2",
+        "text": "1-2 lít",
+        "value": 2
+      },
+      {
+        "id": "f4_3",
+        "text": "2-3 lít",
+        "value": 3
+      },
+      {
+        "id": "f4_4",
+        "text": "Trên 3 lít",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "fitness_5",
+    "text": "Bạn thường đi ngủ vào lúc mấy giờ?",
+    "type": "single",
+    "category": "fitness",
+    "options": [
+      {
+        "id": "f5_1",
+        "text": "Sau 12h đêm",
+        "value": 1
+      },
+      {
+        "id": "f5_2",
+        "text": "11-12h đêm",
+        "value": 2
+      },
+      {
+        "id": "f5_3",
+        "text": "10-11h đêm",
+        "value": 3
+      },
+      {
+        "id": "f5_4",
+        "text": "Trước 10h đêm",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "fitness_6",
+    "text": "Bạn thường dành bao nhiêu thời gian cho việc nghỉ ngơi mỗi ngày?",
+    "type": "single",
+    "category": "fitness",
+    "options": [
+      {
+        "id": "f6_1",
+        "text": "Dưới 30 phút",
+        "value": 1
+      },
+      {
+        "id": "f6_2",
+        "text": "30-60 phút",
+        "value": 2
+      },
+      {
+        "id": "f6_3",
+        "text": "1-2 giờ",
+        "value": 3
+      },
+      {
+        "id": "f6_4",
+        "text": "Trên 2 giờ",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "sleep_1",
+    "text": "Bạn thường đi ngủ vào lúc mấy giờ?",
+    "type": "single",
+    "category": "sleep",
+    "options": [
+      {
+        "id": "s1_1",
+        "text": "Sau 12 giờ đêm",
+        "value": 1
+      },
+      {
+        "id": "s1_2",
+        "text": "Từ 10 giờ đến 12 giờ đêm",
+        "value": 2
+      },
+      {
+        "id": "s1_3",
+        "text": "Từ 9 giờ đến 10 giờ tối",
+        "value": 3
+      },
+      {
+        "id": "s1_4",
+        "text": "Trước 9 giờ tối",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "sleep_2",
+    "text": "Bạn thường ngủ bao nhiêu giờ mỗi đêm?",
+    "type": "single",
+    "category": "sleep",
+    "options": [
+      {
+        "id": "s2_1",
+        "text": "Ít hơn 5 giờ",
+        "value": 1
+      },
+      {
+        "id": "s2_2",
+        "text": "Từ 5 đến 6 giờ",
+        "value": 2
+      },
+      {
+        "id": "s2_3",
+        "text": "Từ 7 đến 8 giờ",
+        "value": 3
+      },
+      {
+        "id": "s2_4",
+        "text": "Trên 8 giờ",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "sleep_3",
+    "text": "Bạn thường thức dậy vào lúc mấy giờ?",
+    "type": "single",
+    "category": "sleep",
+    "options": [
+      {
+        "id": "s3_1",
+        "text": "Sau 9 giờ sáng",
+        "value": 1
+      },
+      {
+        "id": "s3_2",
+        "text": "Từ 8 giờ đến 9 giờ sáng",
+        "value": 2
+      },
+      {
+        "id": "s3_3",
+        "text": "Từ 7 giờ đến 8 giờ sáng",
+        "value": 3
+      },
+      {
+        "id": "s3_4",
+        "text": "Trước 7 giờ sáng",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "sleep_4",
+    "text": "Bạn có thường xuyên bị mất ngủ không?",
+    "type": "single",
+    "category": "sleep",
+    "options": [
+      {
+        "id": "s4_1",
+        "text": "Luôn luôn",
+        "value": 1
+      },
+      {
+        "id": "s4_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "s4_3",
+        "text": "Hiếm khi",
+        "value": 3
+      },
+      {
+        "id": "s4_4",
+        "text": "Không bao giờ",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "sleep_5",
+    "text": "Bạn có thường tạo không gian ngủ thoải mái không?",
+    "type": "single",
+    "category": "sleep",
+    "options": [
+      {
+        "id": "s5_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "s5_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "s5_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "s5_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "energy_1",
+    "text": "Tôi thường xuyên tập thể dục vào buổi sáng?",
+    "type": "single",
+    "category": "energy",
+    "options": [
+      {
+        "id": "e1_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "e1_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "e1_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "e1_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "energy_2",
+    "text": "Tôi thường xuyên uống đủ nước trong ngày?",
+    "type": "single",
+    "category": "energy",
+    "options": [
+      {
+        "id": "e2_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "e2_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "e2_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "e2_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "energy_3",
+    "text": "Tôi thường xuyên đi ngủ sớm trước 11 giờ tối?",
+    "type": "single",
+    "category": "energy",
+    "options": [
+      {
+        "id": "e3_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "e3_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "e3_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "e3_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "energy_4",
+    "text": "Tôi thường xuyên ăn sáng đầy đủ?",
+    "type": "single",
+    "category": "energy",
+    "options": [
+      {
+        "id": "e4_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "e4_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "e4_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "e4_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "energy_5",
+    "text": "Tôi thường xuyên thực hiện các hoạt động thư giãn như thiền hoặc yoga?",
+    "type": "single",
+    "category": "energy",
+    "options": [
+      {
+        "id": "e5_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "e5_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "e5_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "e5_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "energy_6",
+    "text": "Tôi thường xuyên dành thời gian cho các hoạt động ngoài trời?",
+    "type": "single",
+    "category": "energy",
+    "options": [
+      {
+        "id": "e6_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "e6_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "e6_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "e6_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "control_1",
+    "text": "Bạn thường kiểm soát cảm xúc của mình khi gặp tình huống khó chịu?",
+    "type": "single",
+    "category": "control",
+    "options": [
+      {
+        "id": "c1_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "c1_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "c1_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "c1_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "control_2",
+    "text": "Bạn có thường xuyên lên kế hoạch và tổ chức công việc của mình?",
+    "type": "single",
+    "category": "control",
+    "options": [
+      {
+        "id": "c2_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "c2_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "c2_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "c2_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "control_3",
+    "text": "Bạn thường kiểm soát việc chi tiêu của mình?",
+    "type": "single",
+    "category": "control",
+    "options": [
+      {
+        "id": "c3_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "c3_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "c3_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "c3_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "control_4",
+    "text": "Bạn có thường xuyên đặt mục tiêu và theo đuổi chúng?",
+    "type": "single",
+    "category": "control",
+    "options": [
+      {
+        "id": "c4_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "c4_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "c4_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "c4_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "control_5",
+    "text": "Bạn thường kiểm soát thời gian của mình để đạt được hiệu quả cao?",
+    "type": "single",
+    "category": "control",
+    "options": [
+      {
+        "id": "c5_1",
+        "text": "Không bao giờ",
+        "value": 1
+      },
+      {
+        "id": "c5_2",
+        "text": "Thỉnh thoảng",
+        "value": 2
+      },
+      {
+        "id": "c5_3",
+        "text": "Thường xuyên",
+        "value": 3
+      },
+      {
+        "id": "c5_4",
+        "text": "Luôn luôn",
+        "value": 4
+      }
     ]
   }
 ];
 
 // Habit Templates
 const habitTemplates = [
-  // ==================== HEALTH ====================
   {
-    name: 'Uống 8 ly nước mỗi ngày',
-    description: 'Duy trì đủ nước cho cơ thể để cải thiện sức khỏe tổng thể',
-    category: 'health',
-    icon: '💧',
-    color: '#3B82F6',
-    frequency: 'daily',
-    trackingMode: 'count',
-    targetCount: 8,
-    unit: 'ly',
-    habitType: 'build',
-    difficulty: 'easy',
-    tips: ['Đặt chai nước trên bàn làm việc', 'Uống nước ngay khi thức dậy', 'Dùng app nhắc nhở'],
-    commonObstacles: ['Quên uống nước', 'Không thích vị nước lọc', 'Bận rộn quá'],
-    benefits: ['Cải thiện làn da', 'Tăng năng lượng', 'Hỗ trợ tiêu hóa'],
-    isPopular: true
+    "name": "Tập thể dục 30 phút mỗi ngày",
+    "description": "Duy trì sức khỏe và trạng thái thể chất tốt",
+    "category": "health",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "🏋️",
+    "color": "#34C759",
+    "tags": [
+      "tập thể dục",
+      "sức khỏe"
+    ],
+    "tips": [
+      "Chọn bài tập phù hợp với thể trạng",
+      "Tập thể dục vào buổi sáng hoặc chiều",
+      "Tìm bạn tập để tăng động lực"
+    ],
+    "commonObstacles": [
+      "Quên tập hoặc bỏ dở",
+      "Không có thời gian trong ngày"
+    ],
+    "benefits": [
+      "Tăng cường sức khỏe tổng thể",
+      "Cải thiện tâm trạng và giảm stress",
+      "Tăng cường hệ miễn dịch"
+    ],
+    "isPopular": true
   },
   {
-    name: 'Ăn 5 phần rau quả mỗi ngày',
-    description: 'Bổ sung vitamin và chất xơ cần thiết cho cơ thể',
-    category: 'health',
-    icon: '🥬',
-    color: '#22C55E',
-    frequency: 'daily',
-    trackingMode: 'count',
-    targetCount: 5,
-    unit: 'phần',
-    habitType: 'build',
-    difficulty: 'medium',
-    tips: ['Chuẩn bị trái cây sẵn', 'Thêm rau vào mỗi bữa ăn', 'Làm sinh tố rau quả'],
-    commonObstacles: ['Rau quả đắt', 'Không có thời gian chuẩn bị', 'Không thích ăn rau'],
-    benefits: ['Tăng cường miễn dịch', 'Cải thiện tiêu hóa', 'Giảm nguy cơ bệnh tật'],
-    isPopular: true
+    "name": "Ăn 5 phần trái cây mỗi ngày",
+    "description": "Bổ sung vitamin và khoáng chất cần thiết cho cơ thể",
+    "category": "health",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "count",
+    "targetCount": 5,
+    "unit": "phần",
+    "habitType": "build",
+    "icon": "🍉",
+    "color": "#FFC107",
+    "tags": [
+      "chế độ ăn uống",
+      "sức khỏe"
+    ],
+    "tips": [
+      "Chọn trái cây theo mùa",
+      "Ăn trái cây vào các bữa phụ",
+      "Trộn trái cây vào salad hoặc sinh tố"
+    ],
+    "commonObstacles": [
+      "Không thích mùi vị của một số trái cây",
+      "Quên mua trái cây khi đi chợ"
+    ],
+    "benefits": [
+      "Cải thiện hệ miễn dịch",
+      "Tăng cường năng lượng",
+      "Hỗ trợ tiêu hóa tốt hơn"
+    ],
+    "isPopular": true
   },
   {
-    name: 'Kiểm tra sức khỏe định kỳ',
-    description: 'Thăm khám sức khỏe tổng quát định kỳ để phát hiện sớm bệnh tật',
-    category: 'health',
-    icon: '🏥',
-    color: '#EF4444',
-    frequency: 'monthly',
-    trackingMode: 'check',
-    targetCount: 1,
-    habitType: 'build',
-    difficulty: 'easy',
-    tips: ['Đặt lịch trước', 'Chuẩn bị danh sách câu hỏi cho bác sĩ', 'Mang theo bảo hiểm y tế'],
-    commonObstacles: ['Không có thời gian', 'Chi phí cao', 'Sợ khám bệnh'],
-    benefits: ['Phát hiện sớm bệnh tật', 'An tâm về sức khỏe', 'Theo dõi chỉ số sức khỏe'],
-    isPopular: false
+    "name": "Ngủ đủ 7-8 giờ mỗi đêm",
+    "description": "Duy trì giấc ngủ chất lượng và sức khỏe tổng thể",
+    "category": "health",
+    "difficulty": "hard",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "😴",
+    "color": "#6495ED",
+    "tags": [
+      "giấc ngủ",
+      "sức khỏe"
+    ],
+    "tips": [
+      "Đặt giờ đi ngủ cố định",
+      "Tạo môi trường ngủ thoải mái",
+      "Tránh sử dụng điện thoại trước khi ngủ"
+    ],
+    "commonObstacles": [
+      "Khó ngủ hoặc mất ngủ",
+      "Bị làm phiền bởi tiếng ồn"
+    ],
+    "benefits": [
+      "Cải thiện tâm trạng và giảm stress",
+      "Tăng cường hệ miễn dịch",
+      "Hỗ trợ hồi phục cơ thể"
+    ],
+    "isPopular": true
   },
   {
-    name: 'Uống vitamin tổng hợp',
-    description: 'Bổ sung vitamin và khoáng chất cần thiết mỗi ngày',
-    category: 'health',
-    icon: '💊',
-    color: '#F59E0B',
-    frequency: 'daily',
-    trackingMode: 'check',
-    targetCount: 1,
-    habitType: 'build',
-    difficulty: 'easy',
-    tips: ['Đặt lọ vitamin ở nơi dễ thấy', 'Uống cùng bữa ăn sáng', 'Đặt nhắc nhở trên điện thoại'],
-    commonObstacles: ['Quên uống', 'Hết thuốc không mua kịp', 'Không chắc nên uống loại nào'],
-    benefits: ['Tăng cường miễn dịch', 'Bổ sung dinh dưỡng thiếu hụt', 'Cải thiện sức khỏe tổng thể'],
-    isPopular: true
+    "name": "Uống 2 ly sữa mỗi ngày",
+    "description": "Bổ sung canxi và vitamin cần thiết cho sức khỏe xương",
+    "category": "health",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "count",
+    "targetCount": 2,
+    "unit": "ly",
+    "habitType": "build",
+    "icon": "🥛",
+    "color": "#F7DC6F",
+    "tags": [
+      "sữa",
+      "sức khỏe xương"
+    ],
+    "tips": [
+      "Chọn loại sữa phù hợp với tuổi và thể trạng",
+      "Uống sữa vào bữa sáng hoặc trước khi ngủ",
+      "Kết hợp sữa với trái cây hoặc bánh mì"
+    ],
+    "commonObstacles": [
+      "Không thích vị sữa",
+      "Quên mua sữa khi đi chợ"
+    ],
+    "benefits": [
+      "Cải thiện sức khỏe xương",
+      "Tăng cường hệ miễn dịch",
+      "Hỗ trợ phát triển cơ thể"
+    ],
+    "isPopular": true
   },
   {
-    name: 'Ăn sáng đầy đủ',
-    description: 'Không bỏ bữa sáng để có năng lượng cho cả ngày',
-    category: 'health',
-    icon: '🍳',
-    color: '#F59E0B',
-    frequency: 'daily',
-    trackingMode: 'check',
-    targetCount: 1,
-    habitType: 'build',
-    difficulty: 'easy',
-    tips: ['Chuẩn bị từ tối hôm trước', 'Chọn món ăn nhanh nhưng bổ dưỡng', 'Dậy sớm 15 phút'],
-    commonObstacles: ['Không có thời gian', 'Ngủ dậy trễ', 'Không đói vào buổi sáng'],
-    benefits: ['Tăng năng lượng', 'Cải thiện tập trung', 'Tăng cường trao đổi chất'],
-    isPopular: true
-  },
-
-  // ==================== FITNESS ====================
-  {
-    name: 'Tập thể dục 30 phút',
-    description: 'Duy trì hoạt động thể chất để khỏe mạnh và có năng lượng',
-    category: 'fitness',
-    icon: '🏃',
-    color: '#F59E0B',
-    frequency: 'daily',
-    trackingMode: 'count',
-    targetCount: 30,
-    unit: 'phút',
-    habitType: 'build',
-    difficulty: 'medium',
-    tips: ['Bắt đầu với 10 phút', 'Chọn hoạt động yêu thích', 'Tập cùng bạn bè'],
-    commonObstacles: ['Thiếu động lực', 'Mệt mỏi', 'Không biết tập gì'],
-    benefits: ['Tăng sức bền', 'Cải thiện tâm trạng', 'Giảm cân', 'Tăng cường sức khỏe tim mạch'],
-    isPopular: true
+    "name": "Đi bộ 30 phút mỗi ngày",
+    "description": "Tăng cường sức khỏe tim mạch và giảm stress",
+    "category": "health",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "🚶",
+    "color": "#8BC34A",
+    "tags": [
+      "đi bộ",
+      "sức khỏe tim mạch"
+    ],
+    "tips": [
+      "Chọn địa điểm đi bộ an toàn",
+      "Đi bộ vào buổi sáng hoặc chiều",
+      "Tìm bạn đi bộ để tăng động lực"
+    ],
+    "commonObstacles": [
+      "Quên đi bộ hoặc bỏ dở",
+      "Không có thời gian trong ngày"
+    ],
+    "benefits": [
+      "Tăng cường sức khỏe tim mạch",
+      "Cải thiện tâm trạng và giảm stress",
+      "Tăng cường hệ miễn dịch"
+    ],
+    "isPopular": true
   },
   {
-    name: 'Đi bộ 10,000 bước',
-    description: 'Duy trì hoạt động đi bộ để cải thiện sức khỏe tim mạch',
-    category: 'fitness',
-    icon: '👟',
-    color: '#6366F1',
-    frequency: 'daily',
-    trackingMode: 'count',
-    targetCount: 10000,
-    unit: 'bước',
-    habitType: 'build',
-    difficulty: 'easy',
-    tips: ['Sử dụng cầu thang thay vì thang máy', 'Đi bộ khi nói chuyện điện thoại', 'Đi bộ đến chợ thay vì lái xe'],
-    commonObstacles: ['Thời tiết xấu', 'Không có thời gian', 'Chân đau'],
-    benefits: ['Cải thiện sức khỏe tim mạch', 'Đốt cháy calories', 'Giảm stress'],
-    isPopular: true
+    "name": "Tập thể dục 30 phút mỗi ngày",
+    "description": "Cải thiện sức khỏe và tinh thần",
+    "category": "productivity",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "🏋️",
+    "color": "#4ADE7E",
+    "tags": [
+      "sức khỏe",
+      "tập thể dục"
+    ],
+    "tips": [
+      "Chọn bài tập phù hợp với thể lực",
+      "Tạo lịch trình tập luyện cố định",
+      "Tìm người đồng hành tập luyện"
+    ],
+    "commonObstacles": [
+      "Thiếu động lực",
+      "Không có thời gian"
+    ],
+    "benefits": [
+      "Tăng cường sức khỏe tổng thể",
+      "Giảm cân và cải thiện vóc dáng",
+      "Tăng cường năng lượng và sự tập trung"
+    ],
+    "isPopular": true
   },
   {
-    name: 'Tập yoga buổi sáng',
-    description: 'Bắt đầu ngày mới với yoga để thư giãn và linh hoạt',
-    category: 'fitness',
-    icon: '🧘',
-    color: '#8B5CF6',
-    frequency: 'daily',
-    trackingMode: 'check',
-    targetCount: 1,
-    habitType: 'build',
-    difficulty: 'easy',
-    tips: ['Tập trên tấm thảm yoga', 'Xem video hướng dẫn', 'Tập vào buổi sáng sau khi thức dậy'],
-    commonObstacles: ['Không đủ không gian', 'Cơ thể cứng', 'Không biết các động tác'],
-    benefits: ['Tăng độ linh hoạt', 'Giảm stress', 'Cải thiện tư thế', 'Tăng cường cân bằng'],
-    isPopular: true
+    "name": "Đọc 1 chương sách mỗi ngày",
+    "description": "Mở rộng kiến thức và cải thiện kỹ năng đọc",
+    "category": "productivity",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "count",
+    "targetCount": 1,
+    "unit": "chương",
+    "habitType": "build",
+    "icon": "📖",
+    "color": "#F7DC6F",
+    "tags": [
+      "đọc sách",
+      "kiến thức"
+    ],
+    "tips": [
+      "Chọn sách phù hợp với sở thích",
+      "Tạo không gian đọc thoải mái",
+      "Đặt mục tiêu đọc hàng ngày"
+    ],
+    "commonObstacles": [
+      "Không có thời gian",
+      "Khó tập trung khi đọc"
+    ],
+    "benefits": [
+      "Mở rộng kiến thức và hiểu biết",
+      "Cải thiện kỹ năng đọc và viết",
+      "Tăng cường khả năng tập trung và tư duy"
+    ],
+    "isPopular": true
   },
   {
-    name: 'Chạy bộ 5km',
-    description: 'Chạy bộ đều đặn để tăng cường sức bền và sức khỏe tim mạch',
-    category: 'fitness',
-    icon: '🏃',
-    color: '#EF4444',
-    frequency: 'daily',
-    trackingMode: 'count',
-    targetCount: 5,
-    unit: 'km',
-    habitType: 'build',
-    difficulty: 'medium',
-    tips: ['Khởi động kỹ trước khi chạy', 'Chạy vào buổi sáng sớm', 'Nghe nhạc khi chạy'],
-    commonObstacles: ['Thời tiết không thuận lợi', 'Đau khớp', 'Thiếu động lực'],
-    benefits: ['Tăng sức bền', 'Đốt cháy calories', 'Cải thiện tâm trạng', 'Tăng cường tim mạch'],
-    isPopular: true
+    "name": "Viết nhật ký 10 phút mỗi ngày",
+    "description": "Tập trung vào suy nghĩ và cảm xúc",
+    "category": "productivity",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "📝",
+    "color": "#8B9467",
+    "tags": [
+      "nhật ký",
+      "tư duy"
+    ],
+    "tips": [
+      "Chọn thời gian và không gian thoải mái",
+      "Viết tự do và không lo lắng về lỗi",
+      "Tập trung vào cảm xúc và suy nghĩ"
+    ],
+    "commonObstacles": [
+      "Không biết viết gì",
+      "Không có thời gian"
+    ],
+    "benefits": [
+      "Tập trung vào suy nghĩ và cảm xúc",
+      "Cải thiện kỹ năng viết và tư duy",
+      "Giảm stress và tăng cường sự tự nhận thức"
+    ],
+    "isPopular": true
   },
   {
-    name: 'Tập plank 2 phút',
-    description: 'Tập plank mỗi ngày để tăng cường cơ bụng và lưng',
-    category: 'fitness',
-    icon: '💪',
-    color: '#F59E0B',
-    frequency: 'daily',
-    trackingMode: 'count',
-    targetCount: 2,
-    unit: 'phút',
-    habitType: 'build',
-    difficulty: 'medium',
-    tips: ['Bắt đầu với 30 giây', 'Tăng dần thời gian mỗi tuần', 'Giữ tư thế chuẩn'],
-    commonObstacles: ['Cơ bụng yếu', 'Đau lưng', 'Chán nản'],
-    benefits: ['Tăng cường cơ core', 'Cải thiện tư thế', 'Giảm đau lưng', 'Tăng sức bền'],
-    isPopular: true
+    "name": "Học 10 từ vựng mới mỗi ngày",
+    "description": "Cải thiện kỹ năng ngôn ngữ",
+    "category": "productivity",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "count",
+    "targetCount": 10,
+    "unit": "từ",
+    "habitType": "build",
+    "icon": "📚",
+    "color": "#34C759",
+    "tags": [
+      "học ngôn ngữ",
+      "từ vựng"
+    ],
+    "tips": [
+      "Chọn tài liệu học phù hợp",
+      "Tạo flashcard để ôn tập",
+      "Tập nói và nghe để cải thiện kỹ năng"
+    ],
+    "commonObstacles": [
+      "Không có thời gian",
+      "Khó nhớ từ vựng"
+    ],
+    "benefits": [
+      "Cải thiện kỹ năng ngôn ngữ",
+      "Tăng cường khả năng giao tiếp",
+      "Mở rộng kiến thức và hiểu biết"
+    ],
+    "isPopular": true
   },
   {
-    name: 'Bơi lội 30 phút',
-    description: 'Bơi lội để rèn luyện toàn thân một cách nhẹ nhàng',
-    category: 'fitness',
-    icon: '🏊',
-    color: '#3B82F6',
-    frequency: 'weekly',
-    trackingMode: 'count',
-    targetCount: 3,
-    unit: 'lần',
-    habitType: 'build',
-    difficulty: 'medium',
-    tips: ['Tìm bể bơi gần nhà', 'Học kỹ thuật bơi đúng cách', 'Đi bơi cùng bạn bè'],
-    commonObstacles: ['Không có bể bơi gần', 'Chi phí cao', 'Không biết bơi'],
-    benefits: ['Rèn luyện toàn thân', 'Nhẹ nhàng với khớp', 'Giảm stress', 'Tăng sức bền'],
-    isPopular: false
-  },
-
-  // ==================== LEARNING ====================
-  {
-    name: 'Đọc sách 20 phút',
-    description: 'Duy trì thói quen đọc sách để mở rộng kiến thức',
-    category: 'learning',
-    icon: '📚',
-    color: '#10B981',
-    frequency: 'daily',
-    trackingMode: 'count',
-    targetCount: 20,
-    unit: 'phút',
-    habitType: 'build',
-    difficulty: 'easy',
-    tips: ['Đọc trước khi ngủ', 'Chọn sách yêu thích', 'Ghi chú ý tưởng hay', 'Mang sách theo người'],
-    commonObstacles: ['Dễ bị phân tâm', 'Không tìm được sách hay', 'Buồn ngủ khi đọc'],
-    benefits: ['Mở rộng kiến thức', 'Cải thiện tập trung', 'Giảm stress', 'Phát triển tư duy'],
-    isPopular: true
+    "name": "Tập trung 25 phút mà không kiểm tra điện thoại",
+    "description": "Tăng cường khả năng tập trung và giảm phân tâm",
+    "category": "productivity",
+    "difficulty": "hard",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "📴",
+    "color": "#FFC080",
+    "tags": [
+      "tập trung",
+      "điện thoại"
+    ],
+    "tips": [
+      "Tắt thông báo và đặt điện thoại ở chế độ im lặng",
+      "Chọn không gian làm việc thoải mái",
+      "Tập trung vào nhiệm vụ và tránh phân tâm"
+    ],
+    "commonObstacles": [
+      "Khó cưỡng lại sự cám dỗ của điện thoại",
+      "Không có động lực"
+    ],
+    "benefits": [
+      "Tăng cường khả năng tập trung",
+      "Giảm phân tâm và tăng năng suất",
+      "Cải thiện chất lượng công việc và cuộc sống"
+    ],
+    "isPopular": true
   },
   {
-    name: 'Học ngoại ngữ 15 phút',
-    description: 'Học một ngôn ngữ mới mỗi ngày để phát triển bản thân',
-    category: 'learning',
-    icon: '🌍',
-    color: '#EC4899',
-    frequency: 'daily',
-    trackingMode: 'count',
-    targetCount: 15,
-    unit: 'phút',
-    habitType: 'build',
-    difficulty: 'medium',
-    tips: ['Dùng app học ngôn ngữ', 'Nghe nhạc/xem phim bằng ngôn ngữ đó', 'Tập nói với người bản xứ'],
-    commonObstacles: ['Quên từ vựng', 'Thiếu động lực', 'Không có môi trường thực hành'],
-    benefits: ['Mở rộng cơ hội nghề nghiệp', 'Kích thích trí não', 'Hiểu văn hóa khác'],
-    isPopular: true
+    "name": "Học 20 từ vựng mỗi ngày",
+    "description": "Cải thiện kỹ năng ngôn ngữ và mở rộng vốn từ",
+    "category": "learning",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "count",
+    "targetCount": 20,
+    "unit": "từ",
+    "habitType": "build",
+    "icon": "📚",
+    "color": "#3B82F6",
+    "tags": [
+      "ngôn ngữ",
+      "vốn từ"
+    ],
+    "tips": [
+      "Sử dụng flashcard",
+      "Học từ vựng theo chủ đề",
+      "Lặp lại từ vựng cũ"
+    ],
+    "commonObstacles": [
+      "Quên từ vựng cũ",
+      "Không có thời gian học"
+    ],
+    "benefits": [
+      "Cải thiện kỹ năng đọc hiểu",
+      "Tăng khả năng giao tiếp",
+      "Mở rộng vốn từ"
+    ],
+    "isPopular": true
   },
   {
-    name: 'Học một kỹ năng mới',
-    description: 'Dành thời gian học kỹ năng mới mỗi tuần',
-    category: 'learning',
-    icon: '🎓',
-    color: '#6366F1',
-    frequency: 'weekly',
-    trackingMode: 'count',
-    targetCount: 3,
-    unit: 'giờ',
-    habitType: 'build',
-    difficulty: 'medium',
-    tips: ['Chọn kỹ năng phù hợp với mục tiêu', 'Tìm khóa học online', 'Thực hành thường xuyên'],
-    commonObstacles: ['Không biết học gì', 'Thiếu thời gian', 'Quá nhiều lựa chọn'],
-    benefits: ['Phát triển sự nghiệp', 'Tăng sự tự tin', 'Mở rộng cơ hội'],
-    isPopular: true
+    "name": "Đọc sách 30 phút mỗi ngày",
+    "description": "Phát triển kiến thức và tư duy",
+    "category": "learning",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "📖",
+    "color": "#8B5CF6",
+    "tags": [
+      "đọc sách",
+      "kiến thức"
+    ],
+    "tips": [
+      "Chọn sách phù hợp với sở thích",
+      "Tạo không gian đọc thoải mái",
+      "Đặt mục tiêu đọc mỗi ngày"
+    ],
+    "commonObstacles": [
+      "Không có thời gian đọc",
+      "Không biết chọn sách nào"
+    ],
+    "benefits": [
+      "Cải thiện kiến thức",
+      "Tăng khả năng tư duy",
+      "Giảm stress và căng thẳng"
+    ],
+    "isPopular": true
   },
   {
-    name: 'Nghe podcast giáo dục',
-    description: 'Nghe podcast để học hỏi trong lúc di chuyển hoặc làm việc nhà',
-    category: 'learning',
-    icon: '🎧',
-    color: '#8B5CF6',
-    frequency: 'daily',
-    trackingMode: 'count',
-    targetCount: 1,
-    unit: 'tập',
-    habitType: 'build',
-    difficulty: 'easy',
-    tips: ['Nghe khi đi làm', 'Chọn chủ đề yêu thích', 'Ghi chú ý tưởng hay'],
-    commonObstacles: ['Không tìm được podcast hay', 'Dễ bị phân tâm', 'Quên nghe'],
-    benefits: ['Học hỏi linh hoạt', 'Tận dụng thời gian', 'Mở rộng kiến thức'],
-    isPopular: true
+    "name": "Luyện viết 500 từ mỗi ngày",
+    "description": "Phát triển kỹ năng viết và tư duy",
+    "category": "learning",
+    "difficulty": "hard",
+    "frequency": "daily",
+    "trackingMode": "count",
+    "targetCount": 500,
+    "unit": "từ",
+    "habitType": "build",
+    "icon": "📝",
+    "color": "#F97316",
+    "tags": [
+      "viết lách",
+      "tư duy"
+    ],
+    "tips": [
+      "Chọn chủ đề phù hợp",
+      "Tạo dàn ý trước khi viết",
+      "Không ngừng viết dù khó"
+    ],
+    "commonObstacles": [
+      "Không biết viết về gì",
+      "Khó khăn trong việc tạo dàn ý"
+    ],
+    "benefits": [
+      "Cải thiện kỹ năng viết",
+      "Tăng khả năng tư duy",
+      "Phát triển sự sáng tạo"
+    ],
+    "isPopular": true
   },
   {
-    name: 'Viết blog/journal học tập',
-    description: 'Ghi lại những gì học được mỗi ngày để củng cố kiến thức',
-    category: 'learning',
-    icon: '✏️',
-    color: '#F59E0B',
-    frequency: 'daily',
-    trackingMode: 'check',
-    targetCount: 1,
-    habitType: 'build',
-    difficulty: 'medium',
-    tips: ['Viết ngắn gọn', 'Ghi chép ngay sau khi học', 'Đọc lại định kỳ'],
-    commonObstacles: ['Không biết viết gì', 'Lười viết', 'Quên không viết'],
-    benefits: ['Củng cố kiến thức', 'Cải thiện kỹ năng viết', 'Theo dõi tiến độ'],
-    isPopular: false
-  },
-
-  // ==================== MINDFUL ====================
-  {
-    name: 'Thiền 10 phút',
-    description: 'Thực hành thiền định để giảm stress và tăng cường tập trung',
-    category: 'mindful',
-    icon: '🧘',
-    color: '#8B5CF6',
-    frequency: 'daily',
-    trackingMode: 'count',
-    targetCount: 10,
-    unit: 'phút',
-    habitType: 'build',
-    difficulty: 'medium',
-    tips: ['Tìm nơi yên tĩnh', 'Sử dụng app hướng dẫn thiền', 'Thiền vào cùng giờ mỗi ngày', 'Tập trung vào hơi thở'],
-    commonObstacles: ['Không thể ngồi yên', 'Suy nghĩ quá nhiều', 'Thiếu kiên nhẫn'],
-    benefits: ['Giảm stress', 'Cải thiện tập trung', 'Tăng cường hạnh phúc', 'Kiểm soát cảm xúc tốt hơn'],
-    isPopular: true
+    "name": "Học một kỹ năng mới mỗi tuần",
+    "description": "Phát triển bản thân và tăng khả năng cạnh tranh",
+    "category": "learning",
+    "difficulty": "medium",
+    "frequency": "weekly",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "📈",
+    "color": "#8B5CF6",
+    "tags": [
+      "phát triển bản thân",
+      "kỹ năng mới"
+    ],
+    "tips": [
+      "Chọn kỹ năng phù hợp với sở thích",
+      "Tạo kế hoạch học tập",
+      "Thực hành đều đặn"
+    ],
+    "commonObstacles": [
+      "Không biết chọn kỹ năng nào",
+      "Khó khăn trong việc thực hành"
+    ],
+    "benefits": [
+      "Tăng khả năng cạnh tranh",
+      "Phát triển bản thân",
+      "Cải thiện chất lượng cuộc sống"
+    ],
+    "isPopular": true
   },
   {
-    name: 'Viết nhật ký biết ơn',
-    description: 'Ghi lại 3 điều biết ơn mỗi ngày để tăng cường tích cực',
-    category: 'mindful',
-    icon: '📖',
-    color: '#F59E0B',
-    frequency: 'daily',
-    trackingMode: 'check',
-    targetCount: 1,
-    habitType: 'build',
-    difficulty: 'easy',
-    tips: ['Viết vào buổi tối', 'Ghi chi tiết cảm xúc', 'Đọc lại khi buồn', 'Dùng sổ tay đẹp'],
-    commonObstacles: ['Không biết viết gì', 'Quên viết', 'Cảm thấy không có gì để biết ơn'],
-    benefits: ['Tăng cường tích cực', 'Cải thiện tâm trạng', 'Nhìn nhận cuộc sống lạc quan hơn'],
-    isPopular: true
+    "name": "Tham gia một khóa học trực tuyến mỗi tháng",
+    "description": "Phát triển kiến thức và kỹ năng",
+    "category": "learning",
+    "difficulty": "easy",
+    "frequency": "monthly",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "📚",
+    "color": "#3B82F6",
+    "tags": [
+      "khóa học trực tuyến",
+      "kiến thức"
+    ],
+    "tips": [
+      "Chọn khóa học phù hợp với sở thích",
+      "Tạo kế hoạch học tập",
+      "Thực hành đều đặn"
+    ],
+    "commonObstacles": [
+      "Không biết chọn khóa học nào",
+      "Khó khăn trong việc thực hành"
+    ],
+    "benefits": [
+      "Cải thiện kiến thức",
+      "Tăng khả năng tư duy",
+      "Phát triển bản thân"
+    ],
+    "isPopular": true
   },
   {
-    name: 'Thực hành hít thở sâu',
-    description: 'Luyện tập hít thở sâu 5 phút để giảm căng thẳng',
-    category: 'mindful',
-    icon: '🌬️',
-    color: '#3B82F6',
-    frequency: 'daily',
-    trackingMode: 'count',
-    targetCount: 5,
-    unit: 'phút',
-    habitType: 'build',
-    difficulty: 'easy',
-    tips: ['Hít vào 4 giây, giữ 4 giây, thở ra 4 giây', 'Làm khi cảm thấy căng thẳng', 'Ngồi thoải mái'],
-    commonObstacles: ['Quên thực hiện', 'Không kiên nhẫn', 'Cảm thấy không hiệu quả'],
-    benefits: ['Giảm lo âu', 'Hạ huyết áp', 'Cải thiện giấc ngủ', 'Tăng sự tỉnh táo'],
-    isPopular: true
+    "name": "Tập yoga buổi sáng",
+    "description": "Bắt đầu ngày mới với cơ thể và tâm trí khỏe mạnh",
+    "category": "mindful",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "🧘",
+    "color": "#F7DC6F",
+    "tags": [
+      "yoga",
+      "sức khỏe"
+    ],
+    "tips": [
+      "Chọn bài tập phù hợp cho người mới",
+      "Tập trung vào hơi thở",
+      "Bắt đầu với 10-15 phút mỗi ngày"
+    ],
+    "commonObstacles": [
+      "Không có thời gian buổi sáng",
+      "Cảm thấy không linh hoạt"
+    ],
+    "benefits": [
+      "Cải thiện độ dẻo của cơ thể",
+      "Tăng cường khả năng tập trung",
+      "Giảm stress và lo âu"
+    ],
+    "isPopular": true
   },
   {
-    name: 'Tắm nắng 15 phút',
-    description: 'Ra ngoài tắm nắng để bổ sung vitamin D tự nhiên',
-    category: 'mindful',
-    icon: '☀️',
-    color: '#F59E0B',
-    frequency: 'daily',
-    trackingMode: 'count',
-    targetCount: 15,
-    unit: 'phút',
-    habitType: 'build',
-    difficulty: 'easy',
-    tips: ['Tắm nắng vào buổi sáng sớm', 'Không cần kem chống nắng trong 15 phút đầu', 'Kết hợp với đi bộ'],
-    commonObstacles: ['Thời tiết xấu', 'Không có thời gian', 'Sợ đen da'],
-    benefits: ['Tăng vitamin D', 'Cải thiện tâm trạng', 'Tăng cường miễn dịch', 'Điều hòa giấc ngủ'],
-    isPopular: false
+    "name": "Đọc sách 30 phút mỗi ngày",
+    "description": "Mở rộng kiến thức và cải thiện khả năng tập trung",
+    "category": "mindful",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "📚",
+    "color": "#3498DB",
+    "tags": [
+      "đọc sách",
+      "kiến thức"
+    ],
+    "tips": [
+      "Chọn sách phù hợp với sở thích",
+      "Tạo không gian đọc thoải mái",
+      "Bắt đầu với 10-15 phút mỗi ngày"
+    ],
+    "commonObstacles": [
+      "Không có thời gian",
+      "Cảm thấy nhàm chán"
+    ],
+    "benefits": [
+      "Mở rộng kiến thức",
+      "Cải thiện khả năng tập trung",
+      "Giảm stress và lo âu"
+    ],
+    "isPopular": true
   },
   {
-    name: 'Ngắt kết nối mạng xã hội 1 giờ',
-    description: 'Dành 1 giờ mỗi ngày không sử dụng mạng xã hội',
-    category: 'mindful',
-    icon: '📵',
-    color: '#EF4444',
-    frequency: 'daily',
-    trackingMode: 'check',
-    targetCount: 1,
-    habitType: 'build',
-    difficulty: 'medium',
-    tips: ['Chọn khung giờ cố định', 'Thay thế bằng hoạt động khác', 'Tắt thông báo'],
-    commonObstacles: ['FOMO', 'Thói quen mở app', 'Nhàm chán'],
-    benefits: ['Giảm căng thẳng', 'Tăng tập trung', 'Có thời gian cho bản thân', 'Giảm so sánh'],
-    isPopular: true
-  },
-
-  // ==================== FINANCE ====================
-  {
-    name: 'Theo dõi chi tiêu hàng ngày',
-    description: 'Ghi chép tất cả chi tiêu để quản lý tài chính tốt hơn',
-    category: 'finance',
-    icon: '💰',
-    color: '#22C55E',
-    frequency: 'daily',
-    trackingMode: 'check',
-    targetCount: 1,
-    habitType: 'build',
-    difficulty: 'easy',
-    tips: ['Dùng app quản lý tài chính', 'Chụp ảnh hóa đơn', 'Xem lại cuối tuần', 'Phân loại chi tiêu'],
-    commonObstacles: ['Quên ghi chép', 'Lười theo dõi', 'Không biết phân loại'],
-    benefits: ['Kiểm soát chi tiêu', 'Tiết kiệm tiền', 'Nhận biết thói quen chi tiêu xấu'],
-    isPopular: true
+    "name": "Viết nhật ký mỗi ngày",
+    "description": "Ghi lại suy nghĩ và cảm xúc để cải thiện tâm trí",
+    "category": "mindful",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "📝",
+    "color": "#9B59B6",
+    "tags": [
+      "nhật ký",
+      "tâm trí"
+    ],
+    "tips": [
+      "Chọn thời gian phù hợp để viết",
+      "Viết về suy nghĩ và cảm xúc",
+      "Bắt đầu với 5-10 phút mỗi ngày"
+    ],
+    "commonObstacles": [
+      "Không biết viết về gì",
+      "Cảm thấy không có thời gian"
+    ],
+    "benefits": [
+      "Cải thiện khả năng tập trung",
+      "Giảm stress và lo âu",
+      "Tăng cường khả năng tự nhận thức"
+    ],
+    "isPopular": true
   },
   {
-    name: 'Tiết kiệm 50,000đ mỗi ngày',
-    description: 'Để dành một khoản nhỏ mỗi ngày để xây dựng quỹ dự phòng',
-    category: 'finance',
-    icon: '🏦',
-    color: '#10B981',
-    frequency: 'daily',
-    trackingMode: 'count',
-    targetCount: 50000,
-    unit: 'đồng',
-    habitType: 'build',
-    difficulty: 'medium',
-    tips: ['Tự động chuyển tiền vào tài khoản tiết kiệm', 'Cắt giảm chi tiêu không cần thiết', 'Đặt mục tiêu cụ thể'],
-    commonObstacles: ['Thu nhập thấp', 'Chi tiêu phát sinh', 'Thiếu kỷ luật'],
-    benefits: ['Xây dựng quỹ dự phòng', 'Tạo thói quen tiết kiệm', 'An tâm tài chính'],
-    isPopular: true
+    "name": "Đi bộ 10,000 bước mỗi ngày",
+    "description": "Cải thiện sức khỏe và tăng cường khả năng tập trung",
+    "category": "mindful",
+    "difficulty": "hard",
+    "frequency": "daily",
+    "trackingMode": "count",
+    "targetCount": 10000,
+    "unit": "bước",
+    "habitType": "build",
+    "icon": "🚶",
+    "color": "#2ECC71",
+    "tags": [
+      "đi bộ",
+      "sức khỏe"
+    ],
+    "tips": [
+      "Sử dụng máy đếm bước",
+      "Tạo kế hoạch đi bộ mỗi ngày",
+      "Bắt đầu với 5,000 bước mỗi ngày"
+    ],
+    "commonObstacles": [
+      "Không có thời gian",
+      "Cảm thấy mệt mỏi"
+    ],
+    "benefits": [
+      "Cải thiện sức khỏe tim mạch",
+      "Tăng cường khả năng tập trung",
+      "Giảm stress và lo âu"
+    ],
+    "isPopular": true
   },
   {
-    name: 'Đọc tin tức tài chính',
-    description: 'Cập nhật kiến thức về tài chính và đầu tư',
-    category: 'finance',
-    icon: '📰',
-    color: '#6366F1',
-    frequency: 'daily',
-    trackingMode: 'count',
-    targetCount: 10,
-    unit: 'phút',
-    habitType: 'build',
-    difficulty: 'easy',
-    tips: ['Theo dõi các trang tin uy tín', 'Đọc vào buổi sáng', 'Ghi chép thông tin quan trọng'],
-    commonObstacles: ['Quá nhiều thông tin', 'Khó hiểu', 'Không biết nguồn nào đáng tin'],
-    benefits: ['Nâng cao hiểu biết tài chính', 'Đưa ra quyết định đầu tư tốt hơn', 'Phát hiện cơ hội'],
-    isPopular: false
+    "name": "Thực hành hít thở sâu 10 phút mỗi ngày",
+    "description": "Cải thiện khả năng tập trung và giảm stress",
+    "category": "mindful",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "🙏",
+    "color": "#1ABC9C",
+    "tags": [
+      "hít thở sâu",
+      "tâm trí"
+    ],
+    "tips": [
+      "Tìm không gian yên tĩnh",
+      "Sử dụng ứng dụng hít thở sâu",
+      "Bắt đầu với 5 phút mỗi ngày"
+    ],
+    "commonObstacles": [
+      "Khó tập trung",
+      "Cảm thấy không có thời gian"
+    ],
+    "benefits": [
+      "Cải thiện khả năng tập trung",
+      "Giảm stress và lo âu",
+      "Tăng cường khả năng tự nhận thức"
+    ],
+    "isPopular": true
   },
   {
-    name: 'Xem xét ngân sách hàng tuần',
-    description: 'Đánh giá chi tiêu và điều chỉnh ngân sách mỗi tuần',
-    category: 'finance',
-    icon: '📊',
-    color: '#F59E0B',
-    frequency: 'weekly',
-    trackingMode: 'check',
-    targetCount: 1,
-    habitType: 'build',
-    difficulty: 'easy',
-    tips: ['Chọn ngày cố định mỗi tuần', 'So sánh với tuần trước', 'Điều chỉnh kế hoạch nếu cần'],
-    commonObstacles: ['Quên không làm', 'Không có hệ thống theo dõi', 'Ngại đối mặt với chi tiêu'],
-    benefits: ['Kiểm soát tài chính tốt hơn', 'Phát hiện chi tiêu lãng phí', 'Đạt mục tiêu tài chính'],
-    isPopular: true
+    "name": "Tiết kiệm 10% thu nhập",
+    "description": "Xây dựng thói quen tiết kiệm để đạt được mục tiêu tài chính",
+    "category": "finance",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "count",
+    "targetCount": 10,
+    "unit": "%",
+    "habitType": "build",
+    "icon": "💸",
+    "color": "#34C759",
+    "tags": [
+      "tiết kiệm",
+      "tài chính"
+    ],
+    "tips": [
+      "Tạo một quỹ tiết kiệm riêng",
+      "Đặt mục tiêu tiết kiệm cụ thể",
+      "Theo dõi thu chi hàng ngày"
+    ],
+    "commonObstacles": [
+      "Khó khăn trong việc cắt giảm chi tiêu",
+      "Không có kế hoạch tiết kiệm rõ ràng"
+    ],
+    "benefits": [
+      "Đạt được mục tiêu tài chính dài hạn",
+      "Cải thiện tình hình tài chính hiện tại",
+      "Giảm stress và lo âu về tài chính"
+    ],
+    "isPopular": true
   },
   {
-    name: 'Không mua sắm impulsive',
-    description: 'Chờ 24 giờ trước khi mua những thứ không thiết yếu',
-    category: 'finance',
-    icon: '🛑',
-    color: '#EF4444',
-    frequency: 'daily',
-    trackingMode: 'check',
-    targetCount: 1,
-    habitType: 'quit',
-    difficulty: 'hard',
-    tips: ['Tạo danh sách mong muốn', 'Tự hỏi "Có thực sự cần không?"', 'Xóa thông tin thẻ khỏi web mua sắm'],
-    commonObstacles: ['Khuyến mãi hấp dẫn', 'Cảm xúc tiêu cực', 'Áp lực bạn bè'],
-    benefits: ['Tiết kiệm tiền', 'Giảm lãng phí', 'Mua những thứ thực sự cần'],
-    isPopular: true
-  },
-
-  // ==================== DIGITAL ====================
-  {
-    name: 'Hạn chế social media',
-    description: 'Giảm thời gian lướt mạng xã hội xuống dưới 1 tiếng/ngày',
-    category: 'digital',
-    icon: '📱',
-    color: '#EF4444',
-    frequency: 'daily',
-    trackingMode: 'count',
-    targetCount: 60,
-    unit: 'phút',
-    habitType: 'quit',
-    difficulty: 'hard',
-    tips: ['Tắt thông báo không cần thiết', 'Để điện thoại xa khi làm việc', 'Dùng app giới hạn thời gian', 'Xóa app social media khỏi màn hình chính'],
-    commonObstacles: ['Nghiện social media', 'FOMO (sợ bỏ lỡ thông tin)', 'Thói quen mở app tự động'],
-    benefits: ['Tăng tập trung', 'Có thêm thời gian cho việc khác', 'Giảm so sánh bản thân với người khác'],
-    isPopular: true
+    "name": "Đánh giá và điều chỉnh ngân sách hàng tháng",
+    "description": "Quản lý chi tiêu hiệu quả và thông minh",
+    "category": "finance",
+    "difficulty": "hard",
+    "frequency": "monthly",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "📊",
+    "color": "#FFC107",
+    "tags": [
+      "quản lý chi tiêu",
+      "ngân sách"
+    ],
+    "tips": [
+      "Sử dụng công cụ quản lý chi tiêu",
+      "Đánh giá và điều chỉnh ngân sách thường xuyên",
+      "Tập trung vào việc cắt giảm chi tiêu không cần thiết"
+    ],
+    "commonObstacles": [
+      "Khó khăn trong việc theo dõi chi tiêu",
+      "Không có kế hoạch quản lý chi tiêu hiệu quả"
+    ],
+    "benefits": [
+      "Cải thiện tình hình tài chính hiện tại",
+      "Đạt được mục tiêu tài chính dài hạn",
+      "Giảm stress và lo âu về tài chính"
+    ],
+    "isPopular": true
   },
   {
-    name: 'Tắt điện thoại trước khi ngủ 1 tiếng',
-    description: 'Ngừng sử dụng thiết bị điện tử trước giờ ngủ để cải thiện giấc ngủ',
-    category: 'digital',
-    icon: '💤',
-    color: '#6B7280',
-    frequency: 'daily',
-    trackingMode: 'check',
-    targetCount: 1,
-    habitType: 'build',
-    difficulty: 'medium',
-    tips: ['Đặt điện thoại xa giường ngủ', 'Đọc sách thay vì lướt điện thoại', 'Dùng đồng hồ báo thức thay vì điện thoại'],
-    commonObstacles: ['Thói quen lướt điện thoại trước khi ngủ', 'Lo lắng bỏ lỡ tin nhắn', 'Buồn chán'],
-    benefits: ['Cải thiện chất lượng giấc ngủ', 'Giảm căng thẳng mắt', 'Ngủ nhanh hơn'],
-    isPopular: true
+    "name": "Đầu tư 5% thu nhập vào chứng khoán",
+    "description": "Tăng trưởng tài sản và đạt được mục tiêu tài chính",
+    "category": "finance",
+    "difficulty": "hard",
+    "frequency": "monthly",
+    "trackingMode": "count",
+    "targetCount": 5,
+    "unit": "%",
+    "habitType": "build",
+    "icon": "💰",
+    "color": "#8B0A1A",
+    "tags": [
+      "đầu tư",
+      "chứng khoán"
+    ],
+    "tips": [
+      "Nghiên cứu và hiểu rõ về đầu tư chứng khoán",
+      "Bắt đầu với số tiền nhỏ và tăng dần",
+      "Đa dạng hóa danh mục đầu tư"
+    ],
+    "commonObstacles": [
+      "Khó khăn trong việc hiểu rõ về đầu tư chứng khoán",
+      "Sợ rủi ro mất mát"
+    ],
+    "benefits": [
+      "Tăng trưởng tài sản",
+      "Đạt được mục tiêu tài chính dài hạn",
+      "Cải thiện tình hình tài chính hiện tại"
+    ],
+    "isPopular": true
   },
   {
-    name: 'Dọn dẹp email inbox',
-    description: 'Giữ hộp thư đến sạch sẽ, xóa email không cần thiết',
-    category: 'digital',
-    icon: '📧',
-    color: '#3B82F6',
-    frequency: 'daily',
-    trackingMode: 'check',
-    targetCount: 1,
-    habitType: 'build',
-    difficulty: 'easy',
-    tips: ['Xử lý email ngay khi đọc', 'Hủy đăng ký newsletter không đọc', 'Tạo thư mục phân loại'],
-    commonObstacles: ['Quá nhiều email', 'Lười xóa', 'Sợ xóa nhầm email quan trọng'],
-    benefits: ['Giảm stress', 'Tìm email dễ dàng hơn', 'Tăng năng suất'],
-    isPopular: false
+    "name": "Trả nợ 10% mỗi tháng",
+    "description": "Loại bỏ nợ nần và cải thiện tình hình tài chính",
+    "category": "finance",
+    "difficulty": "medium",
+    "frequency": "monthly",
+    "trackingMode": "count",
+    "targetCount": 10,
+    "unit": "%",
+    "habitType": "build",
+    "icon": "📈",
+    "color": "#4CAF50",
+    "tags": [
+      "trả nợ",
+      "tài chính"
+    ],
+    "tips": [
+      "Tạo một kế hoạch trả nợ cụ thể",
+      "Đánh giá và điều chỉnh ngân sách thường xuyên",
+      "Tập trung vào việc cắt giảm chi tiêu không cần thiết"
+    ],
+    "commonObstacles": [
+      "Khó khăn trong việc cắt giảm chi tiêu",
+      "Không có kế hoạch trả nợ rõ ràng"
+    ],
+    "benefits": [
+      "Loại bỏ nợ nần",
+      "Cải thiện tình hình tài chính hiện tại",
+      "Giảm stress và lo âu về tài chính"
+    ],
+    "isPopular": true
   },
   {
-    name: 'Sao lưu dữ liệu quan trọng',
-    description: 'Backup dữ liệu định kỳ để tránh mất mát',
-    category: 'digital',
-    icon: '💾',
-    color: '#10B981',
-    frequency: 'weekly',
-    trackingMode: 'check',
-    targetCount: 1,
-    habitType: 'build',
-    difficulty: 'easy',
-    tips: ['Dùng cloud storage tự động', 'Backup vào ổ cứng ngoài', 'Kiểm tra backup định kỳ'],
-    commonObstacles: ['Quên không backup', 'Không biết cách backup', 'Chi phí lưu trữ'],
-    benefits: ['An toàn dữ liệu', 'Yên tâm hơn', 'Dễ khôi phục khi có sự cố'],
-    isPopular: false
+    "name": "Tạo một quỹ dự phòng khẩn cấp",
+    "description": "Chuẩn bị cho các tình huống khẩn cấp và bất ngờ",
+    "category": "finance",
+    "difficulty": "easy",
+    "frequency": "monthly",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "🛡️",
+    "color": "#03A9F4",
+    "tags": [
+      "quỹ dự phòng",
+      "tài chính"
+    ],
+    "tips": [
+      "Bắt đầu với số tiền nhỏ và tăng dần",
+      "Đặt mục tiêu cụ thể cho quỹ dự phòng",
+      "Theo dõi và điều chỉnh quỹ dự phòng thường xuyên"
+    ],
+    "commonObstacles": [
+      "Khó khăn trong việc bắt đầu",
+      "Không có kế hoạch cụ thể"
+    ],
+    "benefits": [
+      "Chuẩn bị cho các tình huống khẩn cấp",
+      "Cải thiện tình hình tài chính hiện tại",
+      "Giảm stress và lo âu về tài chính"
+    ],
+    "isPopular": true
   },
   {
-    name: 'Học một công cụ digital mới',
-    description: 'Nâng cao kỹ năng digital bằng cách học công cụ mới',
-    category: 'digital',
-    icon: '💻',
-    color: '#8B5CF6',
-    frequency: 'weekly',
-    trackingMode: 'count',
-    targetCount: 2,
-    unit: 'giờ',
-    habitType: 'build',
-    difficulty: 'medium',
-    tips: ['Chọn công cụ phù hợp với công việc', 'Xem tutorial trên YouTube', 'Thực hành ngay'],
-    commonObstacles: ['Không biết học gì', 'Quá nhiều lựa chọn', 'Khó học'],
-    benefits: ['Tăng năng suất', 'Nâng cao kỹ năng nghề nghiệp', 'Tự động hóa công việc'],
-    isPopular: true
-  },
-
-  // ==================== SOCIAL ====================
-  {
-    name: 'Gọi điện cho gia đình',
-    description: 'Duy trì liên lạc với gia đình để củng cố mối quan hệ',
-    category: 'social',
-    icon: '📱',
-    color: '#EC4899',
-    frequency: 'weekly',
-    trackingMode: 'count',
-    targetCount: 2,
-    unit: 'lần',
-    habitType: 'build',
-    difficulty: 'easy',
-    tips: ['Đặt lịch gọi cố định', 'Chuẩn bị chủ đề trò chuyện', 'Video call để thân thiết hơn'],
-    commonObstacles: ['Bận rộn', 'Không biết nói gì', 'Chênh lệch múi giờ'],
-    benefits: ['Củng cố mối quan hệ gia đình', 'Chia sẻ cảm xúc', 'Giảm cô đơn'],
-    isPopular: true
+    "name": "Đọc sách 30 phút mỗi ngày",
+    "description": "Phát triển trí tuệ và tưởng tượng",
+    "category": "digital",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "📖",
+    "color": "#34C759",
+    "tags": [
+      "đọc sách",
+      "phát triển trí tuệ"
+    ],
+    "tips": [
+      "Chọn sách phù hợp với sở thích",
+      "Đặt mục tiêu đọc mỗi ngày",
+      "Tạo không gian đọc thoải mái"
+    ],
+    "commonObstacles": [
+      "Không có thời gian",
+      "Khó tập trung khi đọc"
+    ],
+    "benefits": [
+      "Tăng kiến thức và hiểu biết",
+      "Phát triển khả năng tư duy",
+      "Cải thiện kỹ năng ngôn ngữ"
+    ],
+    "isPopular": true
   },
   {
-    name: 'Gặp gỡ bạn bè',
-    description: 'Dành thời gian gặp mặt bạn bè để duy trì tình bạn',
-    category: 'social',
-    icon: '👥',
-    color: '#F59E0B',
-    frequency: 'weekly',
-    trackingMode: 'count',
-    targetCount: 1,
-    unit: 'lần',
-    habitType: 'build',
-    difficulty: 'easy',
-    tips: ['Lên kế hoạch trước', 'Chọn hoạt động cùng thích', 'Gặp gỡ định kỳ mỗi tuần'],
-    commonObstacles: ['Bận công việc', 'Xa nhau', 'Lười ra ngoài'],
-    benefits: ['Duy trì tình bạn', 'Giảm căng thẳng', 'Tăng cường hạnh phúc'],
-    isPopular: true
+    "name": "Tập thể dục 30 phút mỗi ngày",
+    "description": "Duy trì sức khỏe và thể lực",
+    "category": "digital",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "🏋️‍♀️",
+    "color": "#FF69B4",
+    "tags": [
+      "tập thể dục",
+      "sức khỏe"
+    ],
+    "tips": [
+      "Chọn bài tập phù hợp với thể lực",
+      "Tạo lịch trình tập luyện",
+      "Tìm người tập cùng để động viên"
+    ],
+    "commonObstacles": [
+      "Không có thời gian",
+      "Khó khăn khi bắt đầu"
+    ],
+    "benefits": [
+      "Tăng cường sức khỏe tổng thể",
+      "Cải thiện tâm trạng",
+      "Giảm nguy cơ bệnh tật"
+    ],
+    "isPopular": true
   },
   {
-    name: 'Khen ngợi ai đó mỗi ngày',
-    description: 'Nói lời khen chân thành với ít nhất một người mỗi ngày',
-    category: 'social',
-    icon: '💝',
-    color: '#EC4899',
-    frequency: 'daily',
-    trackingMode: 'check',
-    targetCount: 1,
-    habitType: 'build',
-    difficulty: 'easy',
-    tips: ['Khen về hành động cụ thể', 'Chân thành và tự nhiên', 'Không khen quá đáng'],
-    commonObstacles: ['Ngại ngùng', 'Không biết khen gì', 'Sợ người khác hiểu lầm'],
-    benefits: ['Cải thiện mối quan hệ', 'Tạo môi trường tích cực', 'Tăng sự tự tin'],
-    isPopular: true
+    "name": "Viết nhật ký 10 phút mỗi ngày",
+    "description": "Phát triển khả năng tự phản ánh và ghi nhớ",
+    "category": "digital",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "📝",
+    "color": "#8B9467",
+    "tags": [
+      "viết nhật ký",
+      "phát triển khả năng tự phản ánh"
+    ],
+    "tips": [
+      "Chọn thời gian phù hợp",
+      "Viết về những trải nghiệm và cảm xúc",
+      "Không cần viết quá nhiều"
+    ],
+    "commonObstacles": [
+      "Không biết viết gì",
+      "Khó duy trì thói quen"
+    ],
+    "benefits": [
+      "Cải thiện khả năng tự phản ánh",
+      "Tăng cường ghi nhớ",
+      "Giúp giảm stress và lo âu"
+    ],
+    "isPopular": true
   },
   {
-    name: 'Tham gia hoạt động cộng đồng',
-    description: 'Đóng góp cho cộng đồng qua hoạt động tình nguyện',
-    category: 'social',
-    icon: '🤝',
-    color: '#22C55E',
-    frequency: 'monthly',
-    trackingMode: 'check',
-    targetCount: 1,
-    habitType: 'build',
-    difficulty: 'medium',
-    tips: ['Tìm tổ chức phù hợp', 'Bắt đầu với hoạt động nhỏ', 'Rủ bạn bè cùng tham gia'],
-    commonObstacles: ['Không biết bắt đầu từ đâu', 'Thiếu thời gian', 'Ngại tiếp xúc người lạ'],
-    benefits: ['Tạo tác động tích cực', 'Mở rộng mạng lưới', 'Tăng cảm giác hạnh phúc'],
-    isPopular: false
+    "name": "Học 10 từ vựng mới mỗi ngày",
+    "description": "Phát triển khả năng ngôn ngữ và giao tiếp",
+    "category": "digital",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "count",
+    "targetCount": 10,
+    "unit": "từ",
+    "habitType": "build",
+    "icon": "📚",
+    "color": "#4B5154",
+    "tags": [
+      "học từ vựng",
+      "phát triển khả năng ngôn ngữ"
+    ],
+    "tips": [
+      "Sử dụng Flashcard",
+      "Học từ vựng trong contexto",
+      "Lặp lại từ vựng đã học"
+    ],
+    "commonObstacles": [
+      "Khó nhớ từ vựng",
+      "Không có thời gian"
+    ],
+    "benefits": [
+      "Cải thiện khả năng ngôn ngữ",
+      "Tăng cường giao tiếp",
+      "Phát triển khả năng học hỏi"
+    ],
+    "isPopular": true
   },
   {
-    name: 'Nhắn tin quan tâm bạn bè',
-    description: 'Chủ động nhắn tin hỏi thăm bạn bè',
-    category: 'social',
-    icon: '💬',
-    color: '#3B82F6',
-    frequency: 'daily',
-    trackingMode: 'count',
-    targetCount: 1,
-    unit: 'người',
-    habitType: 'build',
-    difficulty: 'easy',
-    tips: ['Đặt nhắc nhở', 'Hỏi thăm chân thành', 'Không chỉ nhắn tin khi cần giúp đỡ'],
-    commonObstacles: ['Quên', 'Ngại làm phiền', 'Không biết nói gì'],
-    benefits: ['Duy trì mối quan hệ', 'Tạo cảm giác gần gũi', 'Có người hỗ trợ khi cần'],
-    isPopular: true
-  },
-
-  // ==================== CONTROL (Self-discipline) ====================
-  {
-    name: 'Dậy sớm 6 giờ sáng',
-    description: 'Thức dậy sớm để có thêm thời gian cho bản thân',
-    category: 'control',
-    icon: '⏰',
-    color: '#F59E0B',
-    frequency: 'daily',
-    trackingMode: 'check',
-    targetCount: 1,
-    habitType: 'build',
-    difficulty: 'hard',
-    tips: ['Ngủ sớm hơn', 'Đặt báo thức xa giường', 'Có mục tiêu rõ ràng cho buổi sáng'],
-    commonObstacles: ['Thức khuya', 'Tắt báo thức rồi ngủ tiếp', 'Trời tối quá'],
-    benefits: ['Có thêm thời gian', 'Tăng năng suất', 'Cảm thấy kiểm soát cuộc sống hơn'],
-    isPopular: true
+    "name": "Tập trung 25 phút mỗi lần làm việc",
+    "description": "Tăng cường năng suất và hiệu quả công việc",
+    "category": "digital",
+    "difficulty": "hard",
+    "frequency": "daily",
+    "trackingMode": "count",
+    "targetCount": 25,
+    "unit": "phút",
+    "habitType": "build",
+    "icon": "🕒",
+    "color": "#2F4F7F",
+    "tags": [
+      "tập trung",
+      "năng suất"
+    ],
+    "tips": [
+      "Sử dụng kỹ thuật Pomodoro",
+      "Loại bỏ sự phân tâm",
+      "Tập trung vào một nhiệm vụ tại một thời điểm"
+    ],
+    "commonObstacles": [
+      "Khó tập trung",
+      "Dễ bị phân tâm"
+    ],
+    "benefits": [
+      "Tăng cường năng suất",
+      "Cải thiện hiệu quả công việc",
+      "Giảm stress và lo âu"
+    ],
+    "isPopular": true
   },
   {
-    name: 'Hoàn thành 3 việc quan trọng nhất',
-    description: 'Ưu tiên làm 3 việc quan trọng nhất mỗi ngày',
-    category: 'control',
-    icon: '✅',
-    color: '#10B981',
-    frequency: 'daily',
-    trackingMode: 'check',
-    targetCount: 1,
-    habitType: 'build',
-    difficulty: 'medium',
-    tips: ['Lên kế hoạch tối hôm trước', 'Làm việc khó nhất trước', 'Loại bỏ phiền nhiễu'],
-    commonObstacles: ['Bị phân tâm', 'Việc mất nhiều thời gian hơn dự kiến', 'Ưu tiên sai'],
-    benefits: ['Tăng năng suất', 'Cảm giác hoàn thành', 'Tiến bộ rõ rệt'],
-    isPopular: true
+    "name": "Gọi điện cho người thân mỗi ngày",
+    "description": "Duy trì mối quan hệ gần gũi với gia đình và bạn bè",
+    "category": "social",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "📞",
+    "color": "#34C759",
+    "tags": [
+      "mối quan hệ",
+      "giao tiếp"
+    ],
+    "tips": [
+      "Lập danh sách người thân cần liên hệ",
+      "Chọn thời điểm phù hợp để gọi",
+      "Chuẩn bị sẵn chủ đề để trò chuyện"
+    ],
+    "commonObstacles": [
+      "Quên gọi điện khi bận rộn",
+      "Không biết bắt đầu cuộc trò chuyện"
+    ],
+    "benefits": [
+      "Cải thiện mối quan hệ với gia đình",
+      "Tăng cường giao tiếp với bạn bè",
+      "Giảm cảm giác cô đơn"
+    ],
+    "isPopular": true
   },
   {
-    name: 'Lên kế hoạch ngày mai',
-    description: 'Dành 10 phút mỗi tối để lên kế hoạch cho ngày hôm sau',
-    category: 'control',
-    icon: '📝',
-    color: '#6366F1',
-    frequency: 'daily',
-    trackingMode: 'check',
-    targetCount: 1,
-    habitType: 'build',
-    difficulty: 'easy',
-    tips: ['Viết ra giấy', 'Ưu tiên 3 việc quan trọng nhất', 'Dự tính thời gian cho từng việc'],
-    commonObstacles: ['Quên lên kế hoạch', 'Mệt mỏi buổi tối', 'Không biết ưu tiên'],
-    benefits: ['Bắt đầu ngày có định hướng', 'Giảm stress', 'Tăng hiệu suất'],
-    isPopular: true
+    "name": "Tập thể dục với bạn bè 3 lần mỗi tuần",
+    "description": "Tăng cường sức khỏe và tạo ra những kỷ niệm đẹp",
+    "category": "social",
+    "difficulty": "medium",
+    "frequency": "weekly",
+    "trackingMode": "check",
+    "targetCount": 3,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "🏋️",
+    "color": "#F97316",
+    "tags": [
+      "tập thể dục",
+      "sức khỏe"
+    ],
+    "tips": [
+      "Chọn môn thể thao phù hợp",
+      "Tìm kiếm bạn tập cùng",
+      "Đặt mục tiêu và theo dõi tiến độ"
+    ],
+    "commonObstacles": [
+      "Khó tìm kiếm bạn tập cùng",
+      "Không có thời gian tập thể dục"
+    ],
+    "benefits": [
+      "Cải thiện sức khỏe thể chất",
+      "Tăng cường tinh thần",
+      "Tạo ra những kỷ niệm đẹp"
+    ],
+    "isPopular": true
   },
   {
-    name: 'Dọn dẹp không gian làm việc',
-    description: 'Giữ bàn làm việc sạch sẽ và ngăn nắp',
-    category: 'control',
-    icon: '🧹',
-    color: '#22C55E',
-    frequency: 'daily',
-    trackingMode: 'check',
-    targetCount: 1,
-    habitType: 'build',
-    difficulty: 'easy',
-    tips: ['Dọn cuối ngày làm việc', 'Chỉ để đồ cần thiết trên bàn', 'Có hệ thống sắp xếp'],
-    commonObstacles: ['Lười dọn', 'Không có thời gian', 'Bừa bộn lại nhanh'],
-    benefits: ['Tăng tập trung', 'Giảm stress', 'Tìm đồ dễ dàng hơn', 'Tâm trạng tích cực'],
-    isPopular: true
+    "name": "Học tiếng Anh mỗi ngày với 15 phút",
+    "description": "Cải thiện kỹ năng tiếng Anh để mở rộng cơ hội",
+    "category": "social",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "📚",
+    "color": "#3B82F6",
+    "tags": [
+      "học tiếng Anh",
+      "phát triển bản thân"
+    ],
+    "tips": [
+      "Chọn tài liệu học phù hợp",
+      "Tập trung vào kỹ năng nghe và nói",
+      "Sử dụng ứng dụng học tiếng Anh"
+    ],
+    "commonObstacles": [
+      "Khó tìm kiếm tài liệu học phù hợp",
+      "Không có thời gian học mỗi ngày"
+    ],
+    "benefits": [
+      "Cải thiện kỹ năng tiếng Anh",
+      "Tăng cường cơ hội việc làm",
+      "Phát triển bản thân"
+    ],
+    "isPopular": true
   },
   {
-    name: 'Không trì hoãn công việc',
-    description: 'Làm ngay thay vì trì hoãn những việc quan trọng',
-    category: 'control',
-    icon: '🎯',
-    color: '#EF4444',
-    frequency: 'daily',
-    trackingMode: 'check',
-    targetCount: 1,
-    habitType: 'quit',
-    difficulty: 'hard',
-    tips: ['Áp dụng quy tắc 2 phút', 'Chia nhỏ công việc lớn', 'Loại bỏ phiền nhiễu'],
-    commonObstacles: ['Sợ thất bại', 'Hoàn hảo chủ nghĩa', 'Không biết bắt đầu từ đâu'],
-    benefits: ['Hoàn thành nhiều việc hơn', 'Giảm stress', 'Tăng sự tự tin'],
-    isPopular: true
-  },
-
-  // ==================== SLEEP ====================
-  {
-    name: 'Ngủ đúng giờ (11 PM)',
-    description: 'Duy trì giờ giấc ngủ đều đặn để cải thiện sức khỏe',
-    category: 'sleep',
-    icon: '💤',
-    color: '#6366F1',
-    frequency: 'daily',
-    trackingMode: 'check',
-    targetCount: 1,
-    habitType: 'build',
-    difficulty: 'medium',
-    tips: ['Tạo thói quen trước khi ngủ', 'Tránh caffeine buổi chiều', 'Điều chỉnh ánh sáng phòng ngủ', 'Tắt điện thoại sớm'],
-    commonObstacles: ['Thức khuya làm việc', 'Khó ngủ', 'Bị kích thích bởi màn hình'],
-    benefits: ['Cải thiện chất lượng giấc ngủ', 'Tăng năng lượng', 'Cân bằng hormone'],
-    isPopular: true
+    "name": "Đi dạo 30 phút mỗi ngày",
+    "description": "Tăng cường sức khỏe và giảm stress",
+    "category": "social",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "🚶",
+    "color": "#8B9467",
+    "tags": [
+      "đi dạo",
+      "sức khỏe"
+    ],
+    "tips": [
+      "Chọn địa điểm đi dạo phù hợp",
+      "Tập trung vào hơi thở và môi trường",
+      "Sử dụng ứng dụng theo dõi sức khỏe"
+    ],
+    "commonObstacles": [
+      "Khó tìm kiếm địa điểm đi dạo phù hợp",
+      "Không có thời gian đi dạo mỗi ngày"
+    ],
+    "benefits": [
+      "Tăng cường sức khỏe thể chất",
+      "Giảm stress và lo âu",
+      "Cải thiện tâm trạng"
+    ],
+    "isPopular": true
   },
   {
-    name: 'Ngủ đủ 8 tiếng',
-    description: 'Đảm bảo có đủ giấc ngủ để phục hồi cơ thể',
-    category: 'sleep',
-    icon: '😴',
-    color: '#8B5CF6',
-    frequency: 'daily',
-    trackingMode: 'count',
-    targetCount: 8,
-    unit: 'giờ',
-    habitType: 'build',
-    difficulty: 'medium',
-    tips: ['Tính ngược từ giờ thức dậy', 'Tạo môi trường ngủ thoải mái', 'Không uống nhiều nước trước khi ngủ'],
-    commonObstacles: ['Mất ngủ', 'Thức khuya', 'Bị đánh thức giữa đêm'],
-    benefits: ['Phục hồi cơ thể', 'Cải thiện trí nhớ', 'Tăng cường hệ miễn dịch'],
-    isPopular: true
+    "name": "Tập yoga 30 phút mỗi ngày",
+    "description": "Tăng cường sức khỏe và giảm stress",
+    "category": "social",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "🧘",
+    "color": "#F7DC6F",
+    "tags": [
+      "tập yoga",
+      "sức khỏe"
+    ],
+    "tips": [
+      "Chọn tư thế yoga phù hợp",
+      "Tập trung vào hơi thở và kỹ thuật",
+      "Sử dụng ứng dụng hướng dẫn yoga"
+    ],
+    "commonObstacles": [
+      "Khó tìm kiếm tư thế yoga phù hợp",
+      "Không có thời gian tập yoga mỗi ngày"
+    ],
+    "benefits": [
+      "Tăng cường sức khỏe thể chất",
+      "Giảm stress và lo âu",
+      "Cải thiện tâm trạng"
+    ],
+    "isPopular": true
   },
   {
-    name: 'Không ngủ trưa quá 30 phút',
-    description: 'Ngủ trưa ngắn để tái tạo năng lượng mà không ảnh hưởng giấc ngủ đêm',
-    category: 'sleep',
-    icon: '☀️',
-    color: '#F59E0B',
-    frequency: 'daily',
-    trackingMode: 'check',
-    targetCount: 1,
-    habitType: 'build',
-    difficulty: 'easy',
-    tips: ['Đặt báo thức', 'Ngủ trước 3 giờ chiều', 'Tìm nơi yên tĩnh'],
-    commonObstacles: ['Ngủ quá lâu', 'Không có chỗ ngủ trưa', 'Cảm thấy ngủ gà ngủ gật'],
-    benefits: ['Tăng năng lượng chiều', 'Cải thiện tập trung', 'Không ảnh hưởng giấc ngủ đêm'],
-    isPopular: true
+    "name": "Tập thể dục 30 phút mỗi ngày",
+    "description": "Duy trì sức khỏe và sự dẻo dai của cơ thể",
+    "category": "fitness",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "🏋️",
+    "color": "#34C759",
+    "tags": [
+      "sức khỏe",
+      "tập thể dục"
+    ],
+    "tips": [
+      "Chọn bài tập phù hợp với thể lực",
+      "Tập thể dục vào buổi sáng",
+      "Dùng nhạc để tăng cường động lực"
+    ],
+    "commonObstacles": [
+      "Quên tập thể dục khi bận rộn",
+      "Không thích tập thể dục"
+    ],
+    "benefits": [
+      "Cải thiện sức khỏe tim mạch",
+      "Tăng cường sức mạnh cơ bắp",
+      "Giảm cân và cải thiện vóc dáng"
+    ],
+    "isPopular": true
   },
   {
-    name: 'Tạo thói quen trước khi ngủ',
-    description: 'Có một chuỗi hành động cố định trước khi đi ngủ',
-    category: 'sleep',
-    icon: '🌙',
-    color: '#6B7280',
-    frequency: 'daily',
-    trackingMode: 'check',
-    targetCount: 1,
-    habitType: 'build',
-    difficulty: 'easy',
-    tips: ['Làm cùng một chuỗi hành động mỗi đêm', 'Bao gồm hoạt động thư giãn', 'Tránh kích thích'],
-    commonObstacles: ['Lịch trình không cố định', 'Bị gián đoạn', 'Quá mệt để duy trì'],
-    benefits: ['Ngủ nhanh hơn', 'Giấc ngủ sâu hơn', 'Cơ thể biết đã đến giờ ngủ'],
-    isPopular: true
+    "name": "Đi bộ 10,000 bước mỗi ngày",
+    "description": "Tăng cường sức khỏe và sự dẻo dai của cơ thể",
+    "category": "fitness",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "count",
+    "targetCount": 10000,
+    "unit": "bước",
+    "habitType": "build",
+    "icon": "🚶",
+    "color": "#FFC107",
+    "tags": [
+      "sức khỏe",
+      "đi bộ"
+    ],
+    "tips": [
+      "Dùng máy đếm bước chân",
+      "Đi bộ vào buổi trưa",
+      "Tìm người bạn đi bộ cùng"
+    ],
+    "commonObstacles": [
+      "Khó đi bộ khi thời tiết xấu",
+      "Không có thời gian đi bộ"
+    ],
+    "benefits": [
+      "Cải thiện sức khỏe tim mạch",
+      "Tăng cường sức mạnh cơ bắp",
+      "Giảm cân và cải thiện vóc dáng"
+    ],
+    "isPopular": true
   },
   {
-    name: 'Tránh caffeine sau 2 giờ chiều',
-    description: 'Không uống cà phê hoặc đồ uống chứa caffeine sau 2 giờ chiều',
-    category: 'sleep',
-    icon: '☕',
-    color: '#EF4444',
-    frequency: 'daily',
-    trackingMode: 'check',
-    targetCount: 1,
-    habitType: 'quit',
-    difficulty: 'medium',
-    tips: ['Chuyển sang trà thảo mộc', 'Uống nước thay thế', 'Ngủ trưa để tránh buồn ngủ chiều'],
-    commonObstacles: ['Buồn ngủ chiều', 'Thói quen uống cà phê', 'Họp chiều cần tỉnh táo'],
-    benefits: ['Ngủ dễ hơn', 'Giấc ngủ sâu hơn', 'Không bị mất ngủ'],
-    isPopular: true
-  },
-
-  // ==================== ENERGY ====================
-  {
-    name: 'Uống trà xanh thay cà phê',
-    description: 'Thay thế cà phê bằng trà xanh để có năng lượng bền vững',
-    category: 'energy',
-    icon: '🍵',
-    color: '#22C55E',
-    frequency: 'daily',
-    trackingMode: 'check',
-    targetCount: 1,
-    habitType: 'build',
-    difficulty: 'easy',
-    tips: ['Pha trà xanh vào buổi sáng', 'Thử nhiều loại trà xanh khác nhau', 'Thêm chanh hoặc mật ong'],
-    commonObstacles: ['Không quen vị trà', 'Vẫn thèm cà phê', 'Không biết pha trà'],
-    benefits: ['Năng lượng ổn định', 'Chống oxy hóa', 'Giảm lo âu', 'Tốt cho tim mạch'],
-    isPopular: true
+    "name": "Tập yoga 30 phút mỗi sáng",
+    "description": "Bắt đầu ngày mới với tâm trí tỉnh thức và cơ thể dẻo dai",
+    "category": "fitness",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "🧘",
+    "color": "#8B5CF6",
+    "tags": [
+      "yoga",
+      "sức khỏe"
+    ],
+    "tips": [
+      "Chọn không gian yên tĩnh",
+      "Dùng thảm yoga chất lượng",
+      "Tập trung vào hơi thở"
+    ],
+    "commonObstacles": [
+      "Khó tập trung ban đầu",
+      "Không có thời gian buổi sáng"
+    ],
+    "benefits": [
+      "Cải thiện sức khỏe tâm thần",
+      "Tăng cường sự dẻo dai của cơ thể",
+      "Giảm stress và lo âu"
+    ],
+    "isPopular": true
   },
   {
-    name: 'Nghỉ ngơi giữa giờ làm việc',
-    description: 'Nghỉ ngơi 5-10 phút sau mỗi giờ làm việc để tránh kiệt sức',
-    category: 'energy',
-    icon: '⏰',
-    color: '#F59E0B',
-    frequency: 'daily',
-    trackingMode: 'count',
-    targetCount: 5,
-    unit: 'lần',
-    habitType: 'build',
-    difficulty: 'easy',
-    tips: ['Đặt timer nhắc nhở', 'Đứng dậy và vận động nhẹ', 'Nhìn xa để thư giãn mắt', 'Uống nước'],
-    commonObstacles: ['Quá mải mê công việc', 'Áp lực deadline', 'Cảm thấy tội lỗi khi nghỉ'],
-    benefits: ['Duy trì năng lượng', 'Tăng hiệu suất làm việc', 'Giảm mỏi mắt', 'Phòng tránh burn out'],
-    isPopular: true
+    "name": "Chạy bộ 5 km mỗi ngày",
+    "description": "Tăng cường sức khỏe và sự dẻo dai của cơ thể",
+    "category": "fitness",
+    "difficulty": "hard",
+    "frequency": "daily",
+    "trackingMode": "count",
+    "targetCount": 5,
+    "unit": "km",
+    "habitType": "build",
+    "icon": "🏃",
+    "color": "#FF3737",
+    "tags": [
+      "sức khỏe",
+      "chạy bộ"
+    ],
+    "tips": [
+      "Dùng giày chạy bộ chất lượng",
+      "Chọn địa điểm chạy bộ an toàn",
+      "Tập trung vào kỹ thuật chạy bộ"
+    ],
+    "commonObstacles": [
+      "Khó chạy bộ khi thời tiết xấu",
+      "Không có thời gian chạy bộ"
+    ],
+    "benefits": [
+      "Cải thiện sức khỏe tim mạch",
+      "Tăng cường sức mạnh cơ bắp",
+      "Giảm cân và cải thiện vóc dáng"
+    ],
+    "isPopular": true
   },
   {
-    name: 'Ăn nhẹ lành mạnh',
-    description: 'Chọn đồ ăn nhẹ bổ dưỡng thay vì đồ ăn vặt không lành mạnh',
-    category: 'energy',
-    icon: '🥗',
-    color: '#10B981',
-    frequency: 'daily',
-    trackingMode: 'check',
-    targetCount: 1,
-    habitType: 'build',
-    difficulty: 'medium',
-    tips: ['Chuẩn bị sẵn hoa quả, hạt', 'Tránh để đồ ăn vặt trong nhà', 'Uống nước khi đói'],
-    commonObstacles: ['Thèm đồ ngọt', 'Đồ lành mạnh không ngon', 'Đắt hơn'],
-    benefits: ['Năng lượng ổn định', 'Kiểm soát cân nặng', 'Tốt cho sức khỏe'],
-    isPopular: true
+    "name": "Tập thể hình 45 phút mỗi ngày",
+    "description": "Tăng cường sức mạnh và sự dẻo dai của cơ thể",
+    "category": "fitness",
+    "difficulty": "hard",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "🏋️",
+    "color": "#34C759",
+    "tags": [
+      "sức khỏe",
+      "tập thể hình"
+    ],
+    "tips": [
+      "Chọn bài tập phù hợp với thể lực",
+      "Tập thể hình vào buổi sáng",
+      "Dùng nhạc để tăng cường động lực"
+    ],
+    "commonObstacles": [
+      "Quên tập thể hình khi bận rộn",
+      "Không thích tập thể hình"
+    ],
+    "benefits": [
+      "Cải thiện sức khỏe tim mạch",
+      "Tăng cường sức mạnh cơ bắp",
+      "Giảm cân và cải thiện vóc dáng"
+    ],
+    "isPopular": true
   },
   {
-    name: 'Vận động nhẹ buổi sáng',
-    description: 'Khởi động cơ thể với vận động nhẹ nhàng sau khi thức dậy',
-    category: 'energy',
-    icon: '🤸',
-    color: '#6366F1',
-    frequency: 'daily',
-    trackingMode: 'count',
-    targetCount: 10,
-    unit: 'phút',
-    habitType: 'build',
-    difficulty: 'easy',
-    tips: ['Giãn cơ ngay trên giường', 'Làm vài động tác đơn giản', 'Kết hợp với uống nước'],
-    commonObstacles: ['Lười', 'Ngủ dậy trễ', 'Không biết động tác nào'],
-    benefits: ['Đánh thức cơ thể', 'Tăng tuần hoàn máu', 'Tỉnh táo hơn', 'Giảm đau nhức'],
-    isPopular: true
+    "name": "Đạp xe 20 km mỗi ngày",
+    "description": "Tăng cường sức khỏe và sự dẻo dai của cơ thể",
+    "category": "fitness",
+    "difficulty": "hard",
+    "frequency": "daily",
+    "trackingMode": "count",
+    "targetCount": 20,
+    "unit": "km",
+    "habitType": "build",
+    "icon": "🚴",
+    "color": "#FFC107",
+    "tags": [
+      "sức khỏe",
+      "đạp xe"
+    ],
+    "tips": [
+      "Dùng xe đạp chất lượng",
+      "Chọn địa điểm đạp xe an toàn",
+      "Tập trung vào kỹ thuật đạp xe"
+    ],
+    "commonObstacles": [
+      "Khó đạp xe khi thời tiết xấu",
+      "Không có thời gian đạp xe"
+    ],
+    "benefits": [
+      "Cải thiện sức khỏe tim mạch",
+      "Tăng cường sức mạnh cơ bắp",
+      "Giảm cân và cải thiện vóc dáng"
+    ],
+    "isPopular": true
   },
   {
-    name: 'Giảm đường tinh luyện',
-    description: 'Hạn chế ăn đồ ngọt và đường để tránh tụt năng lượng',
-    category: 'energy',
-    icon: '🍬',
-    color: '#EF4444',
-    frequency: 'daily',
-    trackingMode: 'check',
-    targetCount: 1,
-    habitType: 'quit',
-    difficulty: 'hard',
-    tips: ['Thay bằng trái cây', 'Đọc nhãn thành phần', 'Giảm dần thay vì cắt hẳn'],
-    commonObstacles: ['Thèm đồ ngọt', 'Stress ăn uống', 'Đường có ở khắp nơi'],
-    benefits: ['Năng lượng ổn định', 'Giảm cân', 'Giảm nguy cơ bệnh tật', 'Làn da đẹp hơn'],
-    isPopular: true
+    "name": "Đi ngủ trước 11h mỗi ngày",
+    "description": "Dành thời gian nghỉ ngơi chất lượng cho cơ thể",
+    "category": "sleep",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "🛋️",
+    "color": "#64D2FF",
+    "tags": [
+      "ngủ đủ giấc",
+      "lối sống lành mạnh"
+    ],
+    "tips": [
+      "Tạo lịch trình ngủ cố định",
+      "Tắt thiết bị điện tử trước giờ ngủ",
+      "Tạo không gian ngủ thoải mái"
+    ],
+    "commonObstacles": [
+      "Thói quen xem điện thoại trước giờ ngủ",
+      "Cảm thấy chưa Buồn ngủ"
+    ],
+    "benefits": [
+      "Cải thiện chất lượng giấc ngủ",
+      "Tăng cường hệ miễn dịch",
+      "Giúp kiểm soát cân nặng hiệu quả"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Tập thể dục buổi sáng 30 phút",
+    "description": "Bắt đầu ngày mới với năng lượng và sự tập trung",
+    "category": "sleep",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "🏋️",
+    "color": "#FF69B4",
+    "tags": [
+      "tập thể dục",
+      "sức khỏe"
+    ],
+    "tips": [
+      "Chọn bài tập phù hợp với thể lực",
+      "Tìm người tập cùng để tăng động lực",
+      "Đặt mục tiêu cụ thể cho mỗi buổi tập"
+    ],
+    "commonObstacles": [
+      "Khó bắt đầu do thiếu động lực",
+      "Cảm thấy mệt mỏi sau tập"
+    ],
+    "benefits": [
+      "Tăng cường sức khỏe tim mạch",
+      "Cải thiện tâm trạng và giảm stress",
+      "Giúp kiểm soát cân nặng hiệu quả"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Ngủ đủ 7-8 giờ mỗi đêm",
+    "description": "Dành thời gian nghỉ ngơi chất lượng cho cơ thể và tâm trí",
+    "category": "sleep",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "😴",
+    "color": "#8B9467",
+    "tags": [
+      "ngủ đủ giấc",
+      "sức khỏe"
+    ],
+    "tips": [
+      "Tạo lịch trình ngủ cố định",
+      "Tối ưu hóa môi trường ngủ",
+      "Tránh caffeine và điện thoại trước giờ ngủ"
+    ],
+    "commonObstacles": [
+      "Khó đi vào giấc ngủ do căng thẳng",
+      "Bị làm phiền bởi tiếng ồn"
+    ],
+    "benefits": [
+      "Cải thiện chức năng não bộ",
+      "Tăng cường hệ miễn dịch",
+      "Giúp kiểm soát cân nặng hiệu quả"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Thực hiện quy trình thư giãn trước giờ ngủ",
+    "description": "Chuẩn bị tâm trí và cơ thể cho giấc ngủ chất lượng",
+    "category": "sleep",
+    "difficulty": "hard",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "🧘",
+    "color": "#6495ED",
+    "tags": [
+      "thư giãn",
+      "ngủ đủ giấc"
+    ],
+    "tips": [
+      "Tập thở sâu và thiền",
+      "Đọc sách hoặc nghe nhạc nhẹ nhàng",
+      "Tránh thiết bị điện tử trước giờ ngủ"
+    ],
+    "commonObstacles": [
+      "Khó từ bỏ thói quen xem điện thoại trước ngủ",
+      "Cảm thấy không thoải mái khi thực hiện quy trình"
+    ],
+    "benefits": [
+      "Cải thiện chất lượng giấc ngủ",
+      "Giảm stress và lo âu",
+      "Tăng cường khả năng tập trung"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Sử dụng ánh sáng tự nhiên để điều chỉnh giấc ngủ",
+    "description": "Tận dụng ánh sáng ban ngày để cải thiện chất lượng giấc ngủ",
+    "category": "sleep",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "☀️",
+    "color": "#F7DC6F",
+    "tags": [
+      "ánh sáng tự nhiên",
+      "ngủ đủ giấc"
+    ],
+    "tips": [
+      "Mở cửa sổ vào ban ngày",
+      "Đi dạo ngoài trời vào buổi sáng",
+      "Tránh ánh sáng mạnh vào buổi tối"
+    ],
+    "commonObstacles": [
+      "Khó thay đổi thói quen hàng ngày",
+      "Không có không gian ngoài trời để tận dụng"
+    ],
+    "benefits": [
+      "Cải thiện chất lượng giấc ngủ",
+      "Tăng cường năng lượng và tâm trạng",
+      "Hỗ trợ điều hòa sinh học"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Dậy sớm lúc 6h",
+    "description": "Bắt đầu ngày mới với tâm trạng sảng khoái",
+    "category": "energy",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "☀️",
+    "color": "#F7DC6F",
+    "tags": [
+      "dậy sớm",
+      "sức khỏe"
+    ],
+    "tips": [
+      "Đặt báo thức đều đặn",
+      "Tạo thói quen trước khi ngủ",
+      "Dành thời gian cho bản thân"
+    ],
+    "commonObstacles": [
+      "Khó thức dậy buổi sáng",
+      "Thói quen ngủ muộn"
+    ],
+    "benefits": [
+      "Cải thiện tâm trạng",
+      "Tăng năng suất làm việc",
+      "Dành thời gian cho bản thân"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Tập thể dục 30 phút mỗi ngày",
+    "description": "Duy trì sức khỏe và năng lượng",
+    "category": "energy",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "🏋️‍♀️",
+    "color": "#34C759",
+    "tags": [
+      "tập thể dục",
+      "sức khỏe"
+    ],
+    "tips": [
+      "Chọn bài tập phù hợp",
+      "Tạo lịch trình tập luyện",
+      "Tìm bạn tập cùng"
+    ],
+    "commonObstacles": [
+      "Thiếu thời gian",
+      "Không có động lực"
+    ],
+    "benefits": [
+      "Cải thiện sức khỏe tổng thể",
+      "Tăng cường năng lượng",
+      "Giảm stress"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Ăn trái cây 2 lần mỗi ngày",
+    "description": "Bổ sung vitamin và khoáng chất cho cơ thể",
+    "category": "energy",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "count",
+    "targetCount": 2,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "🍉",
+    "color": "#FF69B4",
+    "tags": [
+      "trái cây",
+      "sức khỏe"
+    ],
+    "tips": [
+      "Chọn trái cây theo mùa",
+      "Bổ sung vào bữa ăn",
+      "Tạo thói quen ăn trái cây"
+    ],
+    "commonObstacles": [
+      "Không thích vị chua",
+      "Thiếu thời gian chuẩn bị"
+    ],
+    "benefits": [
+      "Cải thiện hệ miễn dịch",
+      "Tăng cường năng lượng",
+      "Hỗ trợ tiêu hóa"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Ngủ đủ 7 tiếng mỗi đêm",
+    "description": "Duy trì giấc ngủ chất lượng cho sức khỏe",
+    "category": "energy",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "😴",
+    "color": "#3498DB",
+    "tags": [
+      "ngủ đủ giấc",
+      "sức khỏe"
+    ],
+    "tips": [
+      "Tạo lịch trình ngủ đều đặn",
+      "Tối ưu hóa môi trường ngủ",
+      "Tránh caffeine trước khi ngủ"
+    ],
+    "commonObstacles": [
+      "Khó ngủ",
+      "Thói quen thức khuya"
+    ],
+    "benefits": [
+      "Cải thiện tâm trạng",
+      "Tăng cường năng lượng",
+      "Hỗ trợ hệ miễn dịch"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Tập yoga 3 lần mỗi tuần",
+    "description": "Duy trì sự linh hoạt và cân bằng cho cơ thể",
+    "category": "energy",
+    "difficulty": "hard",
+    "frequency": "weekly",
+    "trackingMode": "count",
+    "targetCount": 3,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "🧘‍♀️",
+    "color": "#8B9467",
+    "tags": [
+      "tập yoga",
+      "sức khỏe"
+    ],
+    "tips": [
+      "Chọn bài tập phù hợp",
+      "Tạo lịch trình tập luyện",
+      "Tìm bạn tập cùng"
+    ],
+    "commonObstacles": [
+      "Thiếu thời gian",
+      "Không có động lực"
+    ],
+    "benefits": [
+      "Cải thiện sự linh hoạt",
+      "Tăng cường cân bằng",
+      "Giảm stress"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Dậy sớm lúc 6h",
+    "description": "Bắt đầu ngày mới với năng lượng và tinh thần sảng khoái",
+    "category": "control",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "☀️",
+    "color": "#F7DC6F",
+    "tags": [
+      "dậy sớm",
+      "năng lượng"
+    ],
+    "tips": [
+      "Đặt báo thức và đặt nó xa giường",
+      "Tạo thói quen đi ngủ sớm",
+      "Uống nước ngay sau khi thức dậy"
+    ],
+    "commonObstacles": [
+      "Khó thức dậy vào buổi sáng",
+      "Muốn ngủ thêm"
+    ],
+    "benefits": [
+      "Tăng năng lượng và sự tập trung",
+      "Cải thiện tâm trạng và giảm căng thẳng",
+      "Đủ thời gian cho các hoạt động buổi sáng"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Ăn 5 bữa nhỏ mỗi ngày",
+    "description": "Duy trì năng lượng và kiểm soát cân nặng",
+    "category": "control",
+    "difficulty": "hard",
+    "frequency": "daily",
+    "trackingMode": "count",
+    "targetCount": 5,
+    "unit": "bữa",
+    "habitType": "build",
+    "icon": "🍴",
+    "color": "#8B9467",
+    "tags": [
+      "dinh dưỡng",
+      "cân nặng"
+    ],
+    "tips": [
+      "Lập kế hoạch ăn uống hàng ngày",
+      "Chọn thực phẩm giàu dinh dưỡng",
+      "Uống nước trước bữa ăn"
+    ],
+    "commonObstacles": [
+      "Khó kiểm soát số lượng bữa ăn",
+      "Thích ăn vặt"
+    ],
+    "benefits": [
+      "Tăng cường trao đổi chất",
+      "Cải thiện sức khỏe tổng thể",
+      "Kiểm soát cân nặng hiệu quả"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Tập thể dục 30 phút mỗi ngày",
+    "description": "Cải thiện sức khỏe và tăng cường thể lực",
+    "category": "control",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "🏋️",
+    "color": "#34C759",
+    "tags": [
+      "tập thể dục",
+      "sức khỏe"
+    ],
+    "tips": [
+      "Chọn bài tập phù hợp với thể lực",
+      "Tạo lịch trình tập luyện hàng ngày",
+      "Đi bộ hoặc chạy bộ vào buổi sáng"
+    ],
+    "commonObstacles": [
+      "Khó tìm thời gian tập luyện",
+      "Không thích tập thể dục"
+    ],
+    "benefits": [
+      "Tăng cường sức khỏe tim mạch",
+      "Cải thiện thể lực và sự dẻo dai",
+      "Giảm stress và cải thiện tâm trạng"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Uống 2 cốc trà xanh mỗi ngày",
+    "description": "Tăng cường sức khỏe và chống oxy hóa",
+    "category": "control",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "count",
+    "targetCount": 2,
+    "unit": "cốc",
+    "habitType": "build",
+    "icon": "🍵",
+    "color": "#3E8E41",
+    "tags": [
+      "trà xanh",
+      "sức khỏe"
+    ],
+    "tips": [
+      "Chọn trà xanh chất lượng cao",
+      "Uống trà xanh sau bữa ăn",
+      "Tránh uống trà xanh trước khi ngủ"
+    ],
+    "commonObstacles": [
+      "Khó uống đủ 2 cốc mỗi ngày",
+      "Không thích vị trà xanh"
+    ],
+    "benefits": [
+      "Tăng cường sức khỏe tim mạch",
+      "Chống oxy hóa và lão hóa",
+      "Cải thiện chức năng não bộ"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Viết nhật ký 10 phút mỗi ngày",
+    "description": "Tăng cường sự phản ánh và cải thiện tâm trạng",
+    "category": "control",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "📝",
+    "color": "#FFC107",
+    "tags": [
+      "nhật ký",
+      "tâm trạng"
+    ],
+    "tips": [
+      "Chọn thời gian viết nhật ký phù hợp",
+      "Viết về những suy nghĩ và cảm xúc",
+      "Đừng lo lắng về việc viết đúng hay sai"
+    ],
+    "commonObstacles": [
+      "Khó tìm thời gian viết nhật ký",
+      "Không biết viết gì"
+    ],
+    "benefits": [
+      "Tăng cường sự phản ánh và tự nhận thức",
+      "Cải thiện tâm trạng và giảm căng thẳng",
+      "Phát triển kỹ năng viết và tư duy"
+    ],
+    "isPopular": true
   }
 ];
 

@@ -5,6 +5,7 @@ import { errorHandler } from '../middlewares/errorHandler.js';
 import connectDB from './config/database.js'; // ← Import connectDB
 import './config/firebase.js'; 
 
+
 // Routes
 import userRoutes from './routes/User-routes.js';
 import SurveyRoutes from './routes/Survey-routes.js';
@@ -18,6 +19,10 @@ import fcmRoutes from './routes/fcmRoutes.js';
 import testRoutes from './routes/testRoutes.js';
 
 import reminderScheduler from './services/reminderScheduler.js';
+import streakProtectionScheduler from './jobs/streakProtectionScheduler.js';
+import mongoose from 'mongoose';
+import achievementRoutes from './routes/Achievement-routes.js'; 
+import inventoryRoutes from './routes/Inventory-routes.js'; 
 
 // Load environment variables
 dotenv.config();
@@ -40,6 +45,9 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/fcm', fcmRoutes);
 app.use('/api/test', testRoutes);
 
+app.use('/api/achievements', achievementRoutes);
+app.use('/api/inventory', inventoryRoutes);
+
 // Error handler
 app.use(errorHandler);
 
@@ -52,6 +60,8 @@ connectDB().then(() => {
   
   // Khởi động reminder scheduler
   reminderScheduler.start();
+
+  streakProtectionScheduler.start();
   
   app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);

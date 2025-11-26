@@ -1,0 +1,1794 @@
+[
+  {
+    "name": "Tập thể dục 30 phút mỗi ngày",
+    "description": "Duy trì sức khỏe và trạng thái thể chất tốt",
+    "category": "health",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "🏋️",
+    "color": "#34C759",
+    "tags": [
+      "tập thể dục",
+      "sức khỏe"
+    ],
+    "tips": [
+      "Chọn bài tập phù hợp với thể trạng",
+      "Tập thể dục vào buổi sáng hoặc chiều",
+      "Tìm bạn tập để tăng động lực"
+    ],
+    "commonObstacles": [
+      "Quên tập hoặc bỏ dở",
+      "Không có thời gian trong ngày"
+    ],
+    "benefits": [
+      "Tăng cường sức khỏe tổng thể",
+      "Cải thiện tâm trạng và giảm stress",
+      "Tăng cường hệ miễn dịch"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Ăn 5 phần trái cây mỗi ngày",
+    "description": "Bổ sung vitamin và khoáng chất cần thiết cho cơ thể",
+    "category": "health",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "count",
+    "targetCount": 5,
+    "unit": "phần",
+    "habitType": "build",
+    "icon": "🍉",
+    "color": "#FFC107",
+    "tags": [
+      "chế độ ăn uống",
+      "sức khỏe"
+    ],
+    "tips": [
+      "Chọn trái cây theo mùa",
+      "Ăn trái cây vào các bữa phụ",
+      "Trộn trái cây vào salad hoặc sinh tố"
+    ],
+    "commonObstacles": [
+      "Không thích mùi vị của một số trái cây",
+      "Quên mua trái cây khi đi chợ"
+    ],
+    "benefits": [
+      "Cải thiện hệ miễn dịch",
+      "Tăng cường năng lượng",
+      "Hỗ trợ tiêu hóa tốt hơn"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Ngủ đủ 7-8 giờ mỗi đêm",
+    "description": "Duy trì giấc ngủ chất lượng và sức khỏe tổng thể",
+    "category": "health",
+    "difficulty": "hard",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "😴",
+    "color": "#6495ED",
+    "tags": [
+      "giấc ngủ",
+      "sức khỏe"
+    ],
+    "tips": [
+      "Đặt giờ đi ngủ cố định",
+      "Tạo môi trường ngủ thoải mái",
+      "Tránh sử dụng điện thoại trước khi ngủ"
+    ],
+    "commonObstacles": [
+      "Khó ngủ hoặc mất ngủ",
+      "Bị làm phiền bởi tiếng ồn"
+    ],
+    "benefits": [
+      "Cải thiện tâm trạng và giảm stress",
+      "Tăng cường hệ miễn dịch",
+      "Hỗ trợ hồi phục cơ thể"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Uống 2 ly sữa mỗi ngày",
+    "description": "Bổ sung canxi và vitamin cần thiết cho sức khỏe xương",
+    "category": "health",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "count",
+    "targetCount": 2,
+    "unit": "ly",
+    "habitType": "build",
+    "icon": "🥛",
+    "color": "#F7DC6F",
+    "tags": [
+      "sữa",
+      "sức khỏe xương"
+    ],
+    "tips": [
+      "Chọn loại sữa phù hợp với tuổi và thể trạng",
+      "Uống sữa vào bữa sáng hoặc trước khi ngủ",
+      "Kết hợp sữa với trái cây hoặc bánh mì"
+    ],
+    "commonObstacles": [
+      "Không thích vị sữa",
+      "Quên mua sữa khi đi chợ"
+    ],
+    "benefits": [
+      "Cải thiện sức khỏe xương",
+      "Tăng cường hệ miễn dịch",
+      "Hỗ trợ phát triển cơ thể"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Đi bộ 30 phút mỗi ngày",
+    "description": "Tăng cường sức khỏe tim mạch và giảm stress",
+    "category": "health",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "🚶",
+    "color": "#8BC34A",
+    "tags": [
+      "đi bộ",
+      "sức khỏe tim mạch"
+    ],
+    "tips": [
+      "Chọn địa điểm đi bộ an toàn",
+      "Đi bộ vào buổi sáng hoặc chiều",
+      "Tìm bạn đi bộ để tăng động lực"
+    ],
+    "commonObstacles": [
+      "Quên đi bộ hoặc bỏ dở",
+      "Không có thời gian trong ngày"
+    ],
+    "benefits": [
+      "Tăng cường sức khỏe tim mạch",
+      "Cải thiện tâm trạng và giảm stress",
+      "Tăng cường hệ miễn dịch"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Tập thể dục 30 phút mỗi ngày",
+    "description": "Cải thiện sức khỏe và tinh thần",
+    "category": "productivity",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "🏋️",
+    "color": "#4ADE7E",
+    "tags": [
+      "sức khỏe",
+      "tập thể dục"
+    ],
+    "tips": [
+      "Chọn bài tập phù hợp với thể lực",
+      "Tạo lịch trình tập luyện cố định",
+      "Tìm người đồng hành tập luyện"
+    ],
+    "commonObstacles": [
+      "Thiếu động lực",
+      "Không có thời gian"
+    ],
+    "benefits": [
+      "Tăng cường sức khỏe tổng thể",
+      "Giảm cân và cải thiện vóc dáng",
+      "Tăng cường năng lượng và sự tập trung"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Đọc 1 chương sách mỗi ngày",
+    "description": "Mở rộng kiến thức và cải thiện kỹ năng đọc",
+    "category": "productivity",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "count",
+    "targetCount": 1,
+    "unit": "chương",
+    "habitType": "build",
+    "icon": "📖",
+    "color": "#F7DC6F",
+    "tags": [
+      "đọc sách",
+      "kiến thức"
+    ],
+    "tips": [
+      "Chọn sách phù hợp với sở thích",
+      "Tạo không gian đọc thoải mái",
+      "Đặt mục tiêu đọc hàng ngày"
+    ],
+    "commonObstacles": [
+      "Không có thời gian",
+      "Khó tập trung khi đọc"
+    ],
+    "benefits": [
+      "Mở rộng kiến thức và hiểu biết",
+      "Cải thiện kỹ năng đọc và viết",
+      "Tăng cường khả năng tập trung và tư duy"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Viết nhật ký 10 phút mỗi ngày",
+    "description": "Tập trung vào suy nghĩ và cảm xúc",
+    "category": "productivity",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "📝",
+    "color": "#8B9467",
+    "tags": [
+      "nhật ký",
+      "tư duy"
+    ],
+    "tips": [
+      "Chọn thời gian và không gian thoải mái",
+      "Viết tự do và không lo lắng về lỗi",
+      "Tập trung vào cảm xúc và suy nghĩ"
+    ],
+    "commonObstacles": [
+      "Không biết viết gì",
+      "Không có thời gian"
+    ],
+    "benefits": [
+      "Tập trung vào suy nghĩ và cảm xúc",
+      "Cải thiện kỹ năng viết và tư duy",
+      "Giảm stress và tăng cường sự tự nhận thức"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Học 10 từ vựng mới mỗi ngày",
+    "description": "Cải thiện kỹ năng ngôn ngữ",
+    "category": "productivity",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "count",
+    "targetCount": 10,
+    "unit": "từ",
+    "habitType": "build",
+    "icon": "📚",
+    "color": "#34C759",
+    "tags": [
+      "học ngôn ngữ",
+      "từ vựng"
+    ],
+    "tips": [
+      "Chọn tài liệu học phù hợp",
+      "Tạo flashcard để ôn tập",
+      "Tập nói và nghe để cải thiện kỹ năng"
+    ],
+    "commonObstacles": [
+      "Không có thời gian",
+      "Khó nhớ từ vựng"
+    ],
+    "benefits": [
+      "Cải thiện kỹ năng ngôn ngữ",
+      "Tăng cường khả năng giao tiếp",
+      "Mở rộng kiến thức và hiểu biết"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Tập trung 25 phút mà không kiểm tra điện thoại",
+    "description": "Tăng cường khả năng tập trung và giảm phân tâm",
+    "category": "productivity",
+    "difficulty": "hard",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "📴",
+    "color": "#FFC080",
+    "tags": [
+      "tập trung",
+      "điện thoại"
+    ],
+    "tips": [
+      "Tắt thông báo và đặt điện thoại ở chế độ im lặng",
+      "Chọn không gian làm việc thoải mái",
+      "Tập trung vào nhiệm vụ và tránh phân tâm"
+    ],
+    "commonObstacles": [
+      "Khó cưỡng lại sự cám dỗ của điện thoại",
+      "Không có động lực"
+    ],
+    "benefits": [
+      "Tăng cường khả năng tập trung",
+      "Giảm phân tâm và tăng năng suất",
+      "Cải thiện chất lượng công việc và cuộc sống"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Học 20 từ vựng mỗi ngày",
+    "description": "Cải thiện kỹ năng ngôn ngữ và mở rộng vốn từ",
+    "category": "learning",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "count",
+    "targetCount": 20,
+    "unit": "từ",
+    "habitType": "build",
+    "icon": "📚",
+    "color": "#3B82F6",
+    "tags": [
+      "ngôn ngữ",
+      "vốn từ"
+    ],
+    "tips": [
+      "Sử dụng flashcard",
+      "Học từ vựng theo chủ đề",
+      "Lặp lại từ vựng cũ"
+    ],
+    "commonObstacles": [
+      "Quên từ vựng cũ",
+      "Không có thời gian học"
+    ],
+    "benefits": [
+      "Cải thiện kỹ năng đọc hiểu",
+      "Tăng khả năng giao tiếp",
+      "Mở rộng vốn từ"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Đọc sách 30 phút mỗi ngày",
+    "description": "Phát triển kiến thức và tư duy",
+    "category": "learning",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "📖",
+    "color": "#8B5CF6",
+    "tags": [
+      "đọc sách",
+      "kiến thức"
+    ],
+    "tips": [
+      "Chọn sách phù hợp với sở thích",
+      "Tạo không gian đọc thoải mái",
+      "Đặt mục tiêu đọc mỗi ngày"
+    ],
+    "commonObstacles": [
+      "Không có thời gian đọc",
+      "Không biết chọn sách nào"
+    ],
+    "benefits": [
+      "Cải thiện kiến thức",
+      "Tăng khả năng tư duy",
+      "Giảm stress và căng thẳng"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Luyện viết 500 từ mỗi ngày",
+    "description": "Phát triển kỹ năng viết và tư duy",
+    "category": "learning",
+    "difficulty": "hard",
+    "frequency": "daily",
+    "trackingMode": "count",
+    "targetCount": 500,
+    "unit": "từ",
+    "habitType": "build",
+    "icon": "📝",
+    "color": "#F97316",
+    "tags": [
+      "viết lách",
+      "tư duy"
+    ],
+    "tips": [
+      "Chọn chủ đề phù hợp",
+      "Tạo dàn ý trước khi viết",
+      "Không ngừng viết dù khó"
+    ],
+    "commonObstacles": [
+      "Không biết viết về gì",
+      "Khó khăn trong việc tạo dàn ý"
+    ],
+    "benefits": [
+      "Cải thiện kỹ năng viết",
+      "Tăng khả năng tư duy",
+      "Phát triển sự sáng tạo"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Học một kỹ năng mới mỗi tuần",
+    "description": "Phát triển bản thân và tăng khả năng cạnh tranh",
+    "category": "learning",
+    "difficulty": "medium",
+    "frequency": "weekly",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "📈",
+    "color": "#8B5CF6",
+    "tags": [
+      "phát triển bản thân",
+      "kỹ năng mới"
+    ],
+    "tips": [
+      "Chọn kỹ năng phù hợp với sở thích",
+      "Tạo kế hoạch học tập",
+      "Thực hành đều đặn"
+    ],
+    "commonObstacles": [
+      "Không biết chọn kỹ năng nào",
+      "Khó khăn trong việc thực hành"
+    ],
+    "benefits": [
+      "Tăng khả năng cạnh tranh",
+      "Phát triển bản thân",
+      "Cải thiện chất lượng cuộc sống"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Tham gia một khóa học trực tuyến mỗi tháng",
+    "description": "Phát triển kiến thức và kỹ năng",
+    "category": "learning",
+    "difficulty": "easy",
+    "frequency": "monthly",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "📚",
+    "color": "#3B82F6",
+    "tags": [
+      "khóa học trực tuyến",
+      "kiến thức"
+    ],
+    "tips": [
+      "Chọn khóa học phù hợp với sở thích",
+      "Tạo kế hoạch học tập",
+      "Thực hành đều đặn"
+    ],
+    "commonObstacles": [
+      "Không biết chọn khóa học nào",
+      "Khó khăn trong việc thực hành"
+    ],
+    "benefits": [
+      "Cải thiện kiến thức",
+      "Tăng khả năng tư duy",
+      "Phát triển bản thân"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Tập yoga buổi sáng",
+    "description": "Bắt đầu ngày mới với cơ thể và tâm trí khỏe mạnh",
+    "category": "mindful",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "🧘",
+    "color": "#F7DC6F",
+    "tags": [
+      "yoga",
+      "sức khỏe"
+    ],
+    "tips": [
+      "Chọn bài tập phù hợp cho người mới",
+      "Tập trung vào hơi thở",
+      "Bắt đầu với 10-15 phút mỗi ngày"
+    ],
+    "commonObstacles": [
+      "Không có thời gian buổi sáng",
+      "Cảm thấy không linh hoạt"
+    ],
+    "benefits": [
+      "Cải thiện độ dẻo của cơ thể",
+      "Tăng cường khả năng tập trung",
+      "Giảm stress và lo âu"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Đọc sách 30 phút mỗi ngày",
+    "description": "Mở rộng kiến thức và cải thiện khả năng tập trung",
+    "category": "mindful",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "📚",
+    "color": "#3498DB",
+    "tags": [
+      "đọc sách",
+      "kiến thức"
+    ],
+    "tips": [
+      "Chọn sách phù hợp với sở thích",
+      "Tạo không gian đọc thoải mái",
+      "Bắt đầu với 10-15 phút mỗi ngày"
+    ],
+    "commonObstacles": [
+      "Không có thời gian",
+      "Cảm thấy nhàm chán"
+    ],
+    "benefits": [
+      "Mở rộng kiến thức",
+      "Cải thiện khả năng tập trung",
+      "Giảm stress và lo âu"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Viết nhật ký mỗi ngày",
+    "description": "Ghi lại suy nghĩ và cảm xúc để cải thiện tâm trí",
+    "category": "mindful",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "📝",
+    "color": "#9B59B6",
+    "tags": [
+      "nhật ký",
+      "tâm trí"
+    ],
+    "tips": [
+      "Chọn thời gian phù hợp để viết",
+      "Viết về suy nghĩ và cảm xúc",
+      "Bắt đầu với 5-10 phút mỗi ngày"
+    ],
+    "commonObstacles": [
+      "Không biết viết về gì",
+      "Cảm thấy không có thời gian"
+    ],
+    "benefits": [
+      "Cải thiện khả năng tập trung",
+      "Giảm stress và lo âu",
+      "Tăng cường khả năng tự nhận thức"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Đi bộ 10,000 bước mỗi ngày",
+    "description": "Cải thiện sức khỏe và tăng cường khả năng tập trung",
+    "category": "mindful",
+    "difficulty": "hard",
+    "frequency": "daily",
+    "trackingMode": "count",
+    "targetCount": 10000,
+    "unit": "bước",
+    "habitType": "build",
+    "icon": "🚶",
+    "color": "#2ECC71",
+    "tags": [
+      "đi bộ",
+      "sức khỏe"
+    ],
+    "tips": [
+      "Sử dụng máy đếm bước",
+      "Tạo kế hoạch đi bộ mỗi ngày",
+      "Bắt đầu với 5,000 bước mỗi ngày"
+    ],
+    "commonObstacles": [
+      "Không có thời gian",
+      "Cảm thấy mệt mỏi"
+    ],
+    "benefits": [
+      "Cải thiện sức khỏe tim mạch",
+      "Tăng cường khả năng tập trung",
+      "Giảm stress và lo âu"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Thực hành hít thở sâu 10 phút mỗi ngày",
+    "description": "Cải thiện khả năng tập trung và giảm stress",
+    "category": "mindful",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "🙏",
+    "color": "#1ABC9C",
+    "tags": [
+      "hít thở sâu",
+      "tâm trí"
+    ],
+    "tips": [
+      "Tìm không gian yên tĩnh",
+      "Sử dụng ứng dụng hít thở sâu",
+      "Bắt đầu với 5 phút mỗi ngày"
+    ],
+    "commonObstacles": [
+      "Khó tập trung",
+      "Cảm thấy không có thời gian"
+    ],
+    "benefits": [
+      "Cải thiện khả năng tập trung",
+      "Giảm stress và lo âu",
+      "Tăng cường khả năng tự nhận thức"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Tiết kiệm 10% thu nhập",
+    "description": "Xây dựng thói quen tiết kiệm để đạt được mục tiêu tài chính",
+    "category": "finance",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "count",
+    "targetCount": 10,
+    "unit": "%",
+    "habitType": "build",
+    "icon": "💸",
+    "color": "#34C759",
+    "tags": [
+      "tiết kiệm",
+      "tài chính"
+    ],
+    "tips": [
+      "Tạo một quỹ tiết kiệm riêng",
+      "Đặt mục tiêu tiết kiệm cụ thể",
+      "Theo dõi thu chi hàng ngày"
+    ],
+    "commonObstacles": [
+      "Khó khăn trong việc cắt giảm chi tiêu",
+      "Không có kế hoạch tiết kiệm rõ ràng"
+    ],
+    "benefits": [
+      "Đạt được mục tiêu tài chính dài hạn",
+      "Cải thiện tình hình tài chính hiện tại",
+      "Giảm stress và lo âu về tài chính"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Đánh giá và điều chỉnh ngân sách hàng tháng",
+    "description": "Quản lý chi tiêu hiệu quả và thông minh",
+    "category": "finance",
+    "difficulty": "hard",
+    "frequency": "monthly",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "📊",
+    "color": "#FFC107",
+    "tags": [
+      "quản lý chi tiêu",
+      "ngân sách"
+    ],
+    "tips": [
+      "Sử dụng công cụ quản lý chi tiêu",
+      "Đánh giá và điều chỉnh ngân sách thường xuyên",
+      "Tập trung vào việc cắt giảm chi tiêu không cần thiết"
+    ],
+    "commonObstacles": [
+      "Khó khăn trong việc theo dõi chi tiêu",
+      "Không có kế hoạch quản lý chi tiêu hiệu quả"
+    ],
+    "benefits": [
+      "Cải thiện tình hình tài chính hiện tại",
+      "Đạt được mục tiêu tài chính dài hạn",
+      "Giảm stress và lo âu về tài chính"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Đầu tư 5% thu nhập vào chứng khoán",
+    "description": "Tăng trưởng tài sản và đạt được mục tiêu tài chính",
+    "category": "finance",
+    "difficulty": "hard",
+    "frequency": "monthly",
+    "trackingMode": "count",
+    "targetCount": 5,
+    "unit": "%",
+    "habitType": "build",
+    "icon": "💰",
+    "color": "#8B0A1A",
+    "tags": [
+      "đầu tư",
+      "chứng khoán"
+    ],
+    "tips": [
+      "Nghiên cứu và hiểu rõ về đầu tư chứng khoán",
+      "Bắt đầu với số tiền nhỏ và tăng dần",
+      "Đa dạng hóa danh mục đầu tư"
+    ],
+    "commonObstacles": [
+      "Khó khăn trong việc hiểu rõ về đầu tư chứng khoán",
+      "Sợ rủi ro mất mát"
+    ],
+    "benefits": [
+      "Tăng trưởng tài sản",
+      "Đạt được mục tiêu tài chính dài hạn",
+      "Cải thiện tình hình tài chính hiện tại"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Trả nợ 10% mỗi tháng",
+    "description": "Loại bỏ nợ nần và cải thiện tình hình tài chính",
+    "category": "finance",
+    "difficulty": "medium",
+    "frequency": "monthly",
+    "trackingMode": "count",
+    "targetCount": 10,
+    "unit": "%",
+    "habitType": "build",
+    "icon": "📈",
+    "color": "#4CAF50",
+    "tags": [
+      "trả nợ",
+      "tài chính"
+    ],
+    "tips": [
+      "Tạo một kế hoạch trả nợ cụ thể",
+      "Đánh giá và điều chỉnh ngân sách thường xuyên",
+      "Tập trung vào việc cắt giảm chi tiêu không cần thiết"
+    ],
+    "commonObstacles": [
+      "Khó khăn trong việc cắt giảm chi tiêu",
+      "Không có kế hoạch trả nợ rõ ràng"
+    ],
+    "benefits": [
+      "Loại bỏ nợ nần",
+      "Cải thiện tình hình tài chính hiện tại",
+      "Giảm stress và lo âu về tài chính"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Tạo một quỹ dự phòng khẩn cấp",
+    "description": "Chuẩn bị cho các tình huống khẩn cấp và bất ngờ",
+    "category": "finance",
+    "difficulty": "easy",
+    "frequency": "monthly",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "🛡️",
+    "color": "#03A9F4",
+    "tags": [
+      "quỹ dự phòng",
+      "tài chính"
+    ],
+    "tips": [
+      "Bắt đầu với số tiền nhỏ và tăng dần",
+      "Đặt mục tiêu cụ thể cho quỹ dự phòng",
+      "Theo dõi và điều chỉnh quỹ dự phòng thường xuyên"
+    ],
+    "commonObstacles": [
+      "Khó khăn trong việc bắt đầu",
+      "Không có kế hoạch cụ thể"
+    ],
+    "benefits": [
+      "Chuẩn bị cho các tình huống khẩn cấp",
+      "Cải thiện tình hình tài chính hiện tại",
+      "Giảm stress và lo âu về tài chính"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Đọc sách 30 phút mỗi ngày",
+    "description": "Phát triển trí tuệ và tưởng tượng",
+    "category": "digital",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "📖",
+    "color": "#34C759",
+    "tags": [
+      "đọc sách",
+      "phát triển trí tuệ"
+    ],
+    "tips": [
+      "Chọn sách phù hợp với sở thích",
+      "Đặt mục tiêu đọc mỗi ngày",
+      "Tạo không gian đọc thoải mái"
+    ],
+    "commonObstacles": [
+      "Không có thời gian",
+      "Khó tập trung khi đọc"
+    ],
+    "benefits": [
+      "Tăng kiến thức và hiểu biết",
+      "Phát triển khả năng tư duy",
+      "Cải thiện kỹ năng ngôn ngữ"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Tập thể dục 30 phút mỗi ngày",
+    "description": "Duy trì sức khỏe và thể lực",
+    "category": "digital",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "🏋️‍♀️",
+    "color": "#FF69B4",
+    "tags": [
+      "tập thể dục",
+      "sức khỏe"
+    ],
+    "tips": [
+      "Chọn bài tập phù hợp với thể lực",
+      "Tạo lịch trình tập luyện",
+      "Tìm người tập cùng để động viên"
+    ],
+    "commonObstacles": [
+      "Không có thời gian",
+      "Khó khăn khi bắt đầu"
+    ],
+    "benefits": [
+      "Tăng cường sức khỏe tổng thể",
+      "Cải thiện tâm trạng",
+      "Giảm nguy cơ bệnh tật"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Viết nhật ký 10 phút mỗi ngày",
+    "description": "Phát triển khả năng tự phản ánh và ghi nhớ",
+    "category": "digital",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "📝",
+    "color": "#8B9467",
+    "tags": [
+      "viết nhật ký",
+      "phát triển khả năng tự phản ánh"
+    ],
+    "tips": [
+      "Chọn thời gian phù hợp",
+      "Viết về những trải nghiệm và cảm xúc",
+      "Không cần viết quá nhiều"
+    ],
+    "commonObstacles": [
+      "Không biết viết gì",
+      "Khó duy trì thói quen"
+    ],
+    "benefits": [
+      "Cải thiện khả năng tự phản ánh",
+      "Tăng cường ghi nhớ",
+      "Giúp giảm stress và lo âu"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Học 10 từ vựng mới mỗi ngày",
+    "description": "Phát triển khả năng ngôn ngữ và giao tiếp",
+    "category": "digital",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "count",
+    "targetCount": 10,
+    "unit": "từ",
+    "habitType": "build",
+    "icon": "📚",
+    "color": "#4B5154",
+    "tags": [
+      "học từ vựng",
+      "phát triển khả năng ngôn ngữ"
+    ],
+    "tips": [
+      "Sử dụng Flashcard",
+      "Học từ vựng trong contexto",
+      "Lặp lại từ vựng đã học"
+    ],
+    "commonObstacles": [
+      "Khó nhớ từ vựng",
+      "Không có thời gian"
+    ],
+    "benefits": [
+      "Cải thiện khả năng ngôn ngữ",
+      "Tăng cường giao tiếp",
+      "Phát triển khả năng học hỏi"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Tập trung 25 phút mỗi lần làm việc",
+    "description": "Tăng cường năng suất và hiệu quả công việc",
+    "category": "digital",
+    "difficulty": "hard",
+    "frequency": "daily",
+    "trackingMode": "count",
+    "targetCount": 25,
+    "unit": "phút",
+    "habitType": "build",
+    "icon": "🕒",
+    "color": "#2F4F7F",
+    "tags": [
+      "tập trung",
+      "năng suất"
+    ],
+    "tips": [
+      "Sử dụng kỹ thuật Pomodoro",
+      "Loại bỏ sự phân tâm",
+      "Tập trung vào một nhiệm vụ tại một thời điểm"
+    ],
+    "commonObstacles": [
+      "Khó tập trung",
+      "Dễ bị phân tâm"
+    ],
+    "benefits": [
+      "Tăng cường năng suất",
+      "Cải thiện hiệu quả công việc",
+      "Giảm stress và lo âu"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Gọi điện cho người thân mỗi ngày",
+    "description": "Duy trì mối quan hệ gần gũi với gia đình và bạn bè",
+    "category": "social",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "📞",
+    "color": "#34C759",
+    "tags": [
+      "mối quan hệ",
+      "giao tiếp"
+    ],
+    "tips": [
+      "Lập danh sách người thân cần liên hệ",
+      "Chọn thời điểm phù hợp để gọi",
+      "Chuẩn bị sẵn chủ đề để trò chuyện"
+    ],
+    "commonObstacles": [
+      "Quên gọi điện khi bận rộn",
+      "Không biết bắt đầu cuộc trò chuyện"
+    ],
+    "benefits": [
+      "Cải thiện mối quan hệ với gia đình",
+      "Tăng cường giao tiếp với bạn bè",
+      "Giảm cảm giác cô đơn"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Tập thể dục với bạn bè 3 lần mỗi tuần",
+    "description": "Tăng cường sức khỏe và tạo ra những kỷ niệm đẹp",
+    "category": "social",
+    "difficulty": "medium",
+    "frequency": "weekly",
+    "trackingMode": "check",
+    "targetCount": 3,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "🏋️",
+    "color": "#F97316",
+    "tags": [
+      "tập thể dục",
+      "sức khỏe"
+    ],
+    "tips": [
+      "Chọn môn thể thao phù hợp",
+      "Tìm kiếm bạn tập cùng",
+      "Đặt mục tiêu và theo dõi tiến độ"
+    ],
+    "commonObstacles": [
+      "Khó tìm kiếm bạn tập cùng",
+      "Không có thời gian tập thể dục"
+    ],
+    "benefits": [
+      "Cải thiện sức khỏe thể chất",
+      "Tăng cường tinh thần",
+      "Tạo ra những kỷ niệm đẹp"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Học tiếng Anh mỗi ngày với 15 phút",
+    "description": "Cải thiện kỹ năng tiếng Anh để mở rộng cơ hội",
+    "category": "social",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "📚",
+    "color": "#3B82F6",
+    "tags": [
+      "học tiếng Anh",
+      "phát triển bản thân"
+    ],
+    "tips": [
+      "Chọn tài liệu học phù hợp",
+      "Tập trung vào kỹ năng nghe và nói",
+      "Sử dụng ứng dụng học tiếng Anh"
+    ],
+    "commonObstacles": [
+      "Khó tìm kiếm tài liệu học phù hợp",
+      "Không có thời gian học mỗi ngày"
+    ],
+    "benefits": [
+      "Cải thiện kỹ năng tiếng Anh",
+      "Tăng cường cơ hội việc làm",
+      "Phát triển bản thân"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Đi dạo 30 phút mỗi ngày",
+    "description": "Tăng cường sức khỏe và giảm stress",
+    "category": "social",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "🚶",
+    "color": "#8B9467",
+    "tags": [
+      "đi dạo",
+      "sức khỏe"
+    ],
+    "tips": [
+      "Chọn địa điểm đi dạo phù hợp",
+      "Tập trung vào hơi thở và môi trường",
+      "Sử dụng ứng dụng theo dõi sức khỏe"
+    ],
+    "commonObstacles": [
+      "Khó tìm kiếm địa điểm đi dạo phù hợp",
+      "Không có thời gian đi dạo mỗi ngày"
+    ],
+    "benefits": [
+      "Tăng cường sức khỏe thể chất",
+      "Giảm stress và lo âu",
+      "Cải thiện tâm trạng"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Tập yoga 30 phút mỗi ngày",
+    "description": "Tăng cường sức khỏe và giảm stress",
+    "category": "social",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "🧘",
+    "color": "#F7DC6F",
+    "tags": [
+      "tập yoga",
+      "sức khỏe"
+    ],
+    "tips": [
+      "Chọn tư thế yoga phù hợp",
+      "Tập trung vào hơi thở và kỹ thuật",
+      "Sử dụng ứng dụng hướng dẫn yoga"
+    ],
+    "commonObstacles": [
+      "Khó tìm kiếm tư thế yoga phù hợp",
+      "Không có thời gian tập yoga mỗi ngày"
+    ],
+    "benefits": [
+      "Tăng cường sức khỏe thể chất",
+      "Giảm stress và lo âu",
+      "Cải thiện tâm trạng"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Tập thể dục 30 phút mỗi ngày",
+    "description": "Duy trì sức khỏe và sự dẻo dai của cơ thể",
+    "category": "fitness",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "🏋️",
+    "color": "#34C759",
+    "tags": [
+      "sức khỏe",
+      "tập thể dục"
+    ],
+    "tips": [
+      "Chọn bài tập phù hợp với thể lực",
+      "Tập thể dục vào buổi sáng",
+      "Dùng nhạc để tăng cường động lực"
+    ],
+    "commonObstacles": [
+      "Quên tập thể dục khi bận rộn",
+      "Không thích tập thể dục"
+    ],
+    "benefits": [
+      "Cải thiện sức khỏe tim mạch",
+      "Tăng cường sức mạnh cơ bắp",
+      "Giảm cân và cải thiện vóc dáng"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Đi bộ 10,000 bước mỗi ngày",
+    "description": "Tăng cường sức khỏe và sự dẻo dai của cơ thể",
+    "category": "fitness",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "count",
+    "targetCount": 10000,
+    "unit": "bước",
+    "habitType": "build",
+    "icon": "🚶",
+    "color": "#FFC107",
+    "tags": [
+      "sức khỏe",
+      "đi bộ"
+    ],
+    "tips": [
+      "Dùng máy đếm bước chân",
+      "Đi bộ vào buổi trưa",
+      "Tìm người bạn đi bộ cùng"
+    ],
+    "commonObstacles": [
+      "Khó đi bộ khi thời tiết xấu",
+      "Không có thời gian đi bộ"
+    ],
+    "benefits": [
+      "Cải thiện sức khỏe tim mạch",
+      "Tăng cường sức mạnh cơ bắp",
+      "Giảm cân và cải thiện vóc dáng"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Tập yoga 30 phút mỗi sáng",
+    "description": "Bắt đầu ngày mới với tâm trí tỉnh thức và cơ thể dẻo dai",
+    "category": "fitness",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "🧘",
+    "color": "#8B5CF6",
+    "tags": [
+      "yoga",
+      "sức khỏe"
+    ],
+    "tips": [
+      "Chọn không gian yên tĩnh",
+      "Dùng thảm yoga chất lượng",
+      "Tập trung vào hơi thở"
+    ],
+    "commonObstacles": [
+      "Khó tập trung ban đầu",
+      "Không có thời gian buổi sáng"
+    ],
+    "benefits": [
+      "Cải thiện sức khỏe tâm thần",
+      "Tăng cường sự dẻo dai của cơ thể",
+      "Giảm stress và lo âu"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Chạy bộ 5 km mỗi ngày",
+    "description": "Tăng cường sức khỏe và sự dẻo dai của cơ thể",
+    "category": "fitness",
+    "difficulty": "hard",
+    "frequency": "daily",
+    "trackingMode": "count",
+    "targetCount": 5,
+    "unit": "km",
+    "habitType": "build",
+    "icon": "🏃",
+    "color": "#FF3737",
+    "tags": [
+      "sức khỏe",
+      "chạy bộ"
+    ],
+    "tips": [
+      "Dùng giày chạy bộ chất lượng",
+      "Chọn địa điểm chạy bộ an toàn",
+      "Tập trung vào kỹ thuật chạy bộ"
+    ],
+    "commonObstacles": [
+      "Khó chạy bộ khi thời tiết xấu",
+      "Không có thời gian chạy bộ"
+    ],
+    "benefits": [
+      "Cải thiện sức khỏe tim mạch",
+      "Tăng cường sức mạnh cơ bắp",
+      "Giảm cân và cải thiện vóc dáng"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Tập thể hình 45 phút mỗi ngày",
+    "description": "Tăng cường sức mạnh và sự dẻo dai của cơ thể",
+    "category": "fitness",
+    "difficulty": "hard",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "🏋️",
+    "color": "#34C759",
+    "tags": [
+      "sức khỏe",
+      "tập thể hình"
+    ],
+    "tips": [
+      "Chọn bài tập phù hợp với thể lực",
+      "Tập thể hình vào buổi sáng",
+      "Dùng nhạc để tăng cường động lực"
+    ],
+    "commonObstacles": [
+      "Quên tập thể hình khi bận rộn",
+      "Không thích tập thể hình"
+    ],
+    "benefits": [
+      "Cải thiện sức khỏe tim mạch",
+      "Tăng cường sức mạnh cơ bắp",
+      "Giảm cân và cải thiện vóc dáng"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Đạp xe 20 km mỗi ngày",
+    "description": "Tăng cường sức khỏe và sự dẻo dai của cơ thể",
+    "category": "fitness",
+    "difficulty": "hard",
+    "frequency": "daily",
+    "trackingMode": "count",
+    "targetCount": 20,
+    "unit": "km",
+    "habitType": "build",
+    "icon": "🚴",
+    "color": "#FFC107",
+    "tags": [
+      "sức khỏe",
+      "đạp xe"
+    ],
+    "tips": [
+      "Dùng xe đạp chất lượng",
+      "Chọn địa điểm đạp xe an toàn",
+      "Tập trung vào kỹ thuật đạp xe"
+    ],
+    "commonObstacles": [
+      "Khó đạp xe khi thời tiết xấu",
+      "Không có thời gian đạp xe"
+    ],
+    "benefits": [
+      "Cải thiện sức khỏe tim mạch",
+      "Tăng cường sức mạnh cơ bắp",
+      "Giảm cân và cải thiện vóc dáng"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Đi ngủ trước 11h mỗi ngày",
+    "description": "Dành thời gian nghỉ ngơi chất lượng cho cơ thể",
+    "category": "sleep",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "🛋️",
+    "color": "#64D2FF",
+    "tags": [
+      "ngủ đủ giấc",
+      "lối sống lành mạnh"
+    ],
+    "tips": [
+      "Tạo lịch trình ngủ cố định",
+      "Tắt thiết bị điện tử trước giờ ngủ",
+      "Tạo không gian ngủ thoải mái"
+    ],
+    "commonObstacles": [
+      "Thói quen xem điện thoại trước giờ ngủ",
+      "Cảm thấy chưa Buồn ngủ"
+    ],
+    "benefits": [
+      "Cải thiện chất lượng giấc ngủ",
+      "Tăng cường hệ miễn dịch",
+      "Giúp kiểm soát cân nặng hiệu quả"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Tập thể dục buổi sáng 30 phút",
+    "description": "Bắt đầu ngày mới với năng lượng và sự tập trung",
+    "category": "sleep",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "🏋️",
+    "color": "#FF69B4",
+    "tags": [
+      "tập thể dục",
+      "sức khỏe"
+    ],
+    "tips": [
+      "Chọn bài tập phù hợp với thể lực",
+      "Tìm người tập cùng để tăng động lực",
+      "Đặt mục tiêu cụ thể cho mỗi buổi tập"
+    ],
+    "commonObstacles": [
+      "Khó bắt đầu do thiếu động lực",
+      "Cảm thấy mệt mỏi sau tập"
+    ],
+    "benefits": [
+      "Tăng cường sức khỏe tim mạch",
+      "Cải thiện tâm trạng và giảm stress",
+      "Giúp kiểm soát cân nặng hiệu quả"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Ngủ đủ 7-8 giờ mỗi đêm",
+    "description": "Dành thời gian nghỉ ngơi chất lượng cho cơ thể và tâm trí",
+    "category": "sleep",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "😴",
+    "color": "#8B9467",
+    "tags": [
+      "ngủ đủ giấc",
+      "sức khỏe"
+    ],
+    "tips": [
+      "Tạo lịch trình ngủ cố định",
+      "Tối ưu hóa môi trường ngủ",
+      "Tránh caffeine và điện thoại trước giờ ngủ"
+    ],
+    "commonObstacles": [
+      "Khó đi vào giấc ngủ do căng thẳng",
+      "Bị làm phiền bởi tiếng ồn"
+    ],
+    "benefits": [
+      "Cải thiện chức năng não bộ",
+      "Tăng cường hệ miễn dịch",
+      "Giúp kiểm soát cân nặng hiệu quả"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Thực hiện quy trình thư giãn trước giờ ngủ",
+    "description": "Chuẩn bị tâm trí và cơ thể cho giấc ngủ chất lượng",
+    "category": "sleep",
+    "difficulty": "hard",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "🧘",
+    "color": "#6495ED",
+    "tags": [
+      "thư giãn",
+      "ngủ đủ giấc"
+    ],
+    "tips": [
+      "Tập thở sâu và thiền",
+      "Đọc sách hoặc nghe nhạc nhẹ nhàng",
+      "Tránh thiết bị điện tử trước giờ ngủ"
+    ],
+    "commonObstacles": [
+      "Khó từ bỏ thói quen xem điện thoại trước ngủ",
+      "Cảm thấy không thoải mái khi thực hiện quy trình"
+    ],
+    "benefits": [
+      "Cải thiện chất lượng giấc ngủ",
+      "Giảm stress và lo âu",
+      "Tăng cường khả năng tập trung"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Sử dụng ánh sáng tự nhiên để điều chỉnh giấc ngủ",
+    "description": "Tận dụng ánh sáng ban ngày để cải thiện chất lượng giấc ngủ",
+    "category": "sleep",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "☀️",
+    "color": "#F7DC6F",
+    "tags": [
+      "ánh sáng tự nhiên",
+      "ngủ đủ giấc"
+    ],
+    "tips": [
+      "Mở cửa sổ vào ban ngày",
+      "Đi dạo ngoài trời vào buổi sáng",
+      "Tránh ánh sáng mạnh vào buổi tối"
+    ],
+    "commonObstacles": [
+      "Khó thay đổi thói quen hàng ngày",
+      "Không có không gian ngoài trời để tận dụng"
+    ],
+    "benefits": [
+      "Cải thiện chất lượng giấc ngủ",
+      "Tăng cường năng lượng và tâm trạng",
+      "Hỗ trợ điều hòa sinh học"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Dậy sớm lúc 6h",
+    "description": "Bắt đầu ngày mới với tâm trạng sảng khoái",
+    "category": "energy",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "☀️",
+    "color": "#F7DC6F",
+    "tags": [
+      "dậy sớm",
+      "sức khỏe"
+    ],
+    "tips": [
+      "Đặt báo thức đều đặn",
+      "Tạo thói quen trước khi ngủ",
+      "Dành thời gian cho bản thân"
+    ],
+    "commonObstacles": [
+      "Khó thức dậy buổi sáng",
+      "Thói quen ngủ muộn"
+    ],
+    "benefits": [
+      "Cải thiện tâm trạng",
+      "Tăng năng suất làm việc",
+      "Dành thời gian cho bản thân"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Tập thể dục 30 phút mỗi ngày",
+    "description": "Duy trì sức khỏe và năng lượng",
+    "category": "energy",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "🏋️‍♀️",
+    "color": "#34C759",
+    "tags": [
+      "tập thể dục",
+      "sức khỏe"
+    ],
+    "tips": [
+      "Chọn bài tập phù hợp",
+      "Tạo lịch trình tập luyện",
+      "Tìm bạn tập cùng"
+    ],
+    "commonObstacles": [
+      "Thiếu thời gian",
+      "Không có động lực"
+    ],
+    "benefits": [
+      "Cải thiện sức khỏe tổng thể",
+      "Tăng cường năng lượng",
+      "Giảm stress"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Ăn trái cây 2 lần mỗi ngày",
+    "description": "Bổ sung vitamin và khoáng chất cho cơ thể",
+    "category": "energy",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "count",
+    "targetCount": 2,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "🍉",
+    "color": "#FF69B4",
+    "tags": [
+      "trái cây",
+      "sức khỏe"
+    ],
+    "tips": [
+      "Chọn trái cây theo mùa",
+      "Bổ sung vào bữa ăn",
+      "Tạo thói quen ăn trái cây"
+    ],
+    "commonObstacles": [
+      "Không thích vị chua",
+      "Thiếu thời gian chuẩn bị"
+    ],
+    "benefits": [
+      "Cải thiện hệ miễn dịch",
+      "Tăng cường năng lượng",
+      "Hỗ trợ tiêu hóa"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Ngủ đủ 7 tiếng mỗi đêm",
+    "description": "Duy trì giấc ngủ chất lượng cho sức khỏe",
+    "category": "energy",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "😴",
+    "color": "#3498DB",
+    "tags": [
+      "ngủ đủ giấc",
+      "sức khỏe"
+    ],
+    "tips": [
+      "Tạo lịch trình ngủ đều đặn",
+      "Tối ưu hóa môi trường ngủ",
+      "Tránh caffeine trước khi ngủ"
+    ],
+    "commonObstacles": [
+      "Khó ngủ",
+      "Thói quen thức khuya"
+    ],
+    "benefits": [
+      "Cải thiện tâm trạng",
+      "Tăng cường năng lượng",
+      "Hỗ trợ hệ miễn dịch"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Tập yoga 3 lần mỗi tuần",
+    "description": "Duy trì sự linh hoạt và cân bằng cho cơ thể",
+    "category": "energy",
+    "difficulty": "hard",
+    "frequency": "weekly",
+    "trackingMode": "count",
+    "targetCount": 3,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "🧘‍♀️",
+    "color": "#8B9467",
+    "tags": [
+      "tập yoga",
+      "sức khỏe"
+    ],
+    "tips": [
+      "Chọn bài tập phù hợp",
+      "Tạo lịch trình tập luyện",
+      "Tìm bạn tập cùng"
+    ],
+    "commonObstacles": [
+      "Thiếu thời gian",
+      "Không có động lực"
+    ],
+    "benefits": [
+      "Cải thiện sự linh hoạt",
+      "Tăng cường cân bằng",
+      "Giảm stress"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Dậy sớm lúc 6h",
+    "description": "Bắt đầu ngày mới với năng lượng và tinh thần sảng khoái",
+    "category": "control",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "☀️",
+    "color": "#F7DC6F",
+    "tags": [
+      "dậy sớm",
+      "năng lượng"
+    ],
+    "tips": [
+      "Đặt báo thức và đặt nó xa giường",
+      "Tạo thói quen đi ngủ sớm",
+      "Uống nước ngay sau khi thức dậy"
+    ],
+    "commonObstacles": [
+      "Khó thức dậy vào buổi sáng",
+      "Muốn ngủ thêm"
+    ],
+    "benefits": [
+      "Tăng năng lượng và sự tập trung",
+      "Cải thiện tâm trạng và giảm căng thẳng",
+      "Đủ thời gian cho các hoạt động buổi sáng"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Ăn 5 bữa nhỏ mỗi ngày",
+    "description": "Duy trì năng lượng và kiểm soát cân nặng",
+    "category": "control",
+    "difficulty": "hard",
+    "frequency": "daily",
+    "trackingMode": "count",
+    "targetCount": 5,
+    "unit": "bữa",
+    "habitType": "build",
+    "icon": "🍴",
+    "color": "#8B9467",
+    "tags": [
+      "dinh dưỡng",
+      "cân nặng"
+    ],
+    "tips": [
+      "Lập kế hoạch ăn uống hàng ngày",
+      "Chọn thực phẩm giàu dinh dưỡng",
+      "Uống nước trước bữa ăn"
+    ],
+    "commonObstacles": [
+      "Khó kiểm soát số lượng bữa ăn",
+      "Thích ăn vặt"
+    ],
+    "benefits": [
+      "Tăng cường trao đổi chất",
+      "Cải thiện sức khỏe tổng thể",
+      "Kiểm soát cân nặng hiệu quả"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Tập thể dục 30 phút mỗi ngày",
+    "description": "Cải thiện sức khỏe và tăng cường thể lực",
+    "category": "control",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "🏋️",
+    "color": "#34C759",
+    "tags": [
+      "tập thể dục",
+      "sức khỏe"
+    ],
+    "tips": [
+      "Chọn bài tập phù hợp với thể lực",
+      "Tạo lịch trình tập luyện hàng ngày",
+      "Đi bộ hoặc chạy bộ vào buổi sáng"
+    ],
+    "commonObstacles": [
+      "Khó tìm thời gian tập luyện",
+      "Không thích tập thể dục"
+    ],
+    "benefits": [
+      "Tăng cường sức khỏe tim mạch",
+      "Cải thiện thể lực và sự dẻo dai",
+      "Giảm stress và cải thiện tâm trạng"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Uống 2 cốc trà xanh mỗi ngày",
+    "description": "Tăng cường sức khỏe và chống oxy hóa",
+    "category": "control",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "count",
+    "targetCount": 2,
+    "unit": "cốc",
+    "habitType": "build",
+    "icon": "🍵",
+    "color": "#3E8E41",
+    "tags": [
+      "trà xanh",
+      "sức khỏe"
+    ],
+    "tips": [
+      "Chọn trà xanh chất lượng cao",
+      "Uống trà xanh sau bữa ăn",
+      "Tránh uống trà xanh trước khi ngủ"
+    ],
+    "commonObstacles": [
+      "Khó uống đủ 2 cốc mỗi ngày",
+      "Không thích vị trà xanh"
+    ],
+    "benefits": [
+      "Tăng cường sức khỏe tim mạch",
+      "Chống oxy hóa và lão hóa",
+      "Cải thiện chức năng não bộ"
+    ],
+    "isPopular": true
+  },
+  {
+    "name": "Viết nhật ký 10 phút mỗi ngày",
+    "description": "Tăng cường sự phản ánh và cải thiện tâm trạng",
+    "category": "control",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "habitType": "build",
+    "icon": "📝",
+    "color": "#FFC107",
+    "tags": [
+      "nhật ký",
+      "tâm trạng"
+    ],
+    "tips": [
+      "Chọn thời gian viết nhật ký phù hợp",
+      "Viết về những suy nghĩ và cảm xúc",
+      "Đừng lo lắng về việc viết đúng hay sai"
+    ],
+    "commonObstacles": [
+      "Khó tìm thời gian viết nhật ký",
+      "Không biết viết gì"
+    ],
+    "benefits": [
+      "Tăng cường sự phản ánh và tự nhận thức",
+      "Cải thiện tâm trạng và giảm căng thẳng",
+      "Phát triển kỹ năng viết và tư duy"
+    ],
+    "isPopular": true
+  }
+]

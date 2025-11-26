@@ -71,6 +71,31 @@ const userSchema = new mongoose.Schema({
             default: Date.now 
         },
     }],
+
+    // ✅ THÊM MỚI: Inventory
+  inventory: {
+    streakShields: { type: Number, default: 0, min: 0 },
+    freezeTokens: { type: Number, default: 0, min: 0 },
+    reviveTokens: { type: Number, default: 0, min: 0 }
+  },
+  
+  // ✅ THÊM MỚI: Lịch sử dùng items
+  itemUsageHistory: [{
+    itemType: { type: String, required: true },
+    habitId: { type: mongoose.Schema.Types.ObjectId, ref: 'Habit' },
+    usedAt: { type: Date, default: Date.now },
+    streakSaved: Number,
+    autoUsed: { type: Boolean, default: false }
+  }],
+  
+  // ✅ THÊM MỚI: Settings streak protection
+  streakProtectionSettings: {
+    enabled: { type: Boolean, default: true },
+    autoUseShield: { type: Boolean, default: false },
+    minStreakToAutoProtect: { type: Number, default: 7 },
+    notificationTime: { type: String, default: '21:00' }
+  },
+
     role: { type: String, enum: ['user', 'admin'], default: 'user' },
     isActive: {
         type: Boolean,
@@ -80,6 +105,7 @@ const userSchema = new mongoose.Schema({
     resetOTPExpires: { type: Number },
     isOTPVerified: { type: Boolean, default: false },
 },  { timestamps: true });
+
 // Hashpassword before saving the user
 userSchema.pre('save',async function(next){
     // Nếu password không được thay đổi thì không cần hash lại

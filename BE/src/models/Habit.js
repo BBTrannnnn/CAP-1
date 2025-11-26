@@ -61,7 +61,24 @@ const habitSchema = new mongoose.Schema({
     // Metadata
     isFromSuggestion: { type: Boolean, default: false },
     suggestionId: { type: mongoose.Schema.Types.ObjectId, ref: 'HabitTemplate' },
-    order: { type: Number, default: 0 }
+    order: { type: Number, default: 0 },
+
+    streakProtection: {
+    // Shield protection
+    isProtected: { type: Boolean, default: false },
+    protectedUntil: Date,
+    protectedBy: String, // 'shield', 'auto', 'manual'
+    
+    // Warning status
+    warningDate: Date,
+    warningSent: { type: Boolean, default: false },
+    
+    // Freeze status
+    isFrozen: { type: Boolean, default: false },
+    frozenStartDate: Date,
+    frozenEndDate: Date,
+    frozenDaysRemaining: { type: Number, default: 0 }
+  },
 
 }, { timestamps: true });
 
