@@ -67,6 +67,7 @@ const useShield = asyncHandler(async (req, res) => {
 const useFreezeToken = asyncHandler(async (req, res) => {
     const { habitId, days } = req.body;
 
+    // Validate input
     if (!habitId) {
         return res.status(400).json({
             success: false,
@@ -87,6 +88,15 @@ const useFreezeToken = asyncHandler(async (req, res) => {
             message: 'days phải từ 1 đến 30'
         });
     }
+
+    // Token cost logic
+    let cost = 1;
+    if (days <= 5) cost = 1;
+    else if (days <= 10) cost = 2;
+    else if (days <= 15) cost = 3;
+    else cost = 4; // 16–30
+
+    // Find user
     const user = await User.findById(req.user.id);
 
     if (!user) {
@@ -96,23 +106,44 @@ const useFreezeToken = asyncHandler(async (req, res) => {
         });
     }
 
-    if (user.inventory.freezeTokens <= 0) {
-        return res.status(400).json({
+    // Check habit existence + ownership
+    const habit = await Habit.findById(habitId);
+
+    if (!habit) {
+        return res.status(404).json({
             success: false,
-            message: 'Không đủ Freeze Token để sử dụng'
+            message: 'Habit not found'
         });
     }
+
+    if (habit.user.toString() !== req.user.id) {
+        return res.status(403).json({
+            success: false,
+            message: 'Bạn không có quyền thao tác habit này'
+        });
+    }
+
+    // Check token balance
+    if (user.inventory.freezeTokens < cost) {
+        return res.status(400).json({
+            success: false,
+            message: `Không đủ Freeze Token (cần ${cost}, bạn có ${user.inventory.freezeTokens})`
+        });
+    }
+
+    // Update user data
     const updatedUser = await User.findByIdAndUpdate(
         req.user.id,
         {
-            $inc: { 'inventory.freezeTokens': -1 },
+            $inc: { 'inventory.freezeTokens': -cost },
             $push: {
                 itemUsageHistory: {
                     itemType: 'freezeToken',
-                    habitId: habitId,
+                    habitId,
                     usedAt: new Date(),
                     autoUsed: false,
-                    freezeDays: days
+                    freezeDays: days,
+                    cost
                 }
             }
         },
@@ -124,10 +155,11 @@ const useFreezeToken = asyncHandler(async (req, res) => {
 
     res.json({
         success: true,
-        message: `Đã đóng băng habit ${days} ngày`,
+        message: `Đã đóng băng habit ${days} ngày (tốn ${cost} token)`,
         inventory: updatedUser.inventory
     });
 });
+
 
 const useReviveToken = asyncHandler(async (req, res) => {
     const { habitId } = req.body;
