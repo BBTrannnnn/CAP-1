@@ -52,9 +52,13 @@ const userAnalysisSchema = new mongoose.Schema({
 const habitSuggestionSchema = new mongoose.Schema({
     name: { type: String, required: true },
     description: { type: String, required: true },
-    category: { type: String, required: true },
+    category: {
+        type: String,
+        required: true,
+        enum: ['health', 'fitness', 'learning', 'mindful','productivity', 'finance', 'digital', 'social', 'control', 'sleep', 'energy']
+    },
     difficulty: { type: String, enum: ['easy', 'medium', 'hard'], required: true },
-    frequency: { type: String, enum: ['daily', 'weekly', 'monthly'], default: 'daily' },
+    frequency: { type: String, enum: ['daily', 'weekly', 'monthly','yearly'], default: 'daily' },
     estimatedTime: { type: Number },
     icon: { type: String },
     color: { type: String },

@@ -26,7 +26,7 @@ const habitSchema = new mongoose.Schema({
     },
 
     // Frequency & Schedule
-    frequency: { type: String, enum: ['daily', 'weekly', 'monthly',], default: 'daily' },
+    frequency: { type: String, enum: ['daily', 'weekly', 'monthly','yearly'], default: 'daily' },
     customFrequency: {
         times: { type: Number, default: 1 },
         period: { type: String, enum: ['day', 'week', 'month'], default: 'day' }
@@ -36,7 +36,7 @@ const habitSchema = new mongoose.Schema({
     category: {
         type: String,
         required: true,
-        enum: ['health', 'fitness', 'learning', 'mindful', 'finance', 'digital', 'social', 'control', 'sleep', 'energy']
+        enum: ['health', 'fitness', 'learning', 'mindful','productivity', 'finance', 'digital', 'social', 'control', 'sleep', 'energy']
     },
     habitType: { type: String, enum: ['build', 'quit'], default: 'build' },
 
@@ -158,7 +158,7 @@ const habitTemplateSchema = new mongoose.Schema({
     category: {
         type: String,
         required: true,
-        enum: ['health', 'fitness', 'learning', 'mindful', 'finance', 'digital', 'social', 'control', 'sleep', 'energy']
+        enum: ['health', 'fitness', 'learning', 'mindful', 'finance', 'digital', 'productivity','social', 'control', 'sleep', 'energy']
     },
     icon: {
         type: String,
@@ -168,7 +168,7 @@ const habitTemplateSchema = new mongoose.Schema({
     },
     frequency: {
         type: String,
-        enum: ['daily', 'weekly', 'monthly'],
+        enum: ['daily', 'weekly', 'monthly','yearly'],
         default: 'daily',
         alias: 'suggestedFrequency'
     },
