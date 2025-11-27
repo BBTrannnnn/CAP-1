@@ -3511,950 +3511,3235 @@ const habitTemplates = [
 
 // Habit Suggestions (from survey analysis)
 const habitSuggestions = [
-  // === HEALTH ===
   {
-    name: 'Uống nước',
-    description: 'Duy trì đủ nước cho cơ thể để cải thiện sức khỏe tổng thể',
-    category: 'health',
-    difficulty: 'easy',
-    frequency: 'daily',
-    trackingMode: 'count',
-    targetCount: 8,
-    unit: 'ly',
-    icon: '💧',
-    color: '#3B82F6',
-    tags: ['hydration', 'health', 'wellness'],
-    requiredScore: 0,
-    targetPersonas: ['health-focused', 'balanced-lifestyle'],
-    triggerConditions: { health_3: [1, 2] }
+    "name": "Tập thể dục buổi sáng",
+    "description": "Tập thể dục 30 phút mỗi buổi sáng để cải thiện sức khỏe",
+    "category": "health",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "🏋️",
+    "color": "#8BC34A",
+    "tags": [
+      "fitness",
+      "sức khỏe"
+    ],
+    "requiredScore": 0,
+    "targetPersonas": [
+      "health-focused",
+      "fitness-enthusiast"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "question_id": [
+        1,
+        2
+      ]
+    }
   },
   {
-    name: 'Tập thể dục buổi sáng',
-    description: 'Bắt đầu ngày với tập thể dục nhẹ',
-    category: 'health',
-    difficulty: 'easy',
-    frequency: 'daily',
-    trackingMode: 'count', // Đã thay đổi
-    targetCount: 10,       // Đã thêm
-    unit: 'phút',          // Đã thêm
-    icon: '🏃',
-    color: '#F59E0B',
-    tags: ['morning', 'exercise', 'energy'],
-    requiredScore: 0,
-    targetPersonas: ['health-focused', 'balanced-lifestyle'],
-    triggerConditions: { health_1: [1, 2] }
+    "name": "Ăn rau và trái cây",
+    "description": "Ăn ít nhất 5 loại rau và trái cây mỗi ngày để cung cấp vitamin và khoáng chất",
+    "category": "health",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "🥗",
+    "color": "#4CAF50",
+    "tags": [
+      "đinh dưỡng",
+      "sức khỏe"
+    ],
+    "requiredScore": 0,
+    "targetPersonas": [
+      "health-focused",
+      "balanced-lifestyle"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult",
+      "middle_aged"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "question_id": [
+        2,
+        1
+      ]
+    }
   },
   {
-    name: 'Ngủ đúng giờ (11 PM)',
-    description: 'Duy trì giờ giấc ngủ đều đặn',
-    category: 'health',
-    difficulty: 'medium',
-    frequency: 'daily',
-    trackingMode: 'count', // Đã thay đổi
-    targetCount: 1,       // Đã thêm
-    unit: 'lần',          // Đã thêm
-    icon: '😴',
-    color: '#6366F1',
-    tags: ['sleep', 'health', 'routine'],
-    requiredScore: 1,
-    targetPersonas: ['health-focused'],
-    triggerConditions: { health_2: [1, 2], sleep_2: [1, 2] }
+    "name": "Uống đủ nước",
+    "description": "Uống ít nhất 8 ly nước mỗi ngày để giữ cơ thể đủ nước",
+    "category": "health",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "count",
+    "targetCount": 8,
+    "unit": "ly",
+    "icon": "💧",
+    "color": "#03A9F4",
+    "tags": [
+      "sức khỏe",
+      "nước"
+    ],
+    "requiredScore": 0,
+    "targetPersonas": [
+      "health-focused",
+      "productivity-driven"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult",
+      "teens"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "question_id": [
+        3,
+        1
+      ]
+    }
   },
   {
-    name: 'Ăn rau quả',
-    description: 'Bổ sung vitamin và chất xơ cần thiết',
-    category: 'health',
-    difficulty: 'medium',
-    frequency: 'daily',
-    trackingMode: 'count',
-    targetCount: 5,
-    unit: 'phần',
-    icon: '🥬',
-    color: '#22C55E',
-    tags: ['nutrition', 'health', 'diet'],
-    requiredScore: 1,
-    targetPersonas: ['health-focused'],
-    triggerConditions: { health_4: [1, 2] }
+    "name": "Đi khám sức khỏe định kỳ",
+    "description": "Đi khám sức khỏe định kỳ 1 lần mỗi năm để theo dõi sức khỏe",
+    "category": "health",
+    "difficulty": "hard",
+    "frequency": "yearly",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "🏥",
+    "color": "#FF9800",
+    "tags": [
+      "sức khỏe",
+      "khám sức khỏe"
+    ],
+    "requiredScore": 1,
+    "targetPersonas": [
+      "health-focused",
+      "balanced-lifestyle"
+    ],
+    "targetAgeGroups": [
+      "adult",
+      "middle_aged"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "question_id": [
+        4,
+        2
+      ]
+    }
   },
   {
-    name: 'Ăn sáng đầy đủ',
-    description: 'Không bỏ bữa sáng để có năng lượng',
-    category: 'health',
-    difficulty: 'easy',
-    frequency: 'daily',
-    trackingMode: 'count', // Đã thay đổi
-    targetCount: 1,       // Đã thêm
-    unit: 'bữa',          // Đã thêm
-    icon: '🍳',
-    color: '#F59E0B',
-    tags: ['nutrition', 'energy', 'morning'],
-    requiredScore: 0,
-    targetPersonas: ['health-focused', 'balanced-lifestyle'],
-    triggerConditions: { health_4: [1, 2], energy_1: [1, 2] }
+    "name": "Ngủ đủ giấc",
+    "description": "Ngủ đủ 7-8 giờ mỗi đêm để nghỉ ngơi và tái tạo năng lượng",
+    "category": "health",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "😴",
+    "color": "#9C27B0",
+    "tags": [
+      "ngủ",
+      "năng lượng"
+    ],
+    "requiredScore": 0,
+    "targetPersonas": [
+      "health-focused",
+      "productivity-driven"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult",
+      "teens"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "question_id": [
+        5,
+        1
+      ]
+    }
   },
   {
-    name: 'Uống vitamin tổng hợp',
-    description: 'Bổ sung vitamin và khoáng chất',
-    category: 'health',
-    difficulty: 'easy',
-    frequency: 'daily',
-    trackingMode: 'check',
-    icon: '💊',
-    color: '#EC4899',
-    tags: ['supplement', 'health', 'wellness'],
-    requiredScore: 0,
-    targetPersonas: ['health-focused'],
-    triggerConditions: { health_6: [1, 2] }
-  },
-
-  // === PRODUCTIVITY ===
-  {
-    name: 'Làm việc tập trung (Pomodoro)',
-    description: 'Làm việc 25 phút, nghỉ 5 phút',
-    category: 'productivity',
-    difficulty: 'medium',
-    frequency: 'daily',
-    trackingMode: 'count',
-    targetCount: 4,
-    unit: 'pomodoro',
-    icon: '⏰',
-    color: '#EF4444',
-    tags: ['focus', 'productivity', 'time-management'],
-    requiredScore: 2,
-    targetPersonas: ['productivity-driven'],
-    triggerConditions: { productivity_2: [1, 2] }
-  },
-  {
-    name: 'Viết to-do list mỗi sáng',
-    description: 'Lên kế hoạch công việc trong ngày',
-    category: 'productivity',
-    difficulty: 'easy',
-    frequency: 'daily',
-    trackingMode: 'count', // Đã thay đổi
-    targetCount: 5,       // Đã thêm
-    unit: 'mục',          // Đã thêm
-    icon: '✅',
-    color: '#10B981',
-    tags: ['planning', 'organization', 'productivity'],
-    requiredScore: 0,
-    targetPersonas: ['productivity-driven', 'balanced-lifestyle'],
-    triggerConditions: { productivity_3: [1, 2] }
+    "name": "Quản lý stress",
+    "description": "Thực hành thiền hoặc yoga 30 phút mỗi ngày để giảm stress",
+    "category": "health",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "🙏",
+    "color": "#8BC34A",
+    "tags": [
+      "thiền",
+      "yoga"
+    ],
+    "requiredScore": 0,
+    "targetPersonas": [
+      "mindful-seeker",
+      "balanced-lifestyle"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "female",
+      "male"
+    ],
+    "triggerConditions": {
+      "question_id": [
+        6,
+        2
+      ]
+    }
   },
   {
-    name: 'Dọn dẹp bàn làm việc cuối ngày',
-    description: 'Tạo không gian làm việc gọn gàng',
-    category: 'productivity',
-    difficulty: 'easy',
-    frequency: 'daily',
-    trackingMode: 'count', // Đã thay đổi
-    targetCount: 1,       // Đã thêm
-    unit: 'lần',          // Đã thêm
-    icon: '🗂️',
-    color: '#8B5CF6',
-    tags: ['organization', 'workspace', 'productivity'],
-    requiredScore: 0,
-    targetPersonas: ['productivity-driven'],
-    triggerConditions: { productivity_5: [1, 2], control_3: [1, 2] }
+    "name": "Ăn sáng đầy đủ",
+    "description": "Ăn sáng đầy đủ mỗi ngày để cung cấp năng lượng cho cơ thể",
+    "category": "health",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "🥐",
+    "color": "#FFC107",
+    "tags": [
+      "đinh dưỡng",
+      "sức khỏe"
+    ],
+    "requiredScore": 0,
+    "targetPersonas": [
+      "health-focused",
+      "balanced-lifestyle"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult",
+      "teens"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "question_id": [
+        2,
+        1
+      ]
+    }
   },
   {
-    name: 'Làm việc khó nhất trước',
-    description: 'Hoàn thành việc quan trọng nhất buổi sáng',
-    category: 'productivity',
-    difficulty: 'medium',
-    trackingMode: 'count', // Đã thay đổi
-    targetCount: 1,       // Đã thêm
-    unit: 'việc',         // Đã thêm
-    frequency: 'daily',
-    icon: '🎯',
-    color: '#EF4444',
-    tags: ['priority', 'productivity', 'focus'],
-    requiredScore: 1,
-    targetPersonas: ['productivity-driven'],
-    triggerConditions: { productivity_4: [1, 2], control_5: [1, 2] }
+    "name": "Tập thể dục ngoài trời",
+    "description": "Tập thể dục ngoài trời 30 phút mỗi ngày để cải thiện sức khỏe và tâm trạng",
+    "category": "health",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "🏞️",
+    "color": "#4CAF50",
+    "tags": [
+      "fitness",
+      "ngoài trời"
+    ],
+    "requiredScore": 0,
+    "targetPersonas": [
+      "health-focused",
+      "fitness-enthusiast"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "question_id": [
+        1,
+        2
+      ]
+    }
   },
   {
-    name: 'Dậy sớm lúc 6 giờ sáng',
-    description: 'Thức dậy sớm để có thời gian cho bản thân',
-    category: 'productivity',
-    difficulty: 'hard',
-    frequency: 'daily',
-    trackingMode: 'check',
-    icon: '🌅',
-    color: '#F59E0B',
-    tags: ['morning', 'routine', 'discipline'],
-    requiredScore: 2,
-    targetPersonas: ['productivity-driven', 'health-focused'],
-    triggerConditions: { productivity_6: [1, 2], control_2: [1, 2] }
+    "name": "Lập kế hoạch hàng ngày",
+    "description": "Dành 30 phút mỗi sáng để lên kế hoạch và tổ chức công việc",
+    "category": "productivity",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "📅",
+    "color": "#4CAF50",
+    "tags": [
+      "organization",
+      "planning"
+    ],
+    "requiredScore": 0,
+    "targetPersonas": [
+      "productivity-driven",
+      "balanced-lifestyle"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "productivity_1": [
+        1,
+        2
+      ]
+    }
   },
   {
-    name: 'Lên kế hoạch cho ngày mai',
-    description: 'Chuẩn bị cho ngày hôm sau',
-    category: 'productivity',
-    difficulty: 'easy',
-    frequency: 'daily',
-    trackingMode: 'check',
-    icon: '📋',
-    color: '#6366F1',
-    tags: ['planning', 'organization', 'preparation'],
-    requiredScore: 0,
-    targetPersonas: ['productivity-driven', 'balanced-lifestyle'],
-    triggerConditions: { control_4: [1, 2] }
+    "name": "Bắt đầu công việc đúng giờ",
+    "description": "Bắt đầu công việc vào lúc 8h mỗi sáng để tăng năng suất",
+    "category": "productivity",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "⏰",
+    "color": "#03A9F4",
+    "tags": [
+      "punctuality",
+      "productivity"
+    ],
+    "requiredScore": 1,
+    "targetPersonas": [
+      "productivity-driven",
+      "health-focused"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "productivity_2": [
+        1,
+        2
+      ]
+    }
   },
   {
-    name: 'Hoàn thành việc ưu tiên',
-    description: 'Tập trung vào 3 việc quan trọng nhất',
-    category: 'productivity',
-    difficulty: 'medium',
-    frequency: 'daily',
-    trackingMode: 'count',
-    targetCount: 3,
-    unit: 'việc',
-    icon: '🏆',
-    color: '#10B981',
-    tags: ['priority', 'goals', 'achievement'],
-    requiredScore: 1,
-    targetPersonas: ['productivity-driven'],
-    triggerConditions: { productivity_1: [1, 2] }
-  },
-
-  // === LEARNING ===
-  {
-    name: 'Đọc sách',
-    description: 'Đọc sách phát triển kỹ năng',
-    category: 'learning',
-    difficulty: 'medium',
-    frequency: 'daily',
-    trackingMode: 'count',
-    targetCount: 30,
-    unit: 'trang',
-    icon: '📚',
-    color: '#10B981',
-    tags: ['learning', 'skill', 'career'],
-    requiredScore: 1,
-    targetPersonas: ['knowledge-seeker', 'productivity-driven'],
-    triggerConditions: { learning_2: [1, 2] }
-  },
-  {
-    name: 'Học ngoại ngữ',
-    description: 'Học ngôn ngữ mới mỗi ngày',
-    category: 'learning',
-    difficulty: 'medium',
-    frequency: 'daily',
-    trackingMode: 'count',
-    targetCount: 20,
-    unit: 'từ',
-    icon: '🌐',
-    color: '#EC4899',
-    tags: ['language', 'skill', 'self-improvement'],
-    requiredScore: 1,
-    targetPersonas: ['knowledge-seeker'],
-    triggerConditions: { learning_3: [1, 2] }
+    "name": "Học hỏi và phát triển kỹ năng mới",
+    "description": "Dành 1 giờ mỗi ngày để học hỏi và phát triển kỹ năng mới",
+    "category": "productivity",
+    "difficulty": "hard",
+    "frequency": "daily",
+    "trackingMode": "count",
+    "targetCount": 1,
+    "unit": "giờ",
+    "icon": "📚",
+    "color": "#FF9800",
+    "tags": [
+      "learning",
+      "development"
+    ],
+    "requiredScore": 2,
+    "targetPersonas": [
+      "knowledge-seeker",
+      "productivity-driven"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "productivity_3": [
+        1,
+        2
+      ]
+    }
   },
   {
-    name: 'Xem video giáo dục',
-    description: 'Xem TED talks hoặc video học tập',
-    category: 'learning',
-    difficulty: 'easy',
-    frequency: 'daily',
-    trackingMode: 'check',
-    icon: '📺',
-    color: '#F59E0B',
-    tags: ['learning', 'video', 'knowledge'],
-    requiredScore: 0,
-    targetPersonas: ['knowledge-seeker', 'balanced-lifestyle'],
-    triggerConditions: { learning_1: [1, 2], learning_4: [1, 2] }
+    "name": "Xử lý công việc hiệu quả",
+    "description": "Xử lý 3 công việc quan trọng trước 10h mỗi sáng",
+    "category": "productivity",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "count",
+    "targetCount": 3,
+    "unit": "công việc",
+    "icon": "📈",
+    "color": "#8BC34A",
+    "tags": [
+      "productivity",
+      "efficiency"
+    ],
+    "requiredScore": 1,
+    "targetPersonas": [
+      "productivity-driven",
+      "balanced-lifestyle"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "productivity_4": [
+        1,
+        2
+      ]
+    }
   },
   {
-    name: 'Nghe podcast',
-    description: 'Tận dụng thời gian đi lại để học',
-    category: 'learning',
-    difficulty: 'easy',
-    frequency: 'daily',
-    trackingMode: 'check',
-    icon: '🎧',
-    color: '#8B5CF6',
-    tags: ['learning', 'podcast', 'multitasking'],
-    requiredScore: 0,
-    targetPersonas: ['knowledge-seeker', 'balanced-lifestyle'],
-    triggerConditions: { learning_4: [1, 2] }
+    "name": "Xem xét và điều chỉnh kế hoạch",
+    "description": "Dành 30 phút mỗi tuần để xem xét và điều chỉnh kế hoạch",
+    "category": "productivity",
+    "difficulty": "easy",
+    "frequency": "weekly",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "📊",
+    "color": "#2196F3",
+    "tags": [
+      "planning",
+      "review"
+    ],
+    "requiredScore": 0,
+    "targetPersonas": [
+      "productivity-driven",
+      "health-focused"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "productivity_5": [
+        1,
+        2
+      ]
+    }
   },
   {
-    name: 'Ghi chép kiến thức',
-    description: 'Viết lại kiến thức để củng cố',
-    category: 'learning',
-    difficulty: 'medium',
-    frequency: 'daily',
-    trackingMode: 'check',
-    icon: '✍️',
-    color: '#10B981',
-    tags: ['note-taking', 'learning', 'memory'],
-    requiredScore: 1,
-    targetPersonas: ['knowledge-seeker'],
-    triggerConditions: { learning_5: [1, 2] }
+    "name": "Tập trung khi làm việc",
+    "description": "Tập trung 100% khi làm việc để tăng năng suất",
+    "category": "productivity",
+    "difficulty": "hard",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "🔍",
+    "color": "#9C27B0",
+    "tags": [
+      "focus",
+      "productivity"
+    ],
+    "requiredScore": 2,
+    "targetPersonas": [
+      "productivity-driven",
+      "knowledge-seeker"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "productivity_6": [
+        1,
+        2
+      ]
+    }
   },
   {
-    name: 'Học một kỹ năng mới',
-    description: 'Phát triển kỹ năng mới mỗi tuần',
-    category: 'learning',
-    difficulty: 'medium',
-    frequency: 'weekly',
-    trackingMode: 'check',
-    icon: '🎓',
-    color: '#6366F1',
-    tags: ['skill', 'learning', 'growth'],
-    requiredScore: 1,
-    targetPersonas: ['knowledge-seeker', 'productivity-driven'],
-    triggerConditions: { learning_3: [1, 2] }
+    "name": "Đầu tư thời gian cho bản thân",
+    "description": "Dành 1 giờ mỗi ngày để đầu tư thời gian cho bản thân",
+    "category": "productivity",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "count",
+    "targetCount": 1,
+    "unit": "giờ",
+    "icon": "🕒",
+    "color": "#03A9F4",
+    "tags": [
+      "self-investment",
+      "productivity"
+    ],
+    "requiredScore": 1,
+    "targetPersonas": [
+      "health-focused",
+      "productivity-driven"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "productivity_1": [
+        1,
+        2
+      ]
+    }
   },
   {
-    name: 'Tóm tắt kiến thức đã học',
-    description: 'Viết tóm tắt hoặc dạy lại',
-    category: 'learning',
-    difficulty: 'medium',
-    frequency: 'weekly',
-    trackingMode: 'check',
-    icon: '📝',
-    color: '#3B82F6',
-    tags: ['review', 'comprehension', 'learning'],
-    requiredScore: 1,
-    targetPersonas: ['knowledge-seeker'],
-    triggerConditions: { learning_5: [1, 2] }
-  },
-
-  // === MINDFUL ===
-  {
-    name: 'Thiền',
-    description: 'Thực hành thiền để giảm stress',
-    category: 'mindful',
-    difficulty: 'medium',
-    trackingMode: 'count', // Đã thay đổi
-    targetCount: 10,      // Đã thêm
-    unit: 'phút',         // Đã thêm
-    frequency: 'daily',
-    icon: '🧘',
-    color: '#8B5CF6',
-    tags: ['meditation', 'mindfulness', 'stress-relief'],
-    requiredScore: 2,
-    targetPersonas: ['mindful-seeker'],
-    triggerConditions: { mindful_1: [1, 2], mindful_2: [1, 2] }
-  },
-  {
-    name: 'Viết nhật ký biết ơn',
-    description: 'Ghi 3 điều biết ơn mỗi ngày',
-    category: 'mindful',
-    difficulty: 'easy',
-    frequency: 'daily',
-    trackingMode: 'count',
-    targetCount: 3,
-    unit: 'điều',
-    icon: '📝',
-    color: '#F59E0B',
-    tags: ['gratitude', 'journaling', 'positivity'],
-    requiredScore: 0,
-    targetPersonas: ['mindful-seeker', 'balanced-lifestyle'],
-    triggerConditions: { mindful_3: [1, 2], mindful_5: [1, 2] }
+    "name": "Tối ưu hóa công việc",
+    "description": "Tối ưu hóa 1 công việc mỗi ngày để tăng năng suất",
+    "category": "productivity",
+    "difficulty": "hard",
+    "frequency": "daily",
+    "trackingMode": "count",
+    "targetCount": 1,
+    "unit": "công việc",
+    "icon": "📈",
+    "color": "#8BC34A",
+    "tags": [
+      "optimization",
+      "productivity"
+    ],
+    "requiredScore": 2,
+    "targetPersonas": [
+      "productivity-driven",
+      "knowledge-seeker"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "productivity_4": [
+        1,
+        2
+      ]
+    }
   },
   {
-    name: 'Tập yoga buổi sáng',
-    description: 'Bắt đầu ngày với yoga',
-    category: 'mindful',
-    difficulty: 'easy',
-    trackingMode: 'count', // Đã thay đổi
-    targetCount: 10,      // Đã thêm
-    unit: 'phút',         // Đã thêm
-    frequency: 'daily',
-    icon: '🧘‍♀️',
-    color: '#EC4899',
-    tags: ['yoga', 'flexibility', 'mindfulness'],
-    requiredScore: 1,
-    targetPersonas: ['mindful-seeker', 'health-focused'],
-    triggerConditions: { mindful_2: [1, 2], fitness_3: [1, 2] }
+    "name": "Đọc sách 30 phút mỗi ngày",
+    "description": "Đọc sách để mở rộng kiến thức và cải thiện kỹ năng đọc",
+    "category": "learning",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "📖",
+    "color": "#3498db",
+    "tags": [
+      "sách",
+      "kiến thức"
+    ],
+    "requiredScore": 0,
+    "targetPersonas": [
+      "knowledge-seeker",
+      "health-focused"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "question_id": [
+        1
+      ]
+    }
   },
   {
-    name: 'Thực hành hít thở sâu',
-    description: 'Luyện hít thở sâu để giảm căng thẳng',
-    category: 'mindful',
-    difficulty: 'easy',
-    frequency: 'daily',
-    trackingMode: 'count',
-    targetCount: 3,
-    unit: 'lần',
-    icon: '🌬️',
-    color: '#3B82F6',
-    tags: ['breathing', 'relaxation', 'stress-relief'],
-    requiredScore: 0,
-    targetPersonas: ['mindful-seeker', 'balanced-lifestyle'],
-    triggerConditions: { mindful_1: [1, 2] }
+    "name": "Học từ vựng mới 10 từ mỗi ngày",
+    "description": "Học từ vựng mới để cải thiện kỹ năng ngôn ngữ",
+    "category": "learning",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "count",
+    "targetCount": 10,
+    "unit": "từ",
+    "icon": "📚",
+    "color": "#f1c40f",
+    "tags": [
+      "từ vựng",
+      "ngôn ngữ"
+    ],
+    "requiredScore": 1,
+    "targetPersonas": [
+      "knowledge-seeker",
+      "productivity-driven"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "question_id": [
+        2
+      ]
+    }
   },
   {
-    name: 'Ra ngoài tiếp xúc thiên nhiên',
-    description: 'Dành thời gian ra ngoài trời',
-    category: 'mindful',
-    difficulty: 'easy',
-    trackingMode: 'count', // Đã thay đổi
-    targetCount: 15,      // Đã thêm
-    unit: 'phút',         // Đã thêm
-    frequency: 'daily',
-    icon: '🌳',
-    color: '#22C55E',
-    tags: ['nature', 'outdoor', 'wellness'],
-    requiredScore: 0,
-    targetPersonas: ['mindful-seeker', 'health-focused'],
-    triggerConditions: { mindful_4: [1, 2] }
+    "name": "Tham gia khóa học trực tuyến 1 khóa mỗi tháng",
+    "description": "Tham gia khóa học trực tuyến để cải thiện kỹ năng và kiến thức",
+    "category": "learning",
+    "difficulty": "hard",
+    "frequency": "monthly",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "khóa",
+    "icon": "📹",
+    "color": "#2ecc71",
+    "tags": [
+      "khóa học",
+      "trực tuyến"
+    ],
+    "requiredScore": 2,
+    "targetPersonas": [
+      "knowledge-seeker",
+      "productivity-driven"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "question_id": [
+        3
+      ]
+    }
   },
   {
-    name: 'Digital detox',
-    description: 'Ngắt kết nối với công nghệ',
-    category: 'mindful',
-    difficulty: 'medium',
-    frequency: 'daily',
-    trackingMode: 'check',
-    icon: '📵',
-    color: '#EF4444',
-    tags: ['digital-detox', 'wellness', 'relaxation'],
-    requiredScore: 1,
-    targetPersonas: ['mindful-seeker', 'balanced-lifestyle'],
-    triggerConditions: { mindful_6: [1, 2], digital_1: [1, 2] }
+    "name": "Viết nhật ký 15 phút mỗi ngày",
+    "description": "Viết nhật ký để phản ánh và cải thiện bản thân",
+    "category": "learning",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "📝",
+    "color": "#9b59b6",
+    "tags": [
+      "nhật ký",
+      "phản ánh"
+    ],
+    "requiredScore": 0,
+    "targetPersonas": [
+      "mindful-seeker",
+      "health-focused"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "question_id": [
+        4
+      ]
+    }
   },
   {
-    name: 'Viết nhật ký cảm xúc',
-    description: 'Ghi lại suy nghĩ và cảm xúc',
-    category: 'mindful',
-    difficulty: 'easy',
-    frequency: 'daily',
-    trackingMode: 'check',
-    icon: '📖',
-    color: '#6366F1',
-    tags: ['journaling', 'self-awareness', 'emotions'],
-    requiredScore: 0,
-    targetPersonas: ['mindful-seeker'],
-    triggerConditions: { mindful_3: [1, 2] }
+    "name": "Đọc bài báo 30 phút mỗi ngày",
+    "description": "Đọc bài báo để cập nhật kiến thức và thông tin",
+    "category": "learning",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "📰",
+    "color": "#1abc9c",
+    "tags": [
+      "bài báo",
+      "thông tin"
+    ],
+    "requiredScore": 0,
+    "targetPersonas": [
+      "knowledge-seeker",
+      "health-focused"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "question_id": [
+        5
+      ]
+    }
   },
   {
-    name: 'Tắm nắng',
-    description: 'Bổ sung vitamin D tự nhiên',
-    category: 'mindful',
-    difficulty: 'easy',
-    frequency: 'daily',
-    trackingMode: 'check',
-    icon: '☀️',
-    color: '#F59E0B',
-    tags: ['sunshine', 'vitamin-d', 'health'],
-    requiredScore: 0,
-    targetPersonas: ['mindful-seeker', 'health-focused'],
-    triggerConditions: { mindful_4: [1, 2] }
-  },
-
-  // === FINANCE ===
-  {
-    name: 'Ghi chép chi tiêu',
-    description: 'Ghi chép tất cả khoản chi tiêu',
-    category: 'finance',
-    difficulty: 'easy',
-    trackingMode: 'count', // Đã thay đổi
-    targetCount: 1,       // Đã thêm
-    unit: 'lần',          // Đã thêm
-    frequency: 'daily',
-    icon: '💰',
-    color: '#22C55E',
-    tags: ['finance', 'budgeting', 'tracking'],
-    requiredScore: 0,
-    targetPersonas: ['finance-conscious', 'balanced-lifestyle'],
-    triggerConditions: { finance_1: [1, 2], finance_3: [1, 2] }
-  },
-  {
-    name: 'Tiết kiệm tiền',
-    description: 'Để dành một khoản tiền cố định',
-    category: 'finance',
-    difficulty: 'medium',
-    frequency: 'daily',
-    trackingMode: 'count',
-    targetCount: 50000,
-    unit: 'đồng',
-    icon: '🏦',
-    color: '#10B981',
-    tags: ['savings', 'finance', 'money'],
-    requiredScore: 1,
-    targetPersonas: ['finance-conscious'],
-    triggerConditions: { finance_2: [1, 2] }
+    "name": "Học kỹ năng mới 1 giờ mỗi tuần",
+    "description": "Học kỹ năng mới để cải thiện bản thân",
+    "category": "learning",
+    "difficulty": "medium",
+    "frequency": "weekly",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "🎯",
+    "color": "#e74c3c",
+    "tags": [
+      "kỹ năng",
+      "học hỏi"
+    ],
+    "requiredScore": 1,
+    "targetPersonas": [
+      "knowledge-seeker",
+      "productivity-driven"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "question_id": [
+        6
+      ]
+    }
   },
   {
-    name: 'Đọc tin tức tài chính',
-    description: 'Cập nhật kiến thức tài chính',
-    category: 'finance',
-    difficulty: 'easy',
-    frequency: 'daily',
-    trackingMode: 'check',
-    icon: '📈',
-    color: '#EF4444',
-    tags: ['finance', 'learning', 'investment'],
-    requiredScore: 1,
-    targetPersonas: ['finance-conscious', 'knowledge-seeker'],
-    triggerConditions: { finance_5: [1, 2] }
+    "name": "Tham gia thảo luận 1 lần mỗi tuần",
+    "description": "Tham gia thảo luận để cải thiện kỹ năng giao tiếp",
+    "category": "learning",
+    "difficulty": "medium",
+    "frequency": "weekly",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "💬",
+    "color": "#2c3e50",
+    "tags": [
+      "thảo luận",
+      "giao tiếp"
+    ],
+    "requiredScore": 1,
+    "targetPersonas": [
+      "social-connector",
+      "productivity-driven"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "question_id": [
+        7
+      ]
+    }
   },
   {
-    name: 'Xem xét ngân sách',
-    description: 'Đánh giá và điều chỉnh ngân sách',
-    category: 'finance',
-    difficulty: 'easy',
-    frequency: 'weekly',
-    trackingMode: 'check',
-    icon: '📊',
-    color: '#6366F1',
-    tags: ['budgeting', 'finance', 'planning'],
-    requiredScore: 1,
-    targetPersonas: ['finance-conscious'],
-    triggerConditions: { finance_1: [1, 2] }
+    "name": "Đọc sách chuyên sâu 1 giờ mỗi tuần",
+    "description": "Đọc sách chuyên sâu để cải thiện kiến thức và kỹ năng",
+    "category": "learning",
+    "difficulty": "hard",
+    "frequency": "weekly",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "📚",
+    "color": "#f1c40f",
+    "tags": [
+      "sách chuyên sâu",
+      "kiến thức"
+    ],
+    "requiredScore": 2,
+    "targetPersonas": [
+      "knowledge-seeker",
+      "productivity-driven"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "question_id": [
+        8
+      ]
+    }
   },
   {
-    name: 'Không mua sắm impulsive',
-    description: 'Chờ 24 giờ trước khi mua',
-    category: 'finance',
-    difficulty: 'hard',
-    frequency: 'daily',
-    trackingMode: 'check',
-    icon: '🛑',
-    color: '#EF4444',
-    tags: ['finance', 'self-control', 'savings'],
-    requiredScore: 2,
-    targetPersonas: ['finance-conscious'],
-    triggerConditions: { finance_4: [1, 2] }
+    "name": "Học ngôn ngữ mới 30 phút mỗi ngày",
+    "description": "Học ngôn ngữ mới để cải thiện kỹ năng ngôn ngữ",
+    "category": "learning",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "🇫🇷",
+    "color": "#9b59b6",
+    "tags": [
+      "ngôn ngữ",
+      "học hỏi"
+    ],
+    "requiredScore": 1,
+    "targetPersonas": [
+      "knowledge-seeker",
+      "productivity-driven"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "question_id": [
+        9
+      ]
+    }
   },
   {
-    name: 'Lập mục tiêu tài chính',
-    description: 'Xác định mục tiêu ngắn và dài hạn',
-    category: 'finance',
-    difficulty: 'medium',
-    frequency: 'monthly',
-    trackingMode: 'check',
-    icon: '🎯',
-    color: '#8B5CF6',
-    tags: ['goals', 'planning', 'finance'],
-    requiredScore: 1,
-    targetPersonas: ['finance-conscious'],
-    triggerConditions: { finance_1: [1, 2], finance_2: [1, 2] }
-  },
-
-  // === DIGITAL WELLBEING ===
-  {
-    name: 'Hạn chế social media',
-    description: 'Giảm thời gian lướt mạng xã hội',
-    category: 'digital',
-    difficulty: 'hard',
-    frequency: 'daily',
-    trackingMode: 'check',
-    icon: '📱',
-    color: '#EF4444',
-    tags: ['digital-detox', 'focus', 'wellbeing'],
-    requiredScore: 2,
-    targetPersonas: ['balanced-lifestyle', 'productivity-driven'],
-    triggerConditions: { digital_1: [1, 2] }
-  },
-  {
-    name: 'Tắt điện thoại trước khi ngủ',
-    description: 'Ngừng sử dụng thiết bị điện tử trước giờ ngủ',
-    category: 'digital',
-    difficulty: 'medium',
-    frequency: 'daily',
-    trackingMode: 'check',
-    icon: '🌙',
-    color: '#6B7280',
-    tags: ['sleep', 'digital-detox', 'health'],
-    requiredScore: 1,
-    targetPersonas: ['health-focused', 'balanced-lifestyle'],
-    triggerConditions: { digital_2: [1, 2], health_2: [1, 2] }
+    "name": "Viết bài viết 1 bài mỗi tuần",
+    "description": "Viết bài viết để cải thiện kỹ năng viết",
+    "category": "learning",
+    "difficulty": "hard",
+    "frequency": "weekly",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "📝",
+    "color": "#2ecc71",
+    "tags": [
+      "bài viết",
+      "viết"
+    ],
+    "requiredScore": 2,
+    "targetPersonas": [
+      "knowledge-seeker",
+      "productivity-driven"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "question_id": [
+        10
+      ]
+    }
   },
   {
-    name: 'Dọn dẹp email inbox',
-    description: 'Giữ hộp thư sạch sẽ',
-    category: 'digital',
-    difficulty: 'easy',
-    trackingMode: 'count', // Đã thay đổi
-    targetCount: 10,      // Đã thêm
-    unit: 'email',        // Đã thêm
-    frequency: 'daily',
-    icon: '📧',
-    color: '#3B82F6',
-    tags: ['organization', 'productivity', 'digital'],
-    requiredScore: 0,
-    targetPersonas: ['productivity-driven'],
-    triggerConditions: { digital_3: [1, 2] }
+    "name": "Thiền định buổi sáng",
+    "description": "Thiền định 15 phút mỗi buổi sáng để bắt đầu ngày mới với tâm trạng bình tĩnh và tập trung",
+    "category": "mindful",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "🙏",
+    "color": "#8BC34A",
+    "tags": [
+      "tâm lý",
+      "thiền"
+    ],
+    "requiredScore": 0,
+    "targetPersonas": [
+      "mindful-seeker",
+      "health-focused"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "mindful_1": [
+        1
+      ]
+    }
   },
   {
-    name: 'Sao lưu dữ liệu',
-    description: 'Backup dữ liệu định kỳ',
-    category: 'digital',
-    difficulty: 'easy',
-    frequency: 'weekly',
-    trackingMode: 'check',
-    icon: '💾',
-    color: '#10B981',
-    tags: ['backup', 'security', 'digital'],
-    requiredScore: 0,
-    targetPersonas: ['productivity-driven'],
-    triggerConditions: { digital_4: [1, 2] }
+    "name": "Lắng nghe và thở sâu",
+    "description": "Lắng nghe nhạc nhẹ và thực hành thở sâu 10 phút mỗi ngày để giảm căng thẳng",
+    "category": "mindful",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "🎵",
+    "color": "#4CAF50",
+    "tags": [
+      "giảm căng thẳng",
+      "thở sâu"
+    ],
+    "requiredScore": 0,
+    "targetPersonas": [
+      "mindful-seeker",
+      "productivity-driven"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "mindful_2": [
+        1
+      ]
+    }
   },
   {
-    name: 'Học công cụ digital mới',
-    description: 'Nâng cao kỹ năng công nghệ',
-    category: 'digital',
-    difficulty: 'medium',
-    frequency: 'weekly',
-    trackingMode: 'check',
-    icon: '💻',
-    color: '#8B5CF6',
-    tags: ['learning', 'technology', 'skill'],
-    requiredScore: 1,
-    targetPersonas: ['productivity-driven', 'knowledge-seeker'],
-    triggerConditions: { digital_5: [1, 2] }
+    "name": "Viết nhật ký tâm trạng",
+    "description": "Viết nhật ký 10 phút mỗi ngày để theo dõi và quản lý cảm xúc",
+    "category": "mindful",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "📝",
+    "color": "#9C27B0",
+    "tags": [
+      "nhật ký",
+      "tâm trạng"
+    ],
+    "requiredScore": 1,
+    "targetPersonas": [
+      "mindful-seeker",
+      "knowledge-seeker"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "female",
+      "male"
+    ],
+    "triggerConditions": {
+      "mindful_3": [
+        1
+      ]
+    }
   },
   {
-    name: 'Tắt thông báo không cần thiết',
-    description: 'Kiểm soát thông báo giảm phân tâm',
-    category: 'digital',
-    difficulty: 'easy',
-    frequency: 'daily',
-    trackingMode: 'check',
-    icon: '🔕',
-    color: '#F59E0B',
-    tags: ['focus', 'productivity', 'digital-wellbeing'],
-    requiredScore: 0,
-    targetPersonas: ['productivity-driven', 'balanced-lifestyle'],
-    triggerConditions: { digital_6: [1, 2] }
+    "name": "Tập yoga buổi sáng",
+    "description": "Tập yoga 30 phút mỗi buổi sáng để cải thiện sức khỏe và sự linh hoạt",
+    "category": "mindful",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "🧘",
+    "color": "#FF9800",
+    "tags": [
+      "yoga",
+      "sức khỏe"
+    ],
+    "requiredScore": 1,
+    "targetPersonas": [
+      "mindful-seeker",
+      "fitness-enthusiast"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "female",
+      "male"
+    ],
+    "triggerConditions": {
+      "mindful_4": [
+        1
+      ]
+    }
   },
   {
-    name: 'Không dùng điện thoại khi ăn',
-    description: 'Tập trung vào bữa ăn',
-    category: 'digital',
-    difficulty: 'medium',
-    frequency: 'daily',
-    trackingMode: 'check',
-    icon: '🍽️',
-    color: '#22C55E',
-    tags: ['mindful-eating', 'digital-detox', 'presence'],
-    requiredScore: 1,
-    targetPersonas: ['mindful-seeker', 'balanced-lifestyle'],
-    triggerConditions: { digital_1: [1, 2], digital_2: [1, 2] }
-  },
-
-  // === SOCIAL ===
-  {
-    name: 'Gọi điện cho gia đình',
-    description: 'Duy trì liên lạc với gia đình',
-    category: 'social',
-    difficulty: 'easy',
-    frequency: 'weekly',
-    trackingMode: 'check',
-    icon: '📞',
-    color: '#EC4899',
-    tags: ['family', 'communication', 'relationships'],
-    requiredScore: 0,
-    targetPersonas: ['social-connector', 'balanced-lifestyle'],
-    triggerConditions: { social_1: [1, 2] }
-  },
-  {
-    name: 'Gặp gỡ bạn bè',
-    description: 'Dành thời gian với bạn bè',
-    category: 'social',
-    difficulty: 'easy',
-    frequency: 'weekly',
-    trackingMode: 'check',
-    icon: '👥',
-    color: '#F59E0B',
-    tags: ['friends', 'social', 'relationships'],
-    requiredScore: 0,
-    targetPersonas: ['social-connector', 'balanced-lifestyle'],
-    triggerConditions: { social_2: [1, 2] }
+    "name": "Thực hành lòng biết ơn",
+    "description": "Thực hành lòng biết ơn 5 phút mỗi ngày bằng cách viết ra những điều mình biết ơn",
+    "category": "mindful",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "🙏",
+    "color": "#8BC34A",
+    "tags": [
+      "lòng biết ơn",
+      "tâm lý"
+    ],
+    "requiredScore": 0,
+    "targetPersonas": [
+      "mindful-seeker",
+      "balanced-lifestyle"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "mindful_5": [
+        1
+      ]
+    }
   },
   {
-    name: 'Tham gia hoạt động cộng đồng',
-    description: 'Tham gia tình nguyện hoặc câu lạc bộ',
-    category: 'social',
-    difficulty: 'medium',
-    frequency: 'monthly',
-    trackingMode: 'check',
-    icon: '🤝',
-    color: '#10B981',
-    tags: ['community', 'volunteering', 'social'],
-    requiredScore: 1,
-    targetPersonas: ['social-connector'],
-    triggerConditions: { social_4: [1, 2] }
+    "name": "Luyện tập lắng nghe",
+    "description": "Luyện tập lắng nghe 10 phút mỗi ngày để cải thiện kỹ năng giao tiếp",
+    "category": "mindful",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "🗣️",
+    "color": "#4CAF50",
+    "tags": [
+      "lắng nghe",
+      "giao tiếp"
+    ],
+    "requiredScore": 1,
+    "targetPersonas": [
+      "mindful-seeker",
+      "social-connector"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "mindful_6": [
+        1
+      ]
+    }
   },
   {
-    name: 'Khen ngợi người khác',
-    description: 'Nói lời khen chân thành',
-    category: 'social',
-    difficulty: 'easy',
-    frequency: 'daily',
-    trackingMode: 'count',
-    targetCount: 1,
-    unit: 'lời khen',
-    icon: '💝',
-    color: '#EC4899',
-    tags: ['kindness', 'positivity', 'relationships'],
-    requiredScore: 0,
-    targetPersonas: ['social-connector', 'balanced-lifestyle'],
-    triggerConditions: { social_3: [1, 2] }
+    "name": "Thực hành thiền khi đi bộ",
+    "description": "Thực hành thiền khi đi bộ 10 phút mỗi ngày để kết hợp thể dục và tâm lý",
+    "category": "mindful",
+    "difficulty": "hard",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "🚶",
+    "color": "#FF9800",
+    "tags": [
+      "thiền",
+      "đi bộ"
+    ],
+    "requiredScore": 2,
+    "targetPersonas": [
+      "mindful-seeker",
+      "fitness-enthusiast"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "mindful_1": [
+        2
+      ]
+    }
   },
   {
-    name: 'Nhắn tin hỏi thăm',
-    description: 'Chủ động quan tâm bạn bè',
-    category: 'social',
-    difficulty: 'easy',
-    trackingMode: 'count', // Đã thay đổi
-    targetCount: 3,       // Đã thêm
-    unit: 'người',        // Đã thêm
-    frequency: 'daily',
-    icon: '💬',
-    color: '#3B82F6',
-    tags: ['communication', 'friendship', 'care'],
-    requiredScore: 0,
-    targetPersonas: ['social-connector'],
-    triggerConditions: { social_5: [1, 2] }
-  },
-
-  // === FITNESS ===
-  {
-    name: 'Tập gym',
-    description: 'Tập luyện tại phòng gym',
-    category: 'fitness',
-    difficulty: 'medium',
-    frequency: 'weekly',
-    trackingMode: 'count',
-    targetCount: 3,
-    unit: 'buổi',
-    icon: '💪',
-    color: '#F59E0B',
-    tags: ['gym', 'strength', 'fitness'],
-    requiredScore: 1,
-    targetPersonas: ['fitness-enthusiast', 'health-focused'],
-    triggerConditions: { fitness_1: [1, 2] }
-  },
-  {
-    name: 'Đi bộ',
-    description: 'Duy trì hoạt động đi bộ',
-    category: 'fitness',
-    difficulty: 'easy',
-    frequency: 'daily',
-    trackingMode: 'count',
-    targetCount: 10000,
-    unit: 'bước',
-    icon: '👟',
-    color: '#6366F1',
-    tags: ['walking', 'cardio', 'fitness'],
-    requiredScore: 0,
-    targetPersonas: ['fitness-enthusiast', 'health-focused', 'balanced-lifestyle'],
-    triggerConditions: { fitness_2: [1, 2] }
+    "name": "Tập trung vào hiện tại",
+    "description": "Tập trung vào hiện tại 5 phút mỗi ngày để giảm lo lắng và căng thẳng",
+    "category": "mindful",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "🕰️",
+    "color": "#8BC34A",
+    "tags": [
+      "tập trung",
+      "hiện tại"
+    ],
+    "requiredScore": 0,
+    "targetPersonas": [
+      "mindful-seeker",
+      "productivity-driven"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "mindful_2": [
+        1
+      ]
+    }
   },
   {
-    name: 'Chạy bộ buổi sáng',
-    description: 'Chạy bộ để rèn luyện sức khỏe',
-    category: 'fitness',
-    difficulty: 'medium',
-    frequency: 'daily',
-    trackingMode: 'check',
-    icon: '🏃‍♂️',
-    color: '#EF4444',
-    tags: ['running', 'cardio', 'morning'],
-    requiredScore: 1,
-    targetPersonas: ['fitness-enthusiast'],
-    triggerConditions: { fitness_1: [1, 2], health_1: [1, 2] }
+    "name": "Kiểm tra tài khoản ngân hàng",
+    "description": "Kiểm tra tài khoản ngân hàng của bạn hàng ngày để theo dõi chi tiêu và đảm bảo không có giao dịch bất thường.",
+    "category": "finance",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "📊",
+    "color": "#34C759",
+    "tags": [
+      "tài chính",
+      "quản lý"
+    ],
+    "requiredScore": 0,
+    "targetPersonas": [
+      "finance-conscious",
+      "balanced-lifestyle"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "finance_1": [
+        1,
+        2
+      ]
+    }
   },
   {
-    name: 'Tập plank',
-    description: 'Tăng cường cơ core',
-    category: 'fitness',
-    difficulty: 'easy',
-    frequency: 'daily',
-    trackingMode: 'check',
-    icon: '🤸',
-    color: '#8B5CF6',
-    tags: ['core', 'strength', 'home-workout'],
-    requiredScore: 0,
-    targetPersonas: ['fitness-enthusiast', 'health-focused'],
-    triggerConditions: { fitness_1: [1, 2, 3] }
-  },
-
-  // === SLEEP ===
-  {
-    name: 'Ngủ đủ 8 tiếng',
-    description: 'Đảm bảo có đủ giấc ngủ',
-    category: 'sleep',
-    difficulty: 'medium',
-    frequency: 'daily',
-    trackingMode: 'check',
-    icon: '🛌',
-    color: '#8B5CF6',
-    tags: ['sleep', 'rest', 'recovery'],
-    requiredScore: 1,
-    targetPersonas: ['health-focused', 'balanced-lifestyle'],
-    triggerConditions: { health_2: [1, 2], sleep_1: [1, 2] }
-  },
-  {
-    name: 'Tạo thói quen trước khi ngủ',
-    description: 'Routine thư giãn trước giờ ngủ',
-    category: 'sleep',
-    difficulty: 'easy',
-    frequency: 'daily',
-    trackingMode: 'check',
-    icon: '🌜',
-    color: '#6366F1',
-    tags: ['sleep', 'routine', 'relaxation'],
-    requiredScore: 0,
-    targetPersonas: ['health-focused', 'mindful-seeker'],
-    triggerConditions: { health_2: [1, 2], sleep_2: [1, 2] }
+    "name": "Lập ngân sách hàng tháng",
+    "description": "Tạo một kế hoạch chi tiêu hàng tháng để quản lý tài chính hiệu quả.",
+    "category": "finance",
+    "difficulty": "medium",
+    "frequency": "monthly",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "📈",
+    "color": "#FFC107",
+    "tags": [
+      "tài chính",
+      "quản lý"
+    ],
+    "requiredScore": 1,
+    "targetPersonas": [
+      "finance-conscious",
+      "productivity-driven"
+    ],
+    "targetAgeGroups": [
+      "adult",
+      "middle_aged"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "finance_2": [
+        1,
+        2
+      ]
+    }
   },
   {
-    name: 'Tránh caffeine sau 2 giờ chiều',
-    description: 'Không uống cà phê buổi chiều',
-    category: 'sleep',
-    difficulty: 'medium',
-    frequency: 'daily',
-    trackingMode: 'check',
-    icon: '☕',
-    color: '#EF4444',
-    tags: ['sleep', 'caffeine', 'health'],
-    requiredScore: 1,
-    targetPersonas: ['health-focused'],
-    triggerConditions: { sleep_5: [1, 2] }
-  },
-
-  // === ENERGY ===
-  {
-    name: 'Uống trà xanh',
-    description: 'Năng lượng bền vững hơn cà phê',
-    category: 'energy',
-    difficulty: 'easy',
-    frequency: 'daily',
-    trackingMode: 'count',
-    targetCount: 2,
-    unit: 'ly',
-    icon: '🍵',
-    color: '#22C55E',
-    tags: ['energy', 'health', 'drink'],
-    requiredScore: 0,
-    targetPersonas: ['health-focused'],
-    triggerConditions: { health_1: [1, 2], energy_3: [1, 2] }
-  },
-  {
-    name: 'Nghỉ ngơi giữa giờ làm việc',
-    description: 'Nghỉ 5-10 phút sau mỗi giờ',
-    category: 'energy',
-    difficulty: 'easy',
-    frequency: 'daily',
-    trackingMode: 'count',
-    targetCount: 4,
-    unit: 'lần',
-    icon: '⏰',
-    color: '#F59E0B',
-    tags: ['break', 'rest', 'productivity'],
-    requiredScore: 0,
-    targetPersonas: ['productivity-driven', 'balanced-lifestyle'],
-    triggerConditions: { productivity_1: [1, 2], energy_2: [1, 2] }
+    "name": "Tiết kiệm 10% thu nhập",
+    "description": "Dành 10% thu nhập hàng tháng vào tài khoản tiết kiệm để xây dựng quỹ dự phòng.",
+    "category": "finance",
+    "difficulty": "medium",
+    "frequency": "monthly",
+    "trackingMode": "count",
+    "targetCount": 10,
+    "unit": "%",
+    "icon": "💰",
+    "color": "#8BC34A",
+    "tags": [
+      "tài chính",
+      "tiết kiệm"
+    ],
+    "requiredScore": 1,
+    "targetPersonas": [
+      "finance-conscious",
+      "balanced-lifestyle"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "finance_3": [
+        1,
+        2
+      ]
+    }
   },
   {
-    name: 'Ăn healthy snack',
-    description: 'Ăn trái cây hoặc hạt giữa buổi',
-    category: 'energy',
-    difficulty: 'easy',
-    frequency: 'daily',
-    trackingMode: 'count',
-    targetCount: 2,
-    unit: 'lần',
-    icon: '🍎',
-    color: '#EF4444',
-    tags: ['nutrition', 'energy', 'snack'],
-    requiredScore: 0,
-    targetPersonas: ['health-focused'],
-    triggerConditions: { health_4: [1, 2], energy_4: [1, 2] }
-  },
-
-  // === CONTROL (Breaking bad habits) ===
-  {
-    name: 'Giảm uống nước ngọt',
-    description: 'Thay bằng nước lọc hoặc trà',
-    category: 'control',
-    difficulty: 'medium',
-    trackingMode: 'count', // Đã thay đổi
-    targetCount: 0,       // Đã thêm (mục tiêu là không uống)
-    unit: 'chai/lon',     // Đã thêm
-    frequency: 'daily',
-    icon: '🚫',
-    color: '#EF4444',
-    tags: ['quit', 'health', 'sugar'],
-    requiredScore: 1,
-    targetPersonas: ['health-focused'],
-    triggerConditions: { health_4: [1, 2], energy_6: [1, 2] }
-  },
-  {
-    name: 'Giảm ăn đồ ăn nhanh',
-    description: 'Hạn chế fast food',
-    category: 'control',
-    difficulty: 'medium',
-    frequency: 'weekly',
-    trackingMode: 'check',
-    icon: '🍔',
-    color: '#F59E0B',
-    tags: ['quit', 'health', 'diet'],
-    requiredScore: 1,
-    targetPersonas: ['health-focused'],
-    triggerConditions: { health_4: [1, 2] }
+    "name": "Đầu tư vào chứng khoán",
+    "description": "Đầu tư một phần tài sản vào chứng khoán để tăng trưởng tài chính dài hạn.",
+    "category": "finance",
+    "difficulty": "hard",
+    "frequency": "monthly",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "📈",
+    "color": "#03A9F4",
+    "tags": [
+      "tài chính",
+      "đầu tư"
+    ],
+    "requiredScore": 2,
+    "targetPersonas": [
+      "finance-conscious",
+      "knowledge-seeker"
+    ],
+    "targetAgeGroups": [
+      "adult",
+      "middle_aged"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "finance_4": [
+        1,
+        2
+      ]
+    }
   },
   {
-    name: 'Giảm xem TV/Netflix',
-    description: 'Hạn chế xem TV',
-    category: 'control',
-    difficulty: 'hard',
-    frequency: 'daily',
-    trackingMode: 'check',
-    icon: '📺',
-    color: '#6B7280',
-    tags: ['quit', 'digital-detox', 'time-management'],
-    requiredScore: 2,
-    targetPersonas: ['productivity-driven', 'balanced-lifestyle'],
-    triggerConditions: { productivity_1: [1, 2] }
+    "name": "Tránh mua sắm không cần thiết",
+    "description": "Hạn chế mua sắm không cần thiết để tiết kiệm tiền và giảm nợ.",
+    "category": "finance",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "🛍️",
+    "color": "#FF9800",
+    "tags": [
+      "tài chính",
+      "tiết kiệm"
+    ],
+    "requiredScore": 0,
+    "targetPersonas": [
+      "finance-conscious",
+      "mindful-seeker"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "finance_5": [
+        1,
+        2
+      ]
+    }
   },
   {
-    name: 'Bỏ thói quen trì hoãn',
-    description: 'Áp dụng quy tắc 2 phút: làm ngay việc dưới 2 phút',
-    category: 'control',
-    difficulty: 'hard',
-    frequency: 'daily',
-    trackingMode: 'check',
-    icon: '⏱️',
-    color: '#EF4444',
-    tags: ['quit', 'productivity', 'procrastination'],
-    requiredScore: 2,
-    targetPersonas: ['productivity-driven'],
-    triggerConditions: { productivity_1: [1, 2], productivity_4: [1, 2], control_5: [1, 2] }
+    "name": "Tạo quỹ dự phòng",
+    "description": "Xây dựng quỹ dự phòng để đối phó với các tình huống tài chính bất ngờ.",
+    "category": "finance",
+    "difficulty": "medium",
+    "frequency": "monthly",
+    "trackingMode": "count",
+    "targetCount": 3,
+    "unit": "tháng",
+    "icon": "💸",
+    "color": "#4CAF50",
+    "tags": [
+      "tài chính",
+      "quản lý"
+    ],
+    "requiredScore": 1,
+    "targetPersonas": [
+      "finance-conscious",
+      "balanced-lifestyle"
+    ],
+    "targetAgeGroups": [
+      "adult",
+      "middle_aged"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "finance_1": [
+        1,
+        2
+      ]
+    }
   },
   {
-    name: 'Giảm dùng điện thoại trong WC',
-    description: 'Không mang điện thoại vào nhà vệ sinh',
-    category: 'control',
-    difficulty: 'medium',
-    frequency: 'daily',
-    trackingMode: 'check',
-    icon: '🚽',
-    color: '#8B5CF6',
-    tags: ['quit', 'digital-detox', 'mindfulness'],
-    requiredScore: 1,
-    targetPersonas: ['balanced-lifestyle', 'mindful-seeker'],
-    triggerConditions: { digital_1: [1, 2], digital_2: [1, 2] }
+    "name": "Đánh giá và điều chỉnh ngân sách",
+    "description": "Đánh giá và điều chỉnh ngân sách hàng tháng để đảm bảo phù hợp với tình hình tài chính hiện tại.",
+    "category": "finance",
+    "difficulty": "medium",
+    "frequency": "monthly",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "📊",
+    "color": "#009688",
+    "tags": [
+      "tài chính",
+      "quản lý"
+    ],
+    "requiredScore": 1,
+    "targetPersonas": [
+      "finance-conscious",
+      "productivity-driven"
+    ],
+    "targetAgeGroups": [
+      "adult",
+      "middle_aged"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "finance_2": [
+        1,
+        2
+      ]
+    }
   },
   {
-    name: 'Không ăn vặt sau 8 giờ tối',
-    description: 'Ngừng ăn uống trước khi ngủ',
-    category: 'control',
-    difficulty: 'medium',
-    frequency: 'daily',
-    trackingMode: 'check',
-    icon: '🌙',
-    color: '#6366F1',
-    tags: ['quit', 'health', 'diet'],
-    requiredScore: 1,
-    targetPersonas: ['health-focused'],
-    triggerConditions: { health_4: [1, 2], sleep_1: [1, 2] }
+    "name": "Tìm hiểu về đầu tư dài hạn",
+    "description": "Tìm hiểu về các phương pháp đầu tư dài hạn để tăng trưởng tài chính bền vững.",
+    "category": "finance",
+    "difficulty": "hard",
+    "frequency": "monthly",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "📚",
+    "color": "#3F51B5",
+    "tags": [
+      "tài chính",
+      "đầu tư"
+    ],
+    "requiredScore": 2,
+    "targetPersonas": [
+      "finance-conscious",
+      "knowledge-seeker"
+    ],
+    "targetAgeGroups": [
+      "adult",
+      "middle_aged"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "finance_4": [
+        1,
+        2
+      ]
+    }
+  },
+  {
+    "name": "Tập thói quen kiểm tra email hàng ngày",
+    "description": "Kiểm tra và trả lời email quan trọng vào buổi sáng",
+    "category": "digital",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "📧",
+    "color": "#87CEEB",
+    "tags": [
+      "productivity"
+    ],
+    "requiredScore": 0,
+    "targetPersonas": [
+      "productivity-driven",
+      "knowledge-seeker"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "question_id": [
+        1,
+        2
+      ]
+    }
+  },
+  {
+    "name": "Tạo thói quen học trực tuyến mỗi tuần",
+    "description": "Dành 2 giờ mỗi tuần để học các khóa trực tuyến về công nghệ",
+    "category": "digital",
+    "difficulty": "medium",
+    "frequency": "weekly",
+    "trackingMode": "count",
+    "targetCount": 2,
+    "unit": "giờ",
+    "icon": "📚",
+    "color": "#6495ED",
+    "tags": [
+      "learning"
+    ],
+    "requiredScore": 1,
+    "targetPersonas": [
+      "knowledge-seeker",
+      "health-focused"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "question_id": [
+        3,
+        4
+      ]
+    }
+  },
+  {
+    "name": "Thói quen cập nhật kiến thức công nghệ mỗi ngày",
+    "description": "Dành 30 phút mỗi ngày để cập nhật tin tức công nghệ",
+    "category": "digital",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "📰",
+    "color": "#4682B4",
+    "tags": [
+      "tech"
+    ],
+    "requiredScore": 0,
+    "targetPersonas": [
+      "knowledge-seeker",
+      "productivity-driven"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "question_id": [
+        1,
+        2
+      ]
+    }
+  },
+  {
+    "name": "Tập thói quen sử dụng ứng dụng quản lý thời gian",
+    "description": "Sử dụng ứng dụng để quản lý và theo dõi thời gian mỗi ngày",
+    "category": "digital",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "🕒",
+    "color": "#778899",
+    "tags": [
+      "productivity"
+    ],
+    "requiredScore": 1,
+    "targetPersonas": [
+      "productivity-driven",
+      "balanced-lifestyle"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "question_id": [
+        3,
+        4
+      ]
+    }
+  },
+  {
+    "name": "Thói quen tham gia các nhóm trực tuyến để học hỏi",
+    "description": "Tham gia các nhóm trực tuyến để học hỏi và chia sẻ kiến thức",
+    "category": "digital",
+    "difficulty": "medium",
+    "frequency": "weekly",
+    "trackingMode": "count",
+    "targetCount": 2,
+    "unit": "lần",
+    "icon": "👥",
+    "color": "#6495ED",
+    "tags": [
+      "learning",
+      "community"
+    ],
+    "requiredScore": 1,
+    "targetPersonas": [
+      "knowledge-seeker",
+      "social-connector"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "question_id": [
+        5,
+        6
+      ]
+    }
+  },
+  {
+    "name": "Tập thói quen sử dụng công cụ trực tuyến để học tập",
+    "description": "Sử dụng công cụ trực tuyến để học tập và phát triển kỹ năng",
+    "category": "digital",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "📊",
+    "color": "#4682B4",
+    "tags": [
+      "learning"
+    ],
+    "requiredScore": 1,
+    "targetPersonas": [
+      "knowledge-seeker",
+      "productivity-driven"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "question_id": [
+        3,
+        4
+      ]
+    }
+  },
+  {
+    "name": "Thói quen chia sẻ kiến thức trên mạng xã hội",
+    "description": "Chia sẻ kiến thức và kinh nghiệm trên mạng xã hội",
+    "category": "digital",
+    "difficulty": "easy",
+    "frequency": "weekly",
+    "trackingMode": "count",
+    "targetCount": 2,
+    "unit": "lần",
+    "icon": "📱",
+    "color": "#6495ED",
+    "tags": [
+      "sharing"
+    ],
+    "requiredScore": 0,
+    "targetPersonas": [
+      "social-connector",
+      "knowledge-seeker"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "question_id": [
+        5,
+        6
+      ]
+    }
+  },
+  {
+    "name": "Tập thói quen sử dụng dịch vụ trực tuyến để thanh toán",
+    "description": "Sử dụng dịch vụ trực tuyến để thanh toán hóa đơn và mua sắm",
+    "category": "digital",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "💳",
+    "color": "#778899",
+    "tags": [
+      "finance"
+    ],
+    "requiredScore": 0,
+    "targetPersonas": [
+      "finance-conscious",
+      "productivity-driven"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "question_id": [
+        1,
+        2
+      ]
+    }
+  },
+  {
+    "name": "Tham gia hoạt động xã hội",
+    "description": "Tình nguyện, hội thảo, sự kiện cộng đồng",
+    "category": "social",
+    "difficulty": "medium",
+    "frequency": "weekly",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "🤝",
+    "color": "#8BC34A",
+    "tags": [
+      "community",
+      "volunteer"
+    ],
+    "requiredScore": 1,
+    "targetPersonas": [
+      "social-connector",
+      "knowledge-seeker"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "social_1": [
+        1,
+        2
+      ]
+    }
+  },
+  {
+    "name": "Giúp đỡ bạn bè, gia đình",
+    "description": "Hỗ trợ khi cần, lắng nghe và chia sẻ",
+    "category": "social",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "🤗",
+    "color": "#FFC107",
+    "tags": [
+      "support",
+      "care"
+    ],
+    "requiredScore": 0,
+    "targetPersonas": [
+      "balanced-lifestyle",
+      "social-connector"
+    ],
+    "targetAgeGroups": [
+      "adult",
+      "young_adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "social_2": [
+        1,
+        2
+      ]
+    }
+  },
+  {
+    "name": "Duy trì liên lạc với bạn bè, người thân",
+    "description": "Gọi điện, nhắn tin, gặp mặt",
+    "category": "social",
+    "difficulty": "easy",
+    "frequency": "weekly",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "📱",
+    "color": "#4CAF50",
+    "tags": [
+      "communication",
+      "relationship"
+    ],
+    "requiredScore": 0,
+    "targetPersonas": [
+      "social-connector",
+      "balanced-lifestyle"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "social_3": [
+        1,
+        2
+      ]
+    }
+  },
+  {
+    "name": "Tham gia thảo luận, tranh luận xã hội",
+    "description": "Tham gia diễn đàn, cuộc họp, thảo luận nhóm",
+    "category": "social",
+    "difficulty": "hard",
+    "frequency": "monthly",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "💬",
+    "color": "#2196F3",
+    "tags": [
+      "debate",
+      "discussion"
+    ],
+    "requiredScore": 2,
+    "targetPersonas": [
+      "knowledge-seeker",
+      "social-connector"
+    ],
+    "targetAgeGroups": [
+      "adult",
+      "young_adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "social_4": [
+        1,
+        2
+      ]
+    }
+  },
+  {
+    "name": "Thể hiện sự quan tâm, chăm sóc",
+    "description": "Chăm sóc sức khỏe, tinh thần cho người khác",
+    "category": "social",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "❤️",
+    "color": "#FF9800",
+    "tags": [
+      "care",
+      "empathy"
+    ],
+    "requiredScore": 1,
+    "targetPersonas": [
+      "balanced-lifestyle",
+      "social-connector"
+    ],
+    "targetAgeGroups": [
+      "adult",
+      "young_adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "social_5": [
+        1,
+        2
+      ]
+    }
+  },
+  {
+    "name": "Tổ chức sự kiện xã hội",
+    "description": "Tổ chức party, meetup, hội thảo",
+    "category": "social",
+    "difficulty": "hard",
+    "frequency": "monthly",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "🎉",
+    "color": "#9C27B0",
+    "tags": [
+      "event",
+      "planning"
+    ],
+    "requiredScore": 2,
+    "targetPersonas": [
+      "social-connector",
+      "knowledge-seeker"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "social_1": [
+        1,
+        2
+      ]
+    }
+  },
+  {
+    "name": "Xây dựng mối quan hệ mới",
+    "description": "Gặp gỡ người mới, xây dựng network",
+    "category": "social",
+    "difficulty": "medium",
+    "frequency": "weekly",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "👥",
+    "color": "#03A9F4",
+    "tags": [
+      "networking",
+      "relationship"
+    ],
+    "requiredScore": 1,
+    "targetPersonas": [
+      "social-connector",
+      "knowledge-seeker"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "social_3": [
+        1,
+        2
+      ]
+    }
+  },
+  {
+    "name": "Tham gia hoạt động từ thiện",
+    "description": "Tình nguyện, quyên góp, hỗ trợ cộng đồng",
+    "category": "social",
+    "difficulty": "medium",
+    "frequency": "monthly",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "❤️",
+    "color": "#8BC34A",
+    "tags": [
+      "charity",
+      "volunteer"
+    ],
+    "requiredScore": 1,
+    "targetPersonas": [
+      "social-connector",
+      "balanced-lifestyle"
+    ],
+    "targetAgeGroups": [
+      "adult",
+      "young_adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "social_1": [
+        1,
+        2
+      ]
+    }
+  },
+  {
+    "name": "Tập thể dục 30 phút",
+    "description": "Tập thể dục giúp cải thiện sức khỏe và tinh thần",
+    "category": "fitness",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "🏋️",
+    "color": "#34C759",
+    "tags": [
+      "tập thể dục",
+      "sức khỏe"
+    ],
+    "requiredScore": 0,
+    "targetPersonas": [
+      "health-focused",
+      "fitness-enthusiast"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "fitness_1": [
+        1,
+        2
+      ]
+    }
+  },
+  {
+    "name": "Đi bộ 10.000 bước",
+    "description": "Đi bộ giúp cải thiện sức khỏe tim mạch và giảm cân",
+    "category": "fitness",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "count",
+    "targetCount": 10000,
+    "unit": "bước",
+    "icon": "🚶",
+    "color": "#FFC107",
+    "tags": [
+      "đi bộ",
+      "sức khỏe"
+    ],
+    "requiredScore": 1,
+    "targetPersonas": [
+      "health-focused",
+      "productivity-driven"
+    ],
+    "targetAgeGroups": [
+      "adult",
+      "middle_aged"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "fitness_2": [
+        1,
+        2
+      ]
+    }
+  },
+  {
+    "name": "Tập yoga 30 phút",
+    "description": "Tập yoga giúp cải thiện sự linh hoạt và giảm stress",
+    "category": "fitness",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "🧘",
+    "color": "#8BC34A",
+    "tags": [
+      "tập yoga",
+      "sức khỏe"
+    ],
+    "requiredScore": 0,
+    "targetPersonas": [
+      "mindful-seeker",
+      "fitness-enthusiast"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "female",
+      "male"
+    ],
+    "triggerConditions": {
+      "fitness_3": [
+        1,
+        2
+      ]
+    }
+  },
+  {
+    "name": "Uống 8 ly nước mỗi ngày",
+    "description": "Uống nước giúp cải thiện sức khỏe và tinh thần",
+    "category": "fitness",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "count",
+    "targetCount": 8,
+    "unit": "ly",
+    "icon": "💧",
+    "color": "#2196F3",
+    "tags": [
+      "uống nước",
+      "sức khỏe"
+    ],
+    "requiredScore": 0,
+    "targetPersonas": [
+      "health-focused",
+      "productivity-driven"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "fitness_4": [
+        1,
+        2
+      ]
+    }
+  },
+  {
+    "name": "Ngủ đủ 8 tiếng mỗi đêm",
+    "description": "Ngủ đủ giấc giúp cải thiện sức khỏe và tinh thần",
+    "category": "fitness",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "😴",
+    "color": "#9C27B0",
+    "tags": [
+      "ngủ đủ giấc",
+      "sức khỏe"
+    ],
+    "requiredScore": 1,
+    "targetPersonas": [
+      "health-focused",
+      "productivity-driven"
+    ],
+    "targetAgeGroups": [
+      "adult",
+      "middle_aged"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "fitness_5": [
+        1,
+        2
+      ]
+    }
+  },
+  {
+    "name": "Tập thể dục cường độ cao 45 phút",
+    "description": "Tập thể dục cường độ cao giúp cải thiện sức khỏe và giảm cân",
+    "category": "fitness",
+    "difficulty": "hard",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "🏋️",
+    "color": "#E74C3C",
+    "tags": [
+      "tập thể dục",
+      "sức khỏe"
+    ],
+    "requiredScore": 2,
+    "targetPersonas": [
+      "fitness-enthusiast",
+      "productivity-driven"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "fitness_1": [
+        1,
+        2
+      ]
+    }
+  },
+  {
+    "name": "Đi bộ 30 phút sau bữa ăn",
+    "description": "Đi bộ sau bữa ăn giúp cải thiện sức khỏe và giảm cân",
+    "category": "fitness",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "🚶",
+    "color": "#FFC107",
+    "tags": [
+      "đi bộ",
+      "sức khỏe"
+    ],
+    "requiredScore": 0,
+    "targetPersonas": [
+      "health-focused",
+      "fitness-enthusiast"
+    ],
+    "targetAgeGroups": [
+      "adult",
+      "middle_aged"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "fitness_2": [
+        1,
+        2
+      ]
+    }
+  },
+  {
+    "name": "Tập thể dục vào buổi sáng",
+    "description": "Tập thể dục vào buổi sáng giúp cải thiện sức khỏe và tinh thần",
+    "category": "fitness",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "🏋️",
+    "color": "#34C759",
+    "tags": [
+      "tập thể dục",
+      "sức khỏe"
+    ],
+    "requiredScore": 1,
+    "targetPersonas": [
+      "health-focused",
+      "productivity-driven"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "fitness_1": [
+        1,
+        2
+      ]
+    }
+  },
+  {
+    "name": "Uống nước trước mỗi bữa ăn",
+    "description": "Uống nước trước mỗi bữa ăn giúp cải thiện sức khỏe và giảm cân",
+    "category": "fitness",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "💧",
+    "color": "#2196F3",
+    "tags": [
+      "uống nước",
+      "sức khỏe"
+    ],
+    "requiredScore": 0,
+    "targetPersonas": [
+      "health-focused",
+      "productivity-driven"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "fitness_4": [
+        1,
+        2
+      ]
+    }
+  },
+  {
+    "name": "Tập thể dục với bạn bè",
+    "description": "Tập thể dục với bạn bè giúp cải thiện sức khỏe và tinh thần",
+    "category": "fitness",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "👫",
+    "color": "#8BC34A",
+    "tags": [
+      "tập thể dục",
+      "sức khỏe"
+    ],
+    "requiredScore": 1,
+    "targetPersonas": [
+      "social-connector",
+      "fitness-enthusiast"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "fitness_1": [
+        1,
+        2
+      ]
+    }
+  },
+  {
+    "name": "Đi ngủ trước 11h",
+    "description": "Hãy đi ngủ trước 11h mỗi đêm để đảm bảo giấc ngủ đủ và chất lượng",
+    "category": "sleep",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "😴",
+    "color": "#87CEEB",
+    "tags": [
+      "ngủ đủ",
+      "sức khỏe"
+    ],
+    "requiredScore": 0,
+    "targetPersonas": [
+      "health-focused",
+      "productivity-driven"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "sleep_1": [
+        1
+      ]
+    }
+  },
+  {
+    "name": "Tập thể dục buổi chiều",
+    "description": "Tập thể dục vào buổi chiều để cải thiện chất lượng giấc ngủ",
+    "category": "sleep",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "🏋️‍♀️",
+    "color": "#FFC107",
+    "tags": [
+      "tập thể dục",
+      "giấc ngủ"
+    ],
+    "requiredScore": 1,
+    "targetPersonas": [
+      "fitness-enthusiast"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "sleep_2": [
+        2
+      ]
+    }
+  },
+  {
+    "name": "Tắt thiết bị điện tử trước ngủ",
+    "description": "Tắt thiết bị điện tử trước khi đi ngủ để tránh ảnh hưởng đến giấc ngủ",
+    "category": "sleep",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "📴",
+    "color": "#4CAF50",
+    "tags": [
+      "ngủ đủ",
+      "sức khỏe"
+    ],
+    "requiredScore": 0,
+    "targetPersonas": [
+      "health-focused"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "sleep_3": [
+        1
+      ]
+    }
+  },
+  {
+    "name": "Thực hành thiền trước ngủ",
+    "description": "Thực hành thiền trước khi đi ngủ để cải thiện chất lượng giấc ngủ",
+    "category": "sleep",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "🙏",
+    "color": "#8BC34A",
+    "tags": [
+      "thiền",
+      "giấc ngủ"
+    ],
+    "requiredScore": 1,
+    "targetPersonas": [
+      "mindful-seeker"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "sleep_4": [
+        2
+      ]
+    }
+  },
+  {
+    "name": "Tạo không gian ngủ thoải mái",
+    "description": "Tạo không gian ngủ thoải mái để cải thiện chất lượng giấc ngủ",
+    "category": "sleep",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "🛏️",
+    "color": "#03A9F4",
+    "tags": [
+      "ngủ đủ",
+      "sức khỏe"
+    ],
+    "requiredScore": 0,
+    "targetPersonas": [
+      "health-focused"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "sleep_5": [
+        1
+      ]
+    }
+  },
+  {
+    "name": "Ngủ đủ 7-8 giờ mỗi đêm",
+    "description": "Ngủ đủ 7-8 giờ mỗi đêm để đảm bảo sức khỏe và tinh thần",
+    "category": "sleep",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "😴",
+    "color": "#87CEEB",
+    "tags": [
+      "ngủ đủ",
+      "sức khỏe"
+    ],
+    "requiredScore": 0,
+    "targetPersonas": [
+      "health-focused",
+      "productivity-driven"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "sleep_2": [
+        1
+      ]
+    }
+  },
+  {
+    "name": "Tránh cà phê và rượu trước ngủ",
+    "description": "Tránh cà phê và rượu trước khi đi ngủ để cải thiện chất lượng giấc ngủ",
+    "category": "sleep",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "☕️",
+    "color": "#FFC107",
+    "tags": [
+      "ngủ đủ",
+      "sức khỏe"
+    ],
+    "requiredScore": 1,
+    "targetPersonas": [
+      "health-focused"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "sleep_3": [
+        2
+      ]
+    }
+  },
+  {
+    "name": "Tập thể dục buổi sáng",
+    "description": "Tập thể dục vào buổi sáng để cải thiện chất lượng giấc ngủ",
+    "category": "sleep",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "🏋️‍♀️",
+    "color": "#4CAF50",
+    "tags": [
+      "tập thể dục",
+      "giấc ngủ"
+    ],
+    "requiredScore": 1,
+    "targetPersonas": [
+      "fitness-enthusiast"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "sleep_1": [
+        2
+      ]
+    }
+  },
+  {
+    "name": "Thực hành hít thở sâu trước ngủ",
+    "description": "Thực hành hít thở sâu trước khi đi ngủ để cải thiện chất lượng giấc ngủ",
+    "category": "sleep",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "🙏",
+    "color": "#8BC34A",
+    "tags": [
+      "hít thở sâu",
+      "giấc ngủ"
+    ],
+    "requiredScore": 1,
+    "targetPersonas": [
+      "mindful-seeker"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "sleep_4": [
+        2
+      ]
+    }
+  },
+  {
+    "name": "Đọc sách trước ngủ",
+    "description": "Đọc sách trước khi đi ngủ để cải thiện chất lượng giấc ngủ",
+    "category": "sleep",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "📖",
+    "color": "#03A9F4",
+    "tags": [
+      "đọc sách",
+      "giấc ngủ"
+    ],
+    "requiredScore": 0,
+    "targetPersonas": [
+      "knowledge-seeker"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "sleep_5": [
+        1
+      ]
+    }
+  },
+  {
+    "name": "Tập thể dục buổi sáng",
+    "description": "Tập thể dục 30 phút vào buổi sáng để tăng cường năng lượng",
+    "category": "energy",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "🏋️",
+    "color": "#8BC34A",
+    "tags": [
+      "fitness",
+      "morning"
+    ],
+    "requiredScore": 0,
+    "targetPersonas": [
+      "health-focused",
+      "fitness-enthusiast"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "question_id": 1
+    }
+  },
+  {
+    "name": "Uống đủ nước",
+    "description": "Uống 8 ly nước mỗi ngày để giữ cơ thể đủ nước",
+    "category": "energy",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "count",
+    "targetCount": 8,
+    "unit": "ly",
+    "icon": "💧",
+    "color": "#03A9F4",
+    "tags": [
+      "hydration",
+      "health"
+    ],
+    "requiredScore": 0,
+    "targetPersonas": [
+      "health-focused",
+      "productivity-driven"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult",
+      "teens"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "question_id": 2
+    }
+  },
+  {
+    "name": "Đi ngủ sớm",
+    "description": "Đi ngủ trước 11 giờ tối để có giấc ngủ đủ",
+    "category": "energy",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "🛋️",
+    "color": "#2196F3",
+    "tags": [
+      "sleep",
+      "relaxation"
+    ],
+    "requiredScore": 1,
+    "targetPersonas": [
+      "health-focused",
+      "balanced-lifestyle"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "question_id": 3
+    }
+  },
+  {
+    "name": "Ăn sáng đầy đủ",
+    "description": "Ăn sáng đầy đủ để có năng lượng cho cả ngày",
+    "category": "energy",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "🍳",
+    "color": "#FF9800",
+    "tags": [
+      "nutrition",
+      "breakfast"
+    ],
+    "requiredScore": 0,
+    "targetPersonas": [
+      "health-focused",
+      "productivity-driven"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult",
+      "teens"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "question_id": 4
+    }
+  },
+  {
+    "name": "Thực hiện các hoạt động thư giãn",
+    "description": "Thực hiện các hoạt động thư giãn như thiền hoặc yoga để giảm stress",
+    "category": "energy",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "🙏",
+    "color": "#9C27B0",
+    "tags": [
+      "relaxation",
+      "mindfulness"
+    ],
+    "requiredScore": 1,
+    "targetPersonas": [
+      "mindful-seeker",
+      "balanced-lifestyle"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "female",
+      "male"
+    ],
+    "triggerConditions": {
+      "question_id": 5
+    }
+  },
+  {
+    "name": "Dành thời gian cho các hoạt động ngoài trời",
+    "description": "Dành thời gian cho các hoạt động ngoài trời để tăng cường sức khỏe",
+    "category": "energy",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "🏞️",
+    "color": "#8BC34A",
+    "tags": [
+      "outdoor",
+      "nature"
+    ],
+    "requiredScore": 0,
+    "targetPersonas": [
+      "health-focused",
+      "social-connector"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult",
+      "teens"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "question_id": 6
+    }
+  },
+  {
+    "name": "Tập thể dục cường độ cao",
+    "description": "Tập thể dục cường độ cao để tăng cường sức khỏe",
+    "category": "energy",
+    "difficulty": "hard",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "🏋️",
+    "color": "#FF9800",
+    "tags": [
+      "fitness",
+      "intensity"
+    ],
+    "requiredScore": 2,
+    "targetPersonas": [
+      "fitness-enthusiast",
+      "productivity-driven"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "question_id": 1
+    }
+  },
+  {
+    "name": "Ăn uống cân đối",
+    "description": "Ăn uống cân đối để tăng cường sức khỏe",
+    "category": "energy",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "🍴",
+    "color": "#9C27B0",
+    "tags": [
+      "nutrition",
+      "balance"
+    ],
+    "requiredScore": 1,
+    "targetPersonas": [
+      "health-focused",
+      "balanced-lifestyle"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "question_id": 4
+    }
+  },
+  {
+    "name": "Lập kế hoạch hàng ngày",
+    "description": "Dành 10 phút mỗi sáng để lên kế hoạch cho ngày",
+    "category": "control",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "📅",
+    "color": "#4CAF50",
+    "tags": [
+      "productivity",
+      "planning"
+    ],
+    "requiredScore": 0,
+    "targetPersonas": [
+      "productivity-driven",
+      "health-focused"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "control_2": [
+        1,
+        2
+      ]
+    }
+  },
+  {
+    "name": "Kiểm soát chi tiêu",
+    "description": "Ghi chép và theo dõi tất cả các khoản chi tiêu hàng ngày",
+    "category": "control",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "count",
+    "targetCount": 10,
+    "unit": "mục",
+    "icon": "💸",
+    "color": "#FF9800",
+    "tags": [
+      "finance",
+      "budgeting"
+    ],
+    "requiredScore": 1,
+    "targetPersonas": [
+      "finance-conscious",
+      "balanced-lifestyle"
+    ],
+    "targetAgeGroups": [
+      "adult",
+      "young_adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "control_3": [
+        1,
+        2
+      ]
+    }
+  },
+  {
+    "name": "Thiết lập mục tiêu hàng tuần",
+    "description": "Dành 30 phút mỗi chủ nhật để thiết lập mục tiêu cho tuần tới",
+    "category": "control",
+    "difficulty": "medium",
+    "frequency": "weekly",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "📈",
+    "color": "#03A9F4",
+    "tags": [
+      "goal-setting",
+      "productivity"
+    ],
+    "requiredScore": 1,
+    "targetPersonas": [
+      "productivity-driven",
+      "knowledge-seeker"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "control_4": [
+        1,
+        2
+      ]
+    }
+  },
+  {
+    "name": "Quản lý thời gian hiệu quả",
+    "description": "Sử dụng công cụ quản lý thời gian để tăng hiệu suất công việc",
+    "category": "control",
+    "difficulty": "hard",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "⏰",
+    "color": "#8BC34A",
+    "tags": [
+      "time-management",
+      "productivity"
+    ],
+    "requiredScore": 2,
+    "targetPersonas": [
+      "productivity-driven",
+      "balanced-lifestyle"
+    ],
+    "targetAgeGroups": [
+      "adult",
+      "young_adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "control_5": [
+        1,
+        2
+      ]
+    }
+  },
+  {
+    "name": "Tập trung vào nhiệm vụ quan trọng",
+    "description": "Dành 2 giờ mỗi ngày để tập trung vào nhiệm vụ quan trọng",
+    "category": "control",
+    "difficulty": "hard",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "💼",
+    "color": "#2196F3",
+    "tags": [
+      "focus",
+      "productivity"
+    ],
+    "requiredScore": 2,
+    "targetPersonas": [
+      "productivity-driven",
+      "knowledge-seeker"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "control_2": [
+        1,
+        2
+      ]
+    }
+  },
+  {
+    "name": "Đánh giá và điều chỉnh kế hoạch",
+    "description": "Dành 30 phút mỗi tuần để đánh giá và điều chỉnh kế hoạch",
+    "category": "control",
+    "difficulty": "medium",
+    "frequency": "weekly",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "📊",
+    "color": "#FFC107",
+    "tags": [
+      "evaluation",
+      "planning"
+    ],
+    "requiredScore": 1,
+    "targetPersonas": [
+      "productivity-driven",
+      "balanced-lifestyle"
+    ],
+    "targetAgeGroups": [
+      "adult",
+      "young_adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "control_2": [
+        1,
+        2
+      ]
+    }
+  },
+  {
+    "name": "Tạo thói quen hàng ngày",
+    "description": "Tạo thói quen hàng ngày để tăng hiệu suất và giảm căng thẳng",
+    "category": "control",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "📆",
+    "color": "#9C27B0",
+    "tags": [
+      "habit",
+      "routine"
+    ],
+    "requiredScore": 0,
+    "targetPersonas": [
+      "health-focused",
+      "balanced-lifestyle"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "control_1": [
+        1,
+        2
+      ]
+    }
+  },
+  {
+    "name": "Sử dụng công nghệ để quản lý thời gian",
+    "description": "Sử dụng công nghệ để quản lý thời gian và tăng hiệu suất",
+    "category": "control",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "📱",
+    "color": "#4CAF50",
+    "tags": [
+      "time-management",
+      "technology"
+    ],
+    "requiredScore": 1,
+    "targetPersonas": [
+      "productivity-driven",
+      "knowledge-seeker"
+    ],
+    "targetAgeGroups": [
+      "young_adult",
+      "adult"
+    ],
+    "targetGenders": [
+      "male",
+      "female"
+    ],
+    "triggerConditions": {
+      "control_5": [
+        1,
+        2
+      ]
+    }
   }
 ];
 
