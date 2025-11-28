@@ -5,6 +5,8 @@ import {
   createHabit,
   updateHabit,
   deleteHabit,
+  getHabitById,
+
   // Tracking
   trackHabit,
   getHabitTrackings,
@@ -65,6 +67,9 @@ router.use(authenticateToken); // Apply authentication middleware to all routes
 
 // Get all habits for user
 router.get('/', getUserHabits);
+
+// Get habit by ID
+router.get('/:habitId', getHabitById);
 
 // Create new habit
 router.post('/', createHabit);

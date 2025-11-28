@@ -35,6 +35,57 @@ const getUserHabits = asyncHandler(async (req, res) => {
   });
 });
 
+
+const getHabitById = asyncHandler(async (req, res) => {
+  const { habitId } = req.params;   
+  const userId = req.user.id;
+
+  // Validate habitId format (if using MongoDB ObjectId)
+  if (!habitId.match(/^[0-9a-fA-F]{24}$/)) {
+    return res.status(400).json({
+      success: false, 
+      message: 'Invalid habit ID format'
+    });
+  }
+
+  // Find habit with populate
+  const habit = await Habit.findOne({ 
+    _id: habitId, 
+    userId, 
+    isActive: true 
+  }).populate('suggestionId');
+
+  if (!habit) {
+    return res.status(404).json({
+      success: false, 
+      message: 'Habit not found'
+    });
+  }
+
+  // Calculate today's progress (similar to getUserHabits)
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const todayTracking = await HabitTracking.findOne({
+    userId,
+    habitId: habit._id,
+    date: today
+  });
+
+  // Build response with today's status
+  const habitWithProgress = {
+    ...habit.toObject(),
+    todayStatus: todayTracking ? todayTracking.status : 'pending',
+    todayCompleted: todayTracking ? todayTracking.status === 'completed' : false,
+    todayCount: todayTracking?.count || 0, // For count-based tracking
+  };
+
+  res.json({
+    success: true,
+    habit: habitWithProgress
+  });
+});
+
 //     Create new habit
 const createHabit = asyncHandler(async (req, res) => {
   const userId = req.user.id;
@@ -3516,6 +3567,7 @@ const syncHabitGoals = asyncHandler(async (req, res) => {
 
 export {
   getUserHabits,
+  getHabitById,
   createHabit,
   updateHabit,
   deleteHabit,
