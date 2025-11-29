@@ -15,7 +15,7 @@ const habitSchema = new mongoose.Schema({
     },
 
     // Frequency & Schedule
-    frequency: { type: String, enum: ['daily', 'weekly', 'monthly','yearly'], default: 'daily' },
+    frequency: { type: String, enum: ['daily', 'weekly', 'monthly','yearly','custom'], default: 'daily' },
     customFrequency: {
         times: { type: Number, default: 1 },
         period: { type: String, enum: ['day', 'week', 'month'], default: 'day' }
