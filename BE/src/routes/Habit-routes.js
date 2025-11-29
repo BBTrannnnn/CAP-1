@@ -63,6 +63,24 @@ const router = express.Router();
 router.use(authenticateToken); // Apply authentication middleware to all routes
 
 
+// ==================== Templates & Suggestions ====================
+
+
+// Get all habit templates
+router.get('/templates', getHabitTemplates);
+// Get templates by category
+router.get('/templates/category/:category', getTemplatesByCategory);
+
+// Get template by ID
+router.get('/templates/:templateId', getTemplateById);
+// Create habit from template
+router.post('/templates/:templateId', createHabitFromTemplate);
+
+// 4️⃣ Recommendations
+router.post('/recommendations', addHabitsFromRecommendations);
+
+
+
 // ==================== CRUD Operations ====================
 
 // Get all habits for user
@@ -153,20 +171,6 @@ router.get('/goals/overview', getUserGoalsOverview);
 // Sync habit goals (e.g., after bulk updates)
 router.post('/goals/sync', syncHabitGoals);
 
-
-// ==================== Templates & Suggestions ====================
-
-// Get habit templates (must be before /:habitId routes)
-router.get('/templates', getHabitTemplates);
-// Create habit from template
-router.post('/templates/:templateId', createHabitFromTemplate);
-// Get template by ID
-router.get('/templates/:templateId', getTemplateById);
-// Get templates by category
-router.get('/templates/category/:category', getTemplatesByCategory);
-
-// Add habits from recommendations
-router.post('/recommendations', addHabitsFromRecommendations);
 
 
 // ==================== Dashboard & Reports ====================
