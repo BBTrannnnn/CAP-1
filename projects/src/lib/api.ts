@@ -21,7 +21,7 @@ export async function clearToken() {
  * - Chạy trên máy thật / Expo Go đều dùng URL này
  * - Sau này đổi WiFi / IP thì chỉ cần sửa chỗ này.
  */
-const BASE = 'http://192.168.1.7:5000';
+const BASE = 'http://192.168.1.6:5000';
 
 if (__DEV__) {
   console.log('[API BASE]', BASE);
@@ -100,6 +100,20 @@ export async function apiPut<T = any>(path: string, body: any): Promise<T> {
   }
   const res = await fetch(url, {
     method: 'PUT',
+    headers,
+    body: JSON.stringify(body),
+  });
+  return handle<T>(res);
+}
+
+export async function apiPatch<T = any>(path: string, body: any): Promise<T> {
+  const url = buildUrl(path);
+  const headers = await authHeaders();
+  if (__DEV__ && path.startsWith('/api/sleep')) {
+    console.log('[REQ PATCH]', url, headers.Authorization || '(no auth)', 'body:', body);
+  }
+  const res = await fetch(url, {
+    method: 'PATCH',
     headers,
     body: JSON.stringify(body),
   });
