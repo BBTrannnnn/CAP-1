@@ -120,6 +120,10 @@ const habitTrackingSchema = new mongoose.Schema({
         enum: ['pending', 'in-progress', 'completed', 'skipped', 'failed'],
         default: 'pending'
     },
+    isProtected: { 
+    type: Boolean, 
+    default: false 
+  },
     targetCount: { type: Number, default: 1 },
     completedCount: { type: Number, default: 0 },
     completedAt: Date,
@@ -135,6 +139,10 @@ const habitSubTrackingSchema = new mongoose.Schema({
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     startTime: { type: Date, required: true },
     endTime: { type: Date },
+      isProtected: { 
+    type: Boolean, 
+    default: false 
+  },
     quantity: { type: Number, default: 1, min: 1 },
     note: { type: String, maxlength: 200 }
 }, { timestamps: true });

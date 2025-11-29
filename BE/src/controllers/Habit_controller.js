@@ -1621,7 +1621,7 @@ function getValidationRules(habit, quantity, durationMinutes) {
 // UPDATE HABIT STATS - TRONG CONTROLLER
 // ============================================
 
-async function updateHabitStats(habitId, userId) {
+export async function updateHabitStats(habitId, userId) {
   try {
     const habit = await Habit.findById(habitId);
     if (!habit) return [];
@@ -1665,18 +1665,59 @@ async function updateHabitStats(habitId, userId) {
       habit.streakProtection?.isFrozen &&
       habit.streakProtection?.frozenEndDate > now;
 
-    // Tính streak từ ngày gần nhất
+    // ✅ Tìm ngày gần nhất có tracking completed hoặc protected
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
     const todayKey = today.toISOString().split('T')[0];
 
-    let startDate = new Date(today);
-    const hasToday = trackingMap.has(todayKey);
-    
-    if (!hasToday && !isProtectedToday) {
-      startDate.setDate(startDate.getDate() - 1);
+    let startDate = null;
+    const sortedDates = Array.from(trackingMap.keys()).sort((a, b) => {
+      return new Date(b) - new Date(a);
+    });
+
+    for (const dateKey of sortedDates) {
+      const tracking = trackingMap.get(dateKey);
+      const checkDate = new Date(dateKey);
+      
+      const isCompleted = tracking.status === 'completed';
+      
+      // ✅ FIX: Check shield - phải check tracking.isProtected === true (không phải undefined)
+      const isShieldProtected = tracking.status === 'failed' && tracking.isProtected === true;
+      
+      const isToday = dateKey === todayKey;
+      
+      const isInFrozenPeriod = isFrozen &&
+        habit.streakProtection?.frozenStartDate &&
+        habit.streakProtection?.frozenEndDate &&
+        checkDate >= habit.streakProtection.frozenStartDate &&
+        checkDate <= habit.streakProtection.frozenEndDate;
+
+      const countAsCompleted = isCompleted ||
+        isShieldProtected || // ✅ Shield protection
+        (isToday && isProtectedToday) ||
+        isInFrozenPeriod;
+
+      if (countAsCompleted) {
+        startDate = new Date(checkDate);
+        break;
+      }
     }
 
+    if (!startDate) {
+      if (isProtectedToday) {
+        startDate = new Date(today);
+      } else {
+        habit.currentStreak = 0;
+        if (habit.longestStreak === undefined) {
+          habit.longestStreak = 0;
+        }
+        await habit.save();
+        const newAchievements = await achievementService.checkAndUnlockAchievements(habitId, userId);
+        return newAchievements;
+      }
+    }
+
+    // ✅ Tính streak từ startDate trở về trước
     let currentStreak = 0;
     let checkDate = new Date(startDate);
 
@@ -1685,6 +1726,11 @@ async function updateHabitStats(habitId, userId) {
       const tracking = trackingMap.get(dateKey);
 
       const isCompleted = tracking && tracking.status === 'completed';
+      
+      // ✅ FIX: CHECK SHIELD - phải đảm bảo tracking.status === 'failed' + isProtected === true
+      const isShieldProtected = tracking && 
+                                tracking.status === 'failed' && 
+                                tracking.isProtected === true;
 
       const isInFrozenPeriod = isFrozen &&
         habit.streakProtection?.frozenStartDate &&
@@ -1694,6 +1740,7 @@ async function updateHabitStats(habitId, userId) {
 
       const isToday = dateKey === todayKey;
       const countAsCompleted = isCompleted ||
+        isShieldProtected ||  // ✅ Shield protection
         (isToday && isProtectedToday) ||
         isInFrozenPeriod;
 
@@ -1740,7 +1787,9 @@ function calculateHistoryStats(trackings, habit) {
   const total = trackings.length;
   const completed = trackings.filter(t => t.status === 'completed').length;
   const skipped = trackings.filter(t => t.status === 'skipped').length;
-  const failed = trackings.filter(t => t.status === 'failed').length;
+  
+  // ✅ FIX: Chỉ tính failed KHÔNG có shield
+  const failed = trackings.filter(t => t.status === 'failed' && !t.isProtected).length;
   const pending = trackings.filter(t => t.status === 'pending').length;
 
   const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
@@ -1772,9 +1821,12 @@ function calculateHistoryStats(trackings, habit) {
     };
   }
 
-  // Prepare sorted dates
-  const completedDates = trackings
-    .filter(t => t.status === 'completed')
+  // ✅ FIX: Tính dates từ completed HOẶC (failed + protected)
+  const effectiveCompletedDates = trackings
+    .filter(t => {
+      // Completed hoặc failed có shield
+      return t.status === 'completed' || (t.status === 'failed' && t.isProtected === true);
+    })
     .map(t => {
       const d = new Date(t.date);
       d.setHours(0, 0, 0, 0);
@@ -1782,7 +1834,7 @@ function calculateHistoryStats(trackings, habit) {
     })
     .sort((a, b) => a - b); // Sort ascending (oldest to newest)
 
-  if (completedDates.length === 0) {
+  if (effectiveCompletedDates.length === 0) {
     return {
       total,
       completed,
@@ -1806,7 +1858,7 @@ function calculateHistoryStats(trackings, habit) {
 
   // Count backwards from today
   while (true) {
-    if (completedDates.includes(checkDate)) {
+    if (effectiveCompletedDates.includes(checkDate)) {
       currentStreak++;
       checkDate -= 24 * 60 * 60 * 1000; // Go back 1 day
     } else {
@@ -1823,9 +1875,9 @@ function calculateHistoryStats(trackings, habit) {
   let bestStreak = 0;
   let tempStreak = 1;
 
-  for (let i = 1; i < completedDates.length; i++) {
+  for (let i = 1; i < effectiveCompletedDates.length; i++) {
     const diffDays = Math.round(
-      (completedDates[i] - completedDates[i - 1]) / (1000 * 60 * 60 * 24)
+      (effectiveCompletedDates[i] - effectiveCompletedDates[i - 1]) / (1000 * 60 * 60 * 24)
     );
 
     if (diffDays === 1) {
@@ -1991,6 +2043,11 @@ const getHabitStats = asyncHandler(async (req, res) => {
         calendarDay.completedAt = dayTracking.completedAt;
         calendarDay.notes = dayTracking.notes;
         calendarDay.mood = dayTracking.mood;
+        
+        // ✅ FIX: THÊM isProtected vào response
+        if (dayTracking.isProtected) {
+          calendarDay.isProtected = true;
+        }
       }
     }
     else if (habit.trackingMode === 'count') {
@@ -2021,6 +2078,11 @@ const getHabitStats = asyncHandler(async (req, res) => {
         calendarDay.completedAt = dayTracking.completedAt;
         calendarDay.notes = dayTracking.notes;
         calendarDay.mood = dayTracking.mood;
+        
+        // ✅ FIX: THÊM isProtected vào response
+        if (dayTracking.isProtected) {
+          calendarDay.isProtected = true;
+        }
       }
     }
 

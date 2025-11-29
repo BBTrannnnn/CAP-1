@@ -85,7 +85,8 @@ const userSchema = new mongoose.Schema({
     habitId: { type: mongoose.Schema.Types.ObjectId, ref: 'Habit' },
     usedAt: { type: Date, default: Date.now },
     streakSaved: Number,
-    autoUsed: { type: Boolean, default: false }
+    autoUsed: { type: Boolean, default: false },
+    protectedDate: Date
   }],
   
   // ✅ THÊM MỚI: Settings streak protection
