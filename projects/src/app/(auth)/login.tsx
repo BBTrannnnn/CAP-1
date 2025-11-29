@@ -12,17 +12,6 @@ import { login, setBaseUrl } from './../../server/users';
 // Logo app (đường dẫn đúng với cấu trúc bạn đang có)
 const Logo = require('../../assets/images/FlowState.png');
 
-// Tùy chọn: suy ra BASE_URL theo môi trường để test nhanh
-const inferBaseUrl = () => {
-  // Nếu có env thì ưu tiên
-  // @ts-ignore
-  const envBase = process.env.EXPO_PUBLIC_API_URL as string | undefined;
-  if (envBase) return envBase;
-
-  // DÙNG CHUNG LAN IP CHO MỌI PLATFORM
-  return 'http://192.168.1.7:5000';   // <-- IP máy chạy BE
-};
-
 
 export default function Login() {
   const [email, setEmail] = useState<string>('');
@@ -36,14 +25,12 @@ export default function Login() {
   useEffect(() => {
     (async () => {
       try {
-        const url = inferBaseUrl();
-        setBaseUrl(url);
-        // Lazy-load remember email
+        // ✅ GIỮ LẠI - ĐỂ NHỚ EMAIL KHI USER TICK "NHỚ MẬT KHẨU"
         const { default: AsyncStorage } = await import('@react-native-async-storage/async-storage');
         const saved = await AsyncStorage.getItem('remember_email');
         if (saved) {
-          setEmail(saved);
-          setRemember(true);
+          setEmail(saved);      // Tự động điền email
+          setRemember(true);     // Tick sẵn checkbox
         }
       } catch { }
     })();
