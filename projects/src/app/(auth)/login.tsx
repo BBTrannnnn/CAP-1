@@ -20,7 +20,7 @@ const inferBaseUrl = () => {
   if (envBase) return envBase;
 
   // DÙNG CHUNG LAN IP CHO MỌI PLATFORM
-  return 'http://192.168.1.6:5000';   // <-- IP máy chạy BE
+  return 'http://192.168.1.7:5000';   // <-- IP máy chạy BE
 };
 
 
