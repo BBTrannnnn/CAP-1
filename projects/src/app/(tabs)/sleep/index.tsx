@@ -1,4 +1,4 @@
-// app/(tabs)/sleep.tsx
+// app/(tabs)/sleep/index.tsx
 import React, { useEffect, useMemo, useState } from 'react';
 import DreamsScreen from './dreams';
 import SleepContent from './SleepContent';
@@ -296,7 +296,7 @@ export default function SleepLab() {
 
   const weeklyEntries = entries
     .filter(e => within7Days(e.dateISO))
-    .sort((a, b) => (a.dateISO < b.dateISO ? 1 : -1)); // mới nhất trước
+    .sort((a, b) => (a.dateISO < b.dateISO ? 1 : -1));
 
   // Helpers
   const durationText = useMemo(() => {
@@ -312,16 +312,21 @@ export default function SleepLab() {
   const onSaveJournal = async () => {
   try {
     setLoading(true);
+    
+    // Validate sleepDate (YYYY-MM-DD)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(sleepDate)) {
+      Alert.alert('Ngày không hợp lệ', 'Vui lòng nhập ngày dạng YYYY-MM-DD.');
+      return;
+    }
 
-    // Hàm parse/shift ngày qua đêm bạn đã có ở trên (crossesMidnight, shiftYMD)
     const sendDate =
       crossesMidnight(bedTime, wakeTime) ? shiftYMD(sleepDate, -1) : sleepDate;
 
     const payload = {
-      date: sendDate,                   // YYYY-MM-DD (ngày đi ngủ)
-      sleepTime: bedTime,               // "10:30 PM"
-      wakeTime: wakeTime,               // "7:00 AM"
-      quality,                          // 1..5
+      date: sendDate,                  
+      sleepTime: bedTime,               
+      wakeTime: wakeTime,              
+      quality,                         
       wakeMood: moodMap[mood] || 'thu_gian',
       factors: selectedFactorsFromState(factors),
   notes: '',
@@ -330,39 +335,30 @@ export default function SleepLab() {
     console.log('[Sleep] payload gửi BE →', payload);
 
     try {
-      // Thử tạo mới
       await apiPost('/api/sleep/logs', payload);
     } catch (e: any) {
-      // Nếu bị trùng khoảng (409) => cập nhật bản ghi gần nhất
       const msg = e?.data?.message || e?.message || '';
       const status = e?.status || (typeof e?.code === 'number' ? e.code : undefined);
       if (String(status) === '409' || /409|trùng|Conflict/i.test(msg)) {
-        // lấy 1 log mới nhất trong 7 ngày (BE đã lọc theo 7 ngày)
         const listRes = await apiGet('/api/sleep/logs?page=1&limit=1');
           const latest = normalizeLogs(listRes?.data || [])[0];
         if (latest?._id) {
-          // Cho phép update toàn bộ field cần thiết
           await apiPut(`/api/sleep/logs/${latest._id}`, {
-            // với PUT của BE: có thể gửi time hoặc không.
-            // Ở đây mình chỉ cập nhật các trường mềm; nếu bạn muốn đổi giờ, có thể map lại như khi POST.
             quality: payload.quality,
             wakeMood: payload.wakeMood,
             factors: payload.factors,
             notes: payload.notes,
           });
         } else {
-          // không tìm được log để update thì ném lỗi cũ
           throw e;
         }
       } else {
         throw e;
       }
     }
-    // Làm mới thống kê + danh sách
   const listRes = await apiGet('/api/sleep/logs?page=1&limit=10');
   const freshLogs = normalizeLogs(listRes?.data || []);
 
-  // Cập nhật local 7 ngày ngay lập tức để bảng hiển thị bản ghi vừa lưu
     try {
       const mins = diffMinutes(bedTime, wakeTime);
       const newEntry = {
@@ -371,12 +367,11 @@ export default function SleepLab() {
         wakeTime,
         durationMin: mins,
         quality,
-        mood, // emoji để bảng hiển thị đúng
+        mood,
         factors: Object.keys(factors).filter((k) => !!factors[k]),
       };
 
       setEntries((prev) => {
-        // giữ duy nhất 1 bản ghi cho mỗi ngày; mới nhất ở đầu
         const others = prev.filter((e) => e.dateISO !== sendDate);
         const next = [newEntry, ...others]
           .sort((a, b) => (a.dateISO < b.dateISO ? 1 : -1))
@@ -385,7 +380,6 @@ export default function SleepLab() {
         return next;
       });
     } catch (err) {
-      // non-blocking: nếu có lỗi local storage thì vẫn tiếp tục
       if (__DEV__) console.warn('[Sleep] update local entries failed', err);
     }
 
@@ -401,37 +395,31 @@ export default function SleepLab() {
 };
 
 const handleDelete = async (logId: string, dateISO: string) => {
-  console.log('[UI] handleDelete click:', { logId, dateISO }); // DEBUG
+  console.log('[UI] handleDelete click:', { logId, dateISO }); 
 
   if (!logId) {
     Alert.alert('Lỗi', 'Không tìm thấy _id để xoá.');
     return;
   }
 
-  // XÁC NHẬN – hỗ trợ web & native
   try {
     const ok = await confirmDelete('Bạn có chắc muốn xoá nhật ký này?');
     if (!ok) return;
   } catch (e) {
-    // If confirmDelete unexpectedly throws, fall back to not deleting
     console.warn('[UI] confirmDelete failed:', e);
     return;
   }
 
-  // Optimistic UI
   setDeletingId(logId);
   const snapshot = logs;
   setLogs((prev: any[]) => prev.filter((l) => l._id !== logId));
 
   try {
-    // GỌI API – console sẽ in [REQ DELETE] từ api.ts
     await apiDelete(`/api/sleep/logs/${logId}`);
 
-    // Refresh từ BE để đồng bộ
     const listRes = await apiGet('/api/sleep/logs?page=1&limit=10');
     setLogs(normalizeLogs(listRes?.data || []));
 
-    // Xoá cả local entries theo ngày
     setEntries((prev) => {
       const next = prev.filter((e) => e.dateISO !== dateISO);
       AsyncStorage.setItem('sleepJournal', JSON.stringify(next));
@@ -449,16 +437,14 @@ const handleDelete = async (logId: string, dateISO: string) => {
   }
 };
 
-
-
   return (
     <YStack flex={1} backgroundColor={BG}>
       {/* Header */}
       <XStack alignItems="center" paddingHorizontal={16} paddingVertical={12}>
-        <Button backgroundColor="transparent" height={36} width={36} onPress={() => {}}>
+        <Button backgroundColor="transparent" height={36} width={36} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={22} color="#111" />
         </Button>
-        <Text fontSize={18} fontWeight="700" style={{ marginLeft: 8 }}>Sleep lab</Text>
+        <Text fontSize={18} fontWeight="700" style={{ marginLeft: 8 }}>Sleep</Text>
         <XStack flex={1} />
         <Button backgroundColor="transparent" height={36} width={36}>
           <Ionicons name="moon-outline" size={20} color={PRIMARY} />
@@ -508,6 +494,33 @@ const handleDelete = async (logId: string, dateISO: string) => {
                 <Ionicons name="bed-outline" size={20} color={PRIMARY} />
                 <Text fontSize={16} fontWeight="700">Thời gian ngủ hôm nay</Text>
               </XStack>
+              {/* Sleep Date Input - test */}
+              <YStack marginTop={12}>
+                <Text fontSize={13} color="#6B6B6B">Ngày ghi nhật ký</Text>
+
+                <XStack
+                  alignItems="center"
+                  height={52}
+                  borderRadius={12}
+                  borderWidth={1}
+                  backgroundColor="#F8F8F8"
+                  borderColor="#E4E4E4"
+                  paddingHorizontal={12}
+                  style={{ marginTop: 6 }}
+                >
+                  <Ionicons name="calendar-outline" size={18} color="#6B6B6B" />
+                  <Input
+                    flex={1}
+                    height={52}
+                    fontSize={16}
+                    placeholder="yyyy-mm-dd (VD: 2025-11-27)"
+                    value={sleepDate}
+                    onChangeText={setSleepDate}
+                    backgroundColor="transparent"
+                    style={{ marginLeft: 8 }}
+                  />
+                </XStack>
+              </YStack>
 
               {/* Bed / Wake rows */}
               <XStack marginTop={12} gap={12}>
