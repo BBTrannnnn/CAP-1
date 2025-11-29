@@ -5,7 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
  * Cấu hình BASE_URL
  * → Theo yêu cầu: dùng cố định 192.168.1.155:5000
  */
-const BASE_URL = 'http://192.168.1.155:5000';
+const BASE_URL = 'http://192.168.1.7:5000';
 
 export function setBaseUrl(url) {
   // nếu muốn override thủ công thì vẫn hỗ trợ
