@@ -14,17 +14,15 @@ const Logo = require('../../assets/images/FlowState.png');
 
 // Tùy chọn: suy ra BASE_URL theo môi trường để test nhanh
 const inferBaseUrl = () => {
-  // Ưu tiên ENV (đặt trong app.json -> expo.extra.expoPublicApiUrl)
+  // Nếu có env thì ưu tiên
   // @ts-ignore
   const envBase = process.env.EXPO_PUBLIC_API_URL as string | undefined;
   if (envBase) return envBase;
 
-  // Android emulator không dùng localhost
-  if (Platform.OS === 'android') return 'http://10.0.2.2:5000';
-
-  // iOS simulator / web dev
-  return 'http://localhost:5000';
+  // DÙNG CHUNG LAN IP CHO MỌI PLATFORM
+  return 'http://192.168.1.6:5000';   // <-- IP máy chạy BE
 };
+
 
 export default function Login() {
   const [email, setEmail] = useState<string>('');
@@ -53,7 +51,7 @@ export default function Login() {
 
   const onSubmit = async () => {
     if (!email.trim() || !pw.trim()) {
-      alert('Vui lòng nhập email và mật khẩu.');
+      Alert.alert('Thiếu thông tin', 'Vui lòng nhập email và mật khẩu.');
       return;
     }
 
@@ -69,7 +67,7 @@ export default function Login() {
         res?.data?.message ||
         'Đăng nhập thành công!';
 
-      alert('Thành công');
+      Alert.alert('Đăng nhập thành công', apiMessage);
       router.replace("/(tabs)/home");
 
       // (Tuỳ chọn) Lưu email nếu nhớ
@@ -88,7 +86,7 @@ export default function Login() {
         err?.message ||                 // fallback chung
         'Đăng nhập thất bại. Vui lòng thử lại.';
 
-      alert(String(msg));
+      Alert.alert('Đăng nhập thất bại', String(msg));
     } finally {
       setLoading(false);
     }
