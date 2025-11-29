@@ -1,8 +1,10 @@
 // app/(auth)/register.tsx
-import { AntDesign, MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Link, Stack, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
 import { Alert, Image, Platform } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import {
   Button,
   Card,
@@ -18,19 +20,11 @@ import {
   Spinner,
 } from 'tamagui';
 
-import { register as apiRegister, setBaseUrl } from './../../server/users';
+import { register as apiRegister } from './../../server/users';
 import { Check } from '@tamagui/lucide-icons';
 
 // Logo app
 const Logo = require('../../assets/images/FlowState.png');
-
-// Suy ra BASE_URL khi dev (có thể thay bằng ENV EXPO_PUBLIC_API_URL)
-const inferBaseUrl = () => {
-  const envBase = process.env.EXPO_PUBLIC_API_URL as string | undefined;
-  if (envBase) return envBase;
-  if (Platform.OS === 'android') return 'http://10.0.2.2:5000';
-  return 'http://localhost:5000';
-};
 
 export default function Register() {
   const [fullName, setFullName] = useState('');
@@ -41,22 +35,37 @@ export default function Register() {
   const [agree, setAgree] = useState(false);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const [dateOfBirth, setDateOfBirth] = useState<Date | null>(null);
+  const [showDobPicker, setShowDobPicker] = useState(false);
+  const [gender, setGender] = useState<'male' | 'female' | ''>('');
+  const [address, setAddress] = useState(''); 
 
-  useEffect(() => {
-    const base = inferBaseUrl();
-    setBaseUrl(base);
-    if (__DEV__) {
-      console.log('[Register] BASE_URL set to:', base);
-    }
-  }, []);
+  const formatDateIso = (d: Date) => {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+};
 
-  const validate = () => {
+const formatDateDMY = (d: Date) => {
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const yyyy = d.getFullYear();
+  return `${dd}-${mm}-${yyyy}`;
+};
+
+
+    const validate = () => {
     if (__DEV__) console.log('[Register] Validating form...');
     if (!fullName.trim()) return 'Vui lòng nhập họ và tên';
     if (!email.trim()) return 'Vui lòng nhập email';
     const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
     if (!emailOk) return 'Email không hợp lệ';
     if (!phone.trim()) return 'Vui lòng nhập số điện thoại';
+    if (!dateOfBirth) return 'Vui lòng chọn ngày sinh';
+    if (!gender) return 'Vui lòng chọn giới tính';
+    if (!address.trim()) return 'Vui lòng nhập địa chỉ';
+
     if (pw.length < 6) return 'Mật khẩu tối thiểu 6 ký tự';
     if (pw !== confirmPw) return 'Mật khẩu xác nhận không khớp';
     if (!agree) return 'Bạn cần đồng ý với điều khoản để tiếp tục';
@@ -67,7 +76,7 @@ export default function Register() {
     const msg = validate();
     if (msg) {
       if (__DEV__) console.warn('[Register] Validate failed:', msg);
-      alert(msg);
+      Alert.alert('Thiếu thông tin', msg);
       return;
     }
 
@@ -78,6 +87,9 @@ export default function Register() {
       phone: phone.trim(),
       password: pw,
       confirmPassword: confirmPw,
+      dateOfBirth: formatDateIso(dateOfBirth as Date),
+      gender,  
+      address: address.trim(),
     };
 
     if (__DEV__) {
@@ -104,9 +116,7 @@ export default function Register() {
         res?.data?.message ||
         'Tạo tài khoản thành công. Vui lòng đăng nhập.';
 
-      alert(
-        'Đăng ký thành công',
-      );
+      Alert.alert('Đăng ký thành công', apiMessage);
       router.replace("/(auth)/login");
     } catch (err: any) {
       if (__DEV__) {
@@ -118,7 +128,7 @@ export default function Register() {
         err?.message ||
         'Đăng ký thất bại. Vui lòng thử lại.';
 
-      alert(String(e));
+      Alert.alert('Đăng ký thất bại', String(e));
     } finally {
       setLoading(false);
     }
@@ -240,6 +250,117 @@ export default function Register() {
                   backgroundColor="transparent"
                   borderWidth={0}
                   marginLeft={8}
+                />
+              </XStack>
+              
+              {/* Date of birth */}
+              <Label fontSize={14} fontWeight="500" color="#585858" marginBottom={8}>
+                Ngày sinh
+              </Label>
+
+              <XStack
+                alignItems="center"
+                height={56}
+                borderRadius={12}
+                borderWidth={1}
+                backgroundColor="#F8F8F8"
+                borderColor="#E4E4E4"
+                paddingHorizontal={12}
+                marginBottom={16}
+              >
+                <MaterialCommunityIcons name="calendar-month-outline" size={18} color="#8C8C8C" />
+
+                <TouchableOpacity
+                  style={{ flex: 1 }}
+                  onPress={() => setShowDobPicker(true)}
+                >
+                  <Text
+                    style={{
+                      height: 56,
+                      textAlignVertical: "center",
+                      paddingLeft: 8,
+                      fontSize: 16,
+                      color: dateOfBirth ? "#000" : "#8C8C8C",
+                    }}
+                  >
+                    {dateOfBirth ? formatDateDMY(dateOfBirth) : "Chọn ngày sinh"}
+                  </Text>
+                </TouchableOpacity>
+              </XStack>
+
+              {showDobPicker && (
+                <DateTimePicker
+                  value={dateOfBirth || new Date()}
+                  mode="date"
+                  display={Platform.OS === "ios" ? "spinner" : "default"}
+                  maximumDate={new Date()}
+                  onChange={(event, selectedDate) => {
+                    setShowDobPicker(false);
+                    if (selectedDate) {
+                      setDateOfBirth(selectedDate);
+                    }
+                  }}
+                />
+              )}
+
+              {/* Gender */}
+              <Label fontSize={14} fontWeight="500" color="#585858" marginBottom={8}>
+                Giới tính
+              </Label>
+              <XStack space="$2" marginBottom={16}>
+                <Button
+                  flex={1}
+                  height={42}
+                  borderRadius={999}
+                  backgroundColor={gender === 'male' ? '#085C9C' : '#F0F0F0'}
+                  onPress={() => setGender('male')}
+                >
+                  <Text color={gender === 'male' ? 'white' : '#333'} fontWeight="600">
+                    Nam
+                  </Text>
+                </Button>
+
+                <Button
+                  flex={1}
+                  height={42}
+                  borderRadius={999}
+                  backgroundColor={gender === 'female' ? '#085C9C' : '#F0F0F0'}
+                  onPress={() => setGender('female')}
+                >
+                  <Text color={gender === 'female' ? 'white' : '#333'} fontWeight="600">
+                    Nữ
+                  </Text>
+                </Button>
+              </XStack>
+
+              {/* Address */}
+              <Label fontSize={14} fontWeight="500" color="#585858" marginBottom={8}>
+                Địa chỉ
+              </Label>
+              <XStack
+                alignItems="center"
+                borderRadius={12}
+                borderWidth={1}
+                backgroundColor="#F8F8F8"
+                borderColor="#E4E4E4"
+                paddingHorizontal={12}
+                marginBottom={16}
+              >
+                <MaterialCommunityIcons name="map-marker-outline" size={18} color="#8C8C8C" />
+                <Input
+                  flex={1}
+                  height={56}
+                  fontSize={16}
+                  placeholder="Nhập địa chỉ của bạn"
+                  value={address}
+                  onChangeText={(v) => {
+                    setAddress(v);
+                    if (__DEV__) console.log('[Register] address changed:', v);
+                  }}
+                  backgroundColor="transparent"
+                  borderWidth={0}
+                  marginLeft={8}
+                  multiline
                 />
               </XStack>
 
