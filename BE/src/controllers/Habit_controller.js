@@ -500,21 +500,18 @@ const getHabitTrackings = asyncHandler(async (req, res) => {
 
   // Filter by specific date
   if (date) {
-    const filterDate = new Date(date);
-    filterDate.setHours(0, 0, 0, 0);
+    const filterDate = new Date(date + 'T00:00:00.000Z');
     query.date = filterDate;
   }
   // Filter by date range
   else if (from || to) {
     query.date = {};
     if (from) {
-      const fromDate = new Date(from);
-      fromDate.setHours(0, 0, 0, 0);
+      const fromDate = new Date(from + 'T00:00:00.000Z');
       query.date.$gte = fromDate;
     }
     if (to) {
-      const toDate = new Date(to);
-      toDate.setHours(23, 59, 59, 999);
+      const toDate = new Date(to + 'T23:59:59.999Z');
       query.date.$lte = toDate;
     }
   }
@@ -548,7 +545,7 @@ const getHabitTrackings = asyncHandler(async (req, res) => {
       createdAt: t.createdAt
     };
 
-    // Thêm thông tin count cho COUNT mode
+    // Add count information for COUNT mode
     if (habit.trackingMode === 'count') {
       base.completedCount = t.completedCount;
       base.targetCount = t.targetCount;
@@ -572,6 +569,42 @@ const getHabitTrackings = asyncHandler(async (req, res) => {
   // Add completion rate
   if (stats.total > 0) {
     stats.completionRate = Math.round((stats.completed / stats.total) * 100);
+  }
+
+  // ✨ NEW: Get sub-trackings if date is specified and COUNT mode
+  let subTrackings = undefined;
+  if (date && habit.trackingMode === 'count' && trackings.length > 0) {
+    const filterDate = new Date(date + 'T00:00:00.000Z');
+    const nextDay = new Date(date + 'T00:00:00.000Z');
+    nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+
+    const subs = await HabitSubTracking.find({
+      habitId,
+      userId,
+      startTime: {
+        $gte: filterDate,
+        $lt: nextDay
+      }
+    })
+    .sort({ startTime: -1 })
+    .lean();
+
+    if (subs.length > 0) {
+      subTrackings = subs.map(sub => {
+        const duration = sub.endTime
+          ? Math.round((new Date(sub.endTime) - new Date(sub.startTime)) / 60000)
+          : null;
+
+        return {
+          id: sub._id,
+          time: new Date(sub.startTime).toTimeString().slice(0, 5),
+          endTime: sub.endTime ? new Date(sub.endTime).toTimeString().slice(0, 5) : null,
+          duration: duration ? `${duration} phút` : null,
+          quantity: sub.quantity,
+          note: sub.note || ''
+        };
+      });
+    }
   }
 
   res.json({
@@ -598,7 +631,8 @@ const getHabitTrackings = asyncHandler(async (req, res) => {
       to: to || null,
       status: status || null
     },
-    trackings: formatted
+    trackings: formatted,
+    ...(subTrackings && { subTrackings }) // Only include if exists
   });
 });
 
@@ -886,10 +920,9 @@ const getHabitSubTrackings = asyncHandler(async (req, res) => {
 
   // Filter by specific date
   if (date) {
-    const filterDate = new Date(date);
-    filterDate.setHours(0, 0, 0, 0);
-    const nextDay = new Date(filterDate);
-    nextDay.setDate(nextDay.getDate() + 1);
+    const filterDate = new Date(date + 'T00:00:00.000Z');
+    const nextDay = new Date(date + 'T00:00:00.000Z');
+    nextDay.setUTCDate(nextDay.getUTCDate() + 1);
 
     query.startTime = {
       $gte: filterDate,
@@ -900,13 +933,11 @@ const getHabitSubTrackings = asyncHandler(async (req, res) => {
   else if (from || to) {
     query.startTime = {};
     if (from) {
-      const fromDate = new Date(from);
-      fromDate.setHours(0, 0, 0, 0);
+      const fromDate = new Date(from + 'T00:00:00.000Z');
       query.startTime.$gte = fromDate;
     }
     if (to) {
-      const toDate = new Date(to);
-      toDate.setHours(23, 59, 59, 999);
+      const toDate = new Date(to + 'T23:59:59.999Z');
       query.startTime.$lte = toDate;
     }
   }
@@ -949,10 +980,39 @@ const getHabitSubTrackings = asyncHandler(async (req, res) => {
       return sum + (new Date(sub.endTime) - new Date(sub.startTime)) / 60000;
     }, 0);
 
+  // ✨ NEW: Get parent tracking info if date is specified
+  let trackingInfo = undefined;
+  if (date) {
+    const filterDate = new Date(date + 'T00:00:00.000Z');
+
+    const parentTracking = await HabitTracking.findOne({
+      habitId,
+      userId,
+      date: filterDate
+    }).lean();
+
+    if (parentTracking) {
+      trackingInfo = {
+        id: parentTracking._id,
+        date: new Date(parentTracking.date).toISOString().split('T')[0],
+        status: parentTracking.status,
+        completedCount: parentTracking.completedCount,
+        targetCount: parentTracking.targetCount,
+        progress: `${parentTracking.completedCount}/${parentTracking.targetCount}`,
+        progressPercentage: Math.round((parentTracking.completedCount / parentTracking.targetCount) * 100)
+      };
+    }
+  }
+
   res.json({
     success: true,
-    habitName: habit.name,
-    unit: habit.unit || 'lần',
+    habit: {
+      id: habit._id,
+      name: habit.name,
+      unit: habit.unit || 'lần',
+      targetCount: habit.targetCount
+    },
+    ...(trackingInfo && { tracking: trackingInfo }), // Only include if exists
     pagination: {
       page: parseInt(page),
       limit: parseInt(limit),
@@ -968,6 +1028,7 @@ const getHabitSubTrackings = asyncHandler(async (req, res) => {
     subTrackings: formatted
   });
 });
+
 const addHabitSubTracking = async (req, res) => {
   try {
     const { habitId } = req.params;
@@ -1476,31 +1537,31 @@ const deleteHabitSubTracking = asyncHandler(async (req, res) => {
 function getValidationRules(habit, quantity, durationMinutes) {
   const unit = habit.unit?.toLowerCase()?.trim() || '';
 
-  // ✅ Rule chuẩn, thực tế & mở rộng nhiều loại habit
+  // ✅ Rule chuẩn - chỉ kiểm tra MIN (quá nhanh), bỏ MAX (cho phép làm chậm)
   const rules = {
     /* === CHẠY BỘ / THỂ THAO === */
-    km: { min: 5, max: 15, type: 'per_unit', name: 'km', message: 'Chạy bộ' },
-    m: { min: 0.1, max: 0.3, type: 'per_unit', name: 'mét', message: 'Chạy nước rút' },
-    bước: { min: 0.01, max: 0.05, type: 'per_unit', name: 'bước', message: 'Đi bộ' },
+    km: { min: 5, name: 'km', message: 'Chạy bộ' },
+    m: { min: 0.1, name: 'mét', message: 'Chạy nước rút' },
+    bước: { min: 0.01, name: 'bước', message: 'Đi bộ' },
 
     /* === UỐNG NƯỚC / SỮA === */
-    ly: { min: 0.5, max: 3, type: 'per_unit', name: 'ly', message: 'Uống nước/sữa' },
-    cốc: { min: 0.5, max: 3, type: 'per_unit', name: 'cốc', message: 'Uống nước/sữa' },
-    lít: { min: 1.5, max: 6, type: 'per_unit', name: 'lít', message: 'Uống nước' },
-    ml: { min: 0.1, max: 0.5, type: 'per_unit', name: 'ml', message: 'Uống nước' },
+    ly: { min: 0.5, name: 'ly', message: 'Uống nước/sữa' },
+    cốc: { min: 0.5, name: 'cốc', message: 'Uống nước/sữa' },
+    lít: { min: 1.5, name: 'lít', message: 'Uống nước' },
+    ml: { min: 0.1, name: 'ml', message: 'Uống nước' },
 
     /* === ĐỌC SÁCH === */
-    trang: { min: 2, max: 5, type: 'per_unit', name: 'trang', message: 'Đọc sách' },
-    page: { min: 2, max: 5, type: 'per_unit', name: 'trang', message: 'Đọc sách' },
-    cuốn: { min: 30, max: 180, type: 'per_unit', name: 'cuốn', message: 'Đọc sách' },
-    chương: { min: 5, max: 20, type: 'per_unit', name: 'chương', message: 'Đọc sách' },
+    trang: { min: 2, name: 'trang', message: 'Đọc sách' },
+    page: { min: 2, name: 'trang', message: 'Đọc sách' },
+    cuốn: { min: 30, name: 'cuốn', message: 'Đọc sách' },
+    chương: { min: 5, name: 'chương', message: 'Đọc sách' },
 
     /* === TẬP GYM === */
-    lần: { min: 10, max: 100, type: 'per_unit', name: 'lần', message: 'Tập luyện' },
-    rep: { min: 10, max: 100, type: 'per_unit', name: 'rep', message: 'Tập luyện' },
-    cái: { min: 10, max: 100, type: 'per_unit', name: 'cái', message: 'Tập luyện' },
-    set: { min: 2, max: 10, type: 'per_unit', name: 'hiệp', message: 'Tập luyện' },
-    kg: { min: 1, max: 5, type: 'per_unit', name: 'kg', message: 'Nâng tạ' },
+    lần: { min: 10, name: 'lần', message: 'Tập luyện' },
+    rep: { min: 10, name: 'rep', message: 'Tập luyện' },
+    cái: { min: 10, name: 'cái', message: 'Tập luyện' },
+    set: { min: 2, name: 'hiệp', message: 'Tập luyện' },
+    kg: { min: 1, name: 'kg', message: 'Nâng tạ' },
 
     /* === THIỀN / YOGA === */
     phút: { min: 5, tolerance: 0.15, type: 'exact', name: 'phút', message: 'Thiền / Yoga' },
@@ -1509,37 +1570,37 @@ function getValidationRules(habit, quantity, durationMinutes) {
     hour: { min: 0.1, tolerance: 0.15, type: 'exact', name: 'hour', message: 'Meditation / Yoga', multiplier: 60 },
 
     /* === HỌC TẬP === */
-    bài: { min: 3, max: 15, type: 'per_unit', name: 'bài', message: 'Làm bài tập' },
-    'video': { min: 5, max: 30, type: 'per_unit', name: 'video', message: 'Xem video học' },
-    từ: { min: 1, max: 5, type: 'per_unit', name: 'từ vựng', message: 'Học từ vựng' },
-    'khóa học': { min: 30, max: 180, type: 'per_unit', name: 'khóa học', message: 'Tham gia khóa học' },
-    'kỹ năng': { min: 60, max: 480, type: 'per_unit', name: 'kỹ năng', message: 'Học kỹ năng mới' },
+    bài: { min: 3, name: 'bài', message: 'Làm bài tập' },
+    'video': { min: 5, name: 'video', message: 'Xem video học' },
+    từ: { min: 1, name: 'từ vựng', message: 'Học từ vựng' },
+    'khóa học': { min: 30, name: 'khóa học', message: 'Tham gia khóa học' },
+    'kỹ năng': { min: 60, name: 'kỹ năng', message: 'Học kỹ năng mới' },
 
     /* === TÀI CHÍNH === */
-    k: { min: 1, max: 500, type: 'per_unit', name: 'nghìn đồng', message: 'Tiết kiệm tiền' },
-    đ: { min: 1000, max: 1000000, type: 'per_unit', name: 'đồng', message: 'Tiết kiệm tiền' },
-    vnd: { min: 1000, max: 1000000, type: 'per_unit', name: 'VND', message: 'Tiết kiệm tiền' },
-    '%': { min: 2, max: 20, type: 'per_unit', name: '%', message: 'Tiết kiệm/Đầu tư' },
+    k: { min: 1, name: 'nghìn đồng', message: 'Tiết kiệm tiền' },
+    đ: { min: 1000, name: 'đồng', message: 'Tiết kiệm tiền' },
+    vnd: { min: 1000, name: 'VND', message: 'Tiết kiệm tiền' },
+    '%': { min: 2, name: '%', message: 'Tiết kiệm/Đầu tư' },
 
     /* === NGỦ === */
     'giờ-ngủ': { min: 4, tolerance: 0.1, type: 'exact', name: 'giờ', message: 'Ngủ' },
 
     /* === ĂN UỐNG / DINH DƯỠNG === */
-    'bữa': { min: 10, max: 60, type: 'per_unit', name: 'bữa', message: 'Ăn uống' },
-    'calo': { min: 0.1, max: 1, type: 'per_unit', name: 'calo', message: 'Ghi nhận dinh dưỡng' },
-    'phần': { min: 1, max: 5, type: 'per_unit', name: 'phần', message: 'Ăn trái cây/rau' },
+    'bữa': { min: 10, name: 'bữa', message: 'Ăn uống' },
+    'calo': { min: 0.1, name: 'calo', message: 'Ghi nhận dinh dưỡng' },
+    'phần': { min: 1, name: 'phần', message: 'Ăn trái cây/rau' },
 
     /* === CÔNG VIỆC / SÁNG TẠO === */
-    'task': { min: 5, max: 30, type: 'per_unit', name: 'task', message: 'Hoàn thành công việc' },
-    'dòng': { min: 0.5, max: 3, type: 'per_unit', name: 'dòng code', message: 'Viết code' },
-    'dự án': { min: 30, max: 240, type: 'per_unit', name: 'dự án', message: 'Làm dự án' },
+    'task': { min: 5, name: 'task', message: 'Hoàn thành công việc' },
+    'dòng': { min: 0.5, name: 'dòng code', message: 'Viết code' },
+    'dự án': { min: 30, name: 'dự án', message: 'Làm dự án' },
 
     /* === VIẾT LÁC === */
     'nhật ký': { min: 5, tolerance: 0.2, type: 'exact', name: 'phút viết', message: 'Viết nhật ký' },
 
     /* === XÃ HỘI / GIAO TIẾP === */
-    'cuộc gọi': { min: 3, max: 20, type: 'per_unit', name: 'cuộc gọi', message: 'Gọi điện cho người thân' },
-    'người': { min: 5, max: 30, type: 'per_unit', name: 'người', message: 'Gặp gỡ/Giao tiếp' },
+    'cuộc gọi': { min: 3, name: 'cuộc gọi', message: 'Gọi điện cho người thân' },
+    'người': { min: 5, name: 'người', message: 'Gặp gỡ/Giao tiếp' },
 
     /* === MINDFULNESS / TƯ DUY === */
     'hơi thở': { min: 3, tolerance: 0.2, type: 'exact', name: 'phút', message: 'Thực hành hít thở sâu' },
@@ -1566,34 +1627,12 @@ function getValidationRules(habit, quantity, durationMinutes) {
     return { isValid: true };
   }
 
-  // ✅ Validate theo loại rule
-  if (matchedRule.type === 'per_unit') {
-    const minDuration = quantity * matchedRule.min;
-    const maxDuration = matchedRule.max ? quantity * matchedRule.max : Infinity;
-
-    if (durationMinutes < minDuration) {
-      return {
-        isValid: false,
-        message: `${matchedRule.message} ${quantity} ${matchedRule.name} trong ${Math.round(durationMinutes)} phút là quá nhanh`,
-        suggestion: `Tối thiểu ${Math.ceil(minDuration)} phút để hợp lý`
-      };
-    }
-
-    if (durationMinutes > maxDuration) {
-      return {
-        isValid: false,
-        message: `${matchedRule.message} ${quantity} ${matchedRule.name} trong ${Math.round(durationMinutes)} phút là quá chậm`,
-        suggestion: `Tối đa ${Math.floor(maxDuration)} phút là hợp lý`
-      };
-    }
-  }
-
+  // ✅ Validate - CHỈ KIỂM TRA MIN (quá nhanh)
   if (matchedRule.type === 'exact') {
     const expectedDuration = matchedRule.multiplier
       ? quantity * matchedRule.multiplier
       : quantity;
     const minDuration = expectedDuration * (1 - (matchedRule.tolerance || 0.15));
-    const maxDuration = expectedDuration * (1 + (matchedRule.tolerance || 0.15));
 
     if (durationMinutes < minDuration) {
       const correctQuantity = Math.round(durationMinutes / (matchedRule.multiplier || 1));
@@ -1603,19 +1642,22 @@ function getValidationRules(habit, quantity, durationMinutes) {
         suggestion: `Nên ghi khoảng ${correctQuantity} ${matchedRule.name}`
       };
     }
+  } else {
+    // Default type: per_unit - chỉ check MIN
+    const minDuration = quantity * matchedRule.min;
 
-    if (durationMinutes > maxDuration) {
-      const correctQuantity = Math.round(durationMinutes / (matchedRule.multiplier || 1));
+    if (durationMinutes < minDuration) {
       return {
         isValid: false,
-        message: `Bạn ghi ${quantity} ${matchedRule.name} nhưng thực tế dài hơn (${Math.floor(durationMinutes)} phút)`,
-        suggestion: `Nên ghi khoảng ${correctQuantity} ${matchedRule.name}`
+        message: `${matchedRule.message} ${quantity} ${matchedRule.name} trong ${Math.round(durationMinutes)} phút là quá nhanh`,
+        suggestion: `Tối thiểu ${Math.ceil(minDuration)} phút để hợp lý`
       };
     }
   }
 
   return { isValid: true };
 }
+
 
 // ============================================
 // UPDATE HABIT STATS - TRONG CONTROLLER
