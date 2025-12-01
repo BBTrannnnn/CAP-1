@@ -496,7 +496,7 @@ const handleDelete = async (logId: string, dateISO: string) => {
               </XStack>
               {/* Sleep Date Input - test */}
               <YStack marginTop={12}>
-                <Text fontSize={13} color="#6B6B6B">Ngày ghi nhật ký</Text>
+                <Text fontSize={13} color="#6B6B6B">Ngày ghi nhật ký (test trong vòng 1 tuần)</Text>
 
                 <XStack
                   alignItems="center"
