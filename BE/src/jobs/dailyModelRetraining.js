@@ -8,7 +8,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Export dữ liệu mới để train
-export async function exportNewDreamsForTraining() {
+async function exportNewDreamsForTraining() {
   try {
     // Lấy tất cả dreams chưa được dùng để train
     const dreams = await Dream.find({ needsRetraining: true })
@@ -47,7 +47,7 @@ export async function exportNewDreamsForTraining() {
 }
 
 // Gộp dữ liệu mới vào file training chính
-export async function mergeTrainingData() {
+ async function mergeTrainingData() {
   try {
     const newDataPath = path.join(__dirname, '../../new_dreams_training.json');
     const mainDataPath = path.join(__dirname, '../../dream_training_data.json');
