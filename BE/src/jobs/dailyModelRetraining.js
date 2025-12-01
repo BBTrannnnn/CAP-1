@@ -141,6 +141,3 @@ export function scheduleDailyModelRetraining() {
   console.log('⏰ Scheduled to run at 00:00 VN time every day');
   console.log('📊 Will export new dreams and merge into training data automatically');
 }
-
-// Export các functions để có thể chạy manual nếu cần
-export { exportNewDreamsForTraining, mergeTrainingData, notifyModelTrainingNeeded };
