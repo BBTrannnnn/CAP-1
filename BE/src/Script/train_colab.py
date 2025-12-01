@@ -193,21 +193,17 @@ def build_model(vocab_size, config):
         name='bidirectional_1'
     )(x)
     
-    # Second Bidirectional LSTM layer
-    lstm_out = layers.Bidirectional(
+    # Second Bidirectional LSTM layer (final output)
+    x = layers.Bidirectional(
         layers.LSTM(
             config['lstm_units'] // 2,
-            return_sequences=True,
+            return_sequences=False,  # No attention, direct output
             dropout=config['dropout_rate'],
             recurrent_dropout=config['recurrent_dropout'],
             name='lstm_2'
         ),
         name='bidirectional_2'
     )(x)
-    
-    # Self-Attention mechanism (query, value from same source)
-    attention_out = layers.Attention(name='attention')([lstm_out, lstm_out])
-    x = layers.GlobalAveragePooling1D(name='global_avg_pool')(attention_out)
     
     # Dense layers with BatchNormalization
     x = layers.Dense(128, activation='relu', name='dense_1')(x)
@@ -238,7 +234,7 @@ def build_model(vocab_size, config):
     
     total_params = model.count_params()
     print(f"\nTotal parameters: {total_params:,}")
-    print("Improvements: Bidirectional LSTM (2  layers) + Self-Attention + BatchNorm")
+    print("Improvements: Bidirectional LSTM (2 layers) + Keyword Emphasis + Aggressive Class Weights")
     
     return model
 
