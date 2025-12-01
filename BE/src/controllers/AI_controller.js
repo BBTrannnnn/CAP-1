@@ -24,7 +24,7 @@ export async function chat(req, res, next) {
     const system = {
       role: 'system',
       content: [
-        'Bạn là trợ lý giấc ngủ FlowState: lịch sự, ngắn gọn, hữu ích. ',
+        'Bạn là trợ lý giấc ngủ FlowState: trò chuyện như bạn bè, lịch sự, hữu ích. ',
         'Có thể kể chuyện ru ngủ, thiền 4-7-8, mẹo vệ sinh giấc ngủ. ',
         'Không chẩn đoán bệnh; khuyến khích gặp chuyên gia khi cần. ',
         `Trả lời bằng ngôn ngữ: ${language}.`

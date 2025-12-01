@@ -1,10 +1,8 @@
 import express from "express";
 import { 
   register,
-  getAllUsers,
   getProfileById, 
   updateProfileById, 
-  getDashboard,
   deleteProfileById, 
   login, 
   logout,
@@ -14,43 +12,25 @@ import {
   forgotPassword, 
   resetPassword, 
   verifyOTP,
-  updateUserRole,
 } from "../controllers/User_controller.js";
 import { validateRequest } from "../../middlewares/validateReuqest.js";
 import authenticateToken from "../../middlewares/auth.js";
-import requireAdmin from "../../middlewares/requireAdmin.js";
-import { body } from "express-validator";
 
 
 const router = express.Router();
 
  // Routes
  router.post('/register',validateRequest, register);
- // Danh sách users: CHỈ admin được xem
- router.get('/', authenticateToken, requireAdmin, getAllUsers);
+ 
  // Debug: xem user hiện tại lấy từ token/DB
  router.get('/me', authenticateToken, (req, res) => {
    res.json({ success: true, user: req.user });
  });
 
-
-// Admin dashboard
-router.get('/dashboard', authenticateToken, requireAdmin, getDashboard);
- // Bỏ các route admin/debug/bootstrap
+ // User profile routes
  router.put('/:id',validateRequest,authenticateToken,updateProfileById);
  router.get('/:id',authenticateToken,getProfileById);
- router.delete('/:id',authenticateToken,deleteProfileById)
-// Bỏ các route admin: cập nhật role, toggle active
-
-// Admin: cập nhật vai trò user
-router.patch(
-  '/:id/role',
-  authenticateToken,
-  requireAdmin,
-  body('role').isIn(['user', 'admin']).withMessage('role phải là "user" hoặc "admin"'),
-  validateRequest,
-  updateUserRole
-);
+ router.delete('/:id',authenticateToken,deleteProfileById);
 
 // Route đăng nhập (email/sđt + password)
 router.post("/login", validateRequest, login);

@@ -5,6 +5,9 @@ import {
   getDreamStats,
   getDream,
   deleteDream,
+  getRetrainingStats,
+  manualExportDreams,
+  manualMergeData,
 } from '../controllers/Dream_controller.js';
 import auth from '../../middlewares/auth.js';
 
@@ -15,6 +18,12 @@ router.use(auth);
 router.post('/analyze', analyzeDream);
 router.get('/history', getDreamHistory);
 router.get('/stats', getDreamStats);
+
+// Retraining endpoints
+router.get('/retraining/stats', getRetrainingStats);
+router.post('/retraining/export', manualExportDreams);
+router.post('/retraining/merge', manualMergeData);
+
 router.get('/:id', getDream);
 router.delete('/:id', deleteDream);
 

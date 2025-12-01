@@ -8,7 +8,7 @@
     "neutral",
     "confusion"
   ],
-  "vocab_size": 14266,
+  "vocab_size": 35969,
   "max_len": 50,
   "embedding_dim": 128,
   "lstm_units": 64

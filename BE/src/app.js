@@ -20,9 +20,11 @@ import testRoutes from './routes/testRoutes.js';
 
 import reminderScheduler from './services/reminderScheduler.js';
 import streakProtectionScheduler from './jobs/streakProtectionScheduler.js';
+import { scheduleDailyModelRetraining } from './jobs/dailyModelRetraining.js';
 import mongoose from 'mongoose';
 import achievementRoutes from './routes/Achievement-routes.js'; 
-import inventoryRoutes from './routes/Inventory-routes.js'; 
+import inventoryRoutes from './routes/Inventory-routes.js';
+import adminRoutes from './routes/Admin-routes.js';
 
 // Load environment variables
 dotenv.config();
@@ -47,6 +49,7 @@ app.use('/api/test', testRoutes);
 
 app.use('/api/achievements', achievementRoutes);
 app.use('/api/inventory', inventoryRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Error handler
 app.use(errorHandler);
@@ -62,6 +65,9 @@ connectDB().then(() => {
   reminderScheduler.start();
 
   streakProtectionScheduler.start();
+  
+  // Khởi động daily model retraining scheduler
+  scheduleDailyModelRetraining();
   
   app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);

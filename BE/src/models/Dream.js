@@ -47,6 +47,19 @@ const dreamSchema = new mongoose.Schema({
     default: Date.now,
     index: true,
   },
+  needsRetraining: {
+    type: Boolean,
+    default: true,
+    index: true,
+  },
+  lastTrainedAt: {
+    type: Date,
+    default: null,
+  },
+  isValidatedByUser: {
+    type: Boolean,
+    default: false,
+  },
 }, {
   timestamps: true,
   toJSON: { virtuals: true },

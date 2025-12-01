@@ -141,29 +141,27 @@ async function predictCategory(dreamText) {
 function detectLanguage(text) {
   // Ưu tiên kiểm tra ký tự có dấu tiếng Việt
   const vietnameseChars = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i;
-  if (vietnameseChars.test(text)) {
-    return 'vi';
-  }
-  // Check for Vietnamese words (có dấu và không dấu)
-  const vietnameseWords = /\b(tôi|toi|mơ|mo|giấc|giac|thấy|thay|bị|bi|đang|dang|của|cua|là|la|có|co|không|khong|này|nay|được|duoc|với|voi|cho|trong|ve|và|va|một|mot|các|cac|những|nhung|ngày|ngay|người|nguoi|buồn|buon|vui|minh|bay|sợ|so|lo|hạnh phúc|hanh phuc)\b/i;
+  const englishWords = /\b(I|you|he|she|it|we|they|dream|was|were|about|the|and|in|on|at|my|your|their|feeling|felt|scared|ghost|afraid|happy|sad|stress|confused|anxious|fear|love|hate|school|work|job|friend|family|sleep|nightmare|run|chase|fall|lost|exam|test|teacher|deadline|project|meeting|client|colleague|cry|laugh|smile|angry|worry|anxiety|depressed|lonely|miss|grief|sorrow|miserable|unhappy|tears|panic|danger|threat|frighten|alarm|horror|dread|normal|daily|routine|usual|ordinary|regular|common|typical|everyday|mundane|nervous|tense|restless|uneasy|concern|anticipation|death|killed|murder|attack|chased|trapped|monster|blood|scream|escape|weird|strange|surreal|bizarre|unusual|odd|peculiar|mysterious|supernatural|alien)\b/i;
+  const vietnameseWords = /\b(tôi|toi|mơ|mo|giấc|giac|thấy|thay|bị|bi|đang|dang|của|cua|là|la|có|co|không|khong|này|nay|được|duoc|với|voi|cho|trong|ve|và|va|một|mot|các|cac|những|nhung|ngày|ngay|người|nguoi|buồn|buon|vui|minh|bay|sợ|so|lo|hạnh phúc|hanh phuc|yêu|ghét|trường|học|bạn|gia đình|ngủ|ác mộng|chạy|đuổi|rơi|lạc|thi|kiểm tra|giáo viên|deadline|dự án|họp|khách hàng|đồng nghiệp|khóc|cười|mỉm cười|tức giận|lo lắng|lo âu|trầm cảm|cô đơn|nhớ|đau buồn|nỗi buồn|khổ sở|không vui|nước mắt|hoảng loạn|nguy hiểm|đe dọa|hoảng sợ|báo động|kinh dị|sợ hãi|bình thường|hàng ngày|thói quen|thường lệ|phổ biến|điển hình|thường nhật|tầm thường|lo lắng|căng thẳng|bồn chồn|khó chịu|quan tâm|dự đoán|chết|bị giết|giết người|tấn công|bị đuổi|bị nhốt|quái vật|máu|la hét|thoát|kỳ lạ|lạ|siêu thực|kỳ quặc|bất thường|kỳ dị|đặc biệt|bí ẩn|siêu nhiên|người ngoài hành tinh)\b/i;
 
-  // Check for English indicators
-  const englishWords = /\b(I|dreamed|dream|was|were|about|the|and|in|on|at|my|your|their|feeling|felt)\b/;
+  // Nếu có ký tự tiếng Việt, chắc chắn là tiếng Việt
+  if (vietnameseChars.test(text)) return 'vi';
 
-  // Count matches
-  const vietnameseMatches = (text.match(vietnameseWords) || []).length;
+  // Đếm số từ tiếng Anh và tiếng Việt
   const englishMatches = (text.match(englishWords) || []).length;
+  const vietnameseMatches = (text.match(vietnameseWords) || []).length;
 
-  // If Vietnamese words (có dấu hoặc không dấu) dominate, return Vietnamese
-  if (vietnameseMatches > englishMatches) {
-    return 'vi';
-  }
-  // If English words dominate, return English
-  if (englishMatches > vietnameseMatches) {
-    return 'en';
-  }
-  // Default: nếu có từ tiếng Việt thì trả về 'vi', ngược lại 'en'
-  return vietnameseMatches > 0 ? 'vi' : 'en';
+  // Nếu số từ tiếng Anh nhiều hơn rõ rệt, trả về tiếng Anh
+  if (englishMatches > vietnameseMatches) return 'en';
+  // Nếu số từ tiếng Việt nhiều hơn rõ rệt, trả về tiếng Việt
+  if (vietnameseMatches > englishMatches) return 'vi';
+
+  // Nếu không rõ, kiểm tra độ dài text: nếu có nhiều từ tiếng Anh, trả về 'en', ngược lại 'vi'
+  if (englishMatches > 0) return 'en';
+  if (vietnameseMatches > 0) return 'vi';
+
+  // Mặc định: nếu không xác định được, trả về 'en'
+  return 'en';
 }
 
 //INTERPRETATION 
@@ -777,6 +775,94 @@ export const deleteDream = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: 'Dream deleted successfully',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+//GET RETRAINING STATS
+export const getRetrainingStats = async (req, res, next) => {
+  try {
+    const totalDreams = await Dream.countDocuments();
+    const needsRetraining = await Dream.countDocuments({ needsRetraining: true });
+    const alreadyTrained = await Dream.countDocuments({ needsRetraining: false });
+    
+    // Get last trained dream
+    const lastTrained = await Dream.findOne({ needsRetraining: false })
+      .sort({ lastTrainedAt: -1 })
+      .select('lastTrainedAt')
+      .lean();
+    
+    // Count by category for new dreams
+    const categoryBreakdown = await Dream.aggregate([
+      { $match: { needsRetraining: true } },
+      { $group: { _id: '$category', count: { $sum: 1 } } },
+      { $sort: { count: -1 } }
+    ]);
+    
+    // Count by language for new dreams
+    const vietnameseDreams = await Dream.countDocuments({
+      needsRetraining: true,
+      dreamText: { $regex: /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i }
+    });
+    
+    const englishDreams = needsRetraining - vietnameseDreams;
+    
+    res.status(200).json({
+      success: true,
+      data: {
+        total: totalDreams,
+        needsRetraining,
+        alreadyTrained,
+        percentage: totalDreams > 0 ? ((needsRetraining / totalDreams) * 100).toFixed(2) : 0,
+        lastTrainedAt: lastTrained?.lastTrainedAt || null,
+        categoryBreakdown: categoryBreakdown.map(c => ({
+          category: c._id,
+          count: c.count
+        })),
+        languageBreakdown: {
+          vietnamese: vietnameseDreams,
+          english: englishDreams
+        },
+        recommendation: needsRetraining >= 100 ? 
+          'Recommended to train new model - sufficient new data available' :
+          `Need ${100 - needsRetraining} more dreams before retraining`
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+//MANUAL TRIGGER EXPORT
+export const manualExportDreams = async (req, res, next) => {
+  try {
+    const { exportNewDreamsForTraining } = await import('../jobs/dailyModelRetraining.js');
+    
+    const result = await exportNewDreamsForTraining();
+    
+    res.status(200).json({
+      success: true,
+      message: 'Dreams exported successfully',
+      data: result
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+//MANUAL TRIGGER MERGE
+export const manualMergeData = async (req, res, next) => {
+  try {
+    const { mergeTrainingData } = await import('../jobs/dailyModelRetraining.js');
+    
+    const result = await mergeTrainingData();
+    
+    res.status(200).json({
+      success: true,
+      message: 'Training data merged successfully',
+      data: result
     });
   } catch (error) {
     next(error);
