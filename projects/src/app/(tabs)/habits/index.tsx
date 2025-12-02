@@ -1,4 +1,4 @@
-import React, {
+﻿import React, {
   useCallback,
   useEffect,
   useMemo,
@@ -20,6 +20,7 @@ import {
   Eye,
   Pencil,
   Trash2,
+  ChevronRight,
 } from 'lucide-react-native';
 import {
   View,
@@ -30,6 +31,7 @@ import {
   Modal,
   StyleSheet,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 
 import {
@@ -41,7 +43,7 @@ import {
   addSubTracking as apiAddHabitSubTracking,
   getSubTrackings as apiGetHabitSubTrackings,
   updateSubTracking as apiUpdateHabitSubTracking,
-  deleteSubTracking as apiDeleteHabitSubTracking,
+  deleteSubTracking as apiDeleteHabitSubTrackings,
   deleteTrackingDay as apiDeleteHabitTrackingDay,
   // Dashboard & Reports
   getTodayOverview as apiGetTodayOverview,
@@ -50,6 +52,10 @@ import {
   getHabitTrackings as apiGetHabitTrackings,
 } from '../../../server/habits';
 
+/* ========================================================= */
+/* TYPES                                                     */
+/* ========================================================= */
+
 type Habit = {
   id: number;
   title: string;
@@ -57,6 +63,8 @@ type Habit = {
   tag: string;
   tagColor: 'bg-green-500' | 'bg-orange-500' | 'bg-blue-500';
   duration: string;
+  icon?: string; // emoji/icon từ BE
+  color?: string; // màu chính từ BE (hex)
 };
 
 type CountEntry = {
@@ -69,12 +77,482 @@ type CountEntry = {
   beId?: string;
 };
 
+type StatusUI = 'success' | 'fail' | 'skip' | 'in_progress';
+
+type TaskStatus = 'completed' | 'in-progress' | 'pending';
+
+interface HorizontalCalendarProps {
+  onDateSelect?: (date: Date) => void;
+  refreshToken?: number; // để refetch khi FE gọi lại API
+}
+
+type DayStatusMap = Record<string, TaskStatus>;
+
+/* ========================================================= */
+/* DATE HELPERS                                              */
+/* ========================================================= */
+
+const daysOfWeek = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+const monthNames = [
+  'Tháng 1',
+  'Tháng 2',
+  'Tháng 3',
+  'Tháng 4',
+  'Tháng 5',
+  'Tháng 6',
+  'Tháng 7',
+  'Tháng 8',
+  'Tháng 9',
+  'Tháng 10',
+  'Tháng 11',
+  'Tháng 12',
+];
+
+function startOfWeek(d: Date) {
+  const dayOfWeek = d.getDay(); // 0..6 (CN..T7), CN là đầu tuần
+  const weekStart = new Date(d);
+  weekStart.setHours(0, 0, 0, 0);
+  weekStart.setDate(d.getDate() - dayOfWeek);
+  return weekStart;
+}
+
+const formatDateYMD = (d: Date) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
+function formatDateKey(d: Date) {
+  return d.toISOString().split('T')[0]; // YYYY-MM-DD
+}
+
+const labelFor = (d: Date) => {
+  const w = d.getDay();
+  return w === 1
+    ? 'T2'
+    : w === 2
+    ? 'T3'
+    : w === 3
+    ? 'T4'
+    : w === 4
+    ? 'T5'
+    : w === 5
+    ? 'T6'
+    : w === 6
+    ? 'T7'
+    : 'CN';
+};
+
+/* ========================================================= */
+/* HORIZONTAL CALENDAR (TRONG CÙNG FILE, KHÔNG EXPORT)       */
+/* ========================================================= */
+
+const HorizontalCalendar: React.FC<HorizontalCalendarProps> = ({
+  onDateSelect,
+  refreshToken,
+}) => {
+  const [selectedDate, setSelectedDate] = useState<Date>(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return today;
+  });
+
+  // Tuần chứa hôm nay
+  const baseWeekStart = useMemo(() => startOfWeek(new Date()), []);
+
+  // offset > 0 = lùi về quá khứ (1 = tuần trước, 2 = tuần -2, ...)
+  const [weekOffset, setWeekOffset] = useState(0);
+
+  // Ngày bắt đầu tuần đang hiển thị = baseWeekStart - weekOffset * 7 ngày
+  const currentWeekStart = useMemo(() => {
+    const d = new Date(baseWeekStart);
+    d.setDate(d.getDate() - weekOffset * 7);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, [baseWeekStart, weekOffset]);
+
+  const [dayStatusMap, setDayStatusMap] = useState<DayStatusMap>({});
+  const [loading, setLoading] = useState(false);
+  const [isUpdatingWeek, setIsUpdatingWeek] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const days = useMemo(() => {
+    const arr: Date[] = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(currentWeekStart);
+      d.setDate(currentWeekStart.getDate() + i);
+      arr.push(d);
+    }
+    return arr;
+  }, [currentWeekStart]);
+
+  // GỌI WEEKLY REPORT THEO weekOffset, LÙI MÀU TRÊN LỊCH 1 NGÀY
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchWeek = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // offset > 0 = tuần quá khứ
+        const res: any = await apiGetWeeklyReport(weekOffset);
+        const rep = res?.report;
+
+        if (!rep || !Array.isArray(rep?.habitStats)) {
+          if (!cancelled) {
+            setDayStatusMap({});
+          }
+          return;
+        }
+
+        const start = new Date(currentWeekStart);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(start);
+        end.setDate(start.getDate() + 6);
+
+        const fmt = (d: Date) => d.toISOString().split('T')[0];
+        const completedPerDay: Record<string, number> = {};
+
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+          completedPerDay[fmt(d)] = 0;
+        }
+
+        // Lùi màu 1 ngày: date trên BE = D  -> tô màu D-1 trên lịch
+        rep.habitStats.forEach((hs: any) => {
+          (hs.trackings || []).forEach((t: any) => {
+            if (t?.status === 'completed' && t?.date) {
+              const ds = String(t.date).split('T')[0];
+              const dObj = new Date(ds);
+              dObj.setDate(dObj.getDate() - 1); // LÙI 1 NGÀY CHỈ TRÊN MÀU LỊCH
+              const shiftedKey = fmt(dObj);
+              if (completedPerDay[shiftedKey] !== undefined) {
+                completedPerDay[shiftedKey] += 1;
+              }
+            }
+          });
+        });
+
+        const total =
+          typeof rep.overallStats?.activeHabits === 'number' &&
+          rep.overallStats.activeHabits > 0
+            ? rep.overallStats.activeHabits
+            : rep.habitStats.length || 1;
+
+        const statusMap: DayStatusMap = {};
+
+        Object.keys(completedPerDay).forEach((key) => {
+          const completed = completedPerDay[key] || 0;
+          const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+          let status: TaskStatus = 'pending';
+          if (pct >= 100) status = 'completed';
+          else if (pct > 0) status = 'in-progress';
+
+          statusMap[key] = status;
+        });
+
+        if (!cancelled) {
+          setDayStatusMap(statusMap);
+        }
+      } catch (err) {
+        console.error('[HorizontalCalendar] weekly report error:', err);
+        if (!cancelled) {
+          setError('Không tải được dữ liệu lịch.');
+          setDayStatusMap({});
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    fetchWeek();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [weekOffset, currentWeekStart, refreshToken]);
+
+  // GỌI WEEKLY REPORT THEO weekOffset — KHÔNG LÙI MÀU NỮA
+// useEffect(() => {
+//   let cancelled = false;
+
+//   const fetchWeek = async () => {
+//     try {
+//       setLoading(true);
+//       setError(null);
+
+//       // offset > 0 = tuần quá khứ
+//       const res: any = await apiGetWeeklyReport(weekOffset);
+//       const rep = res?.report;
+
+//       if (!rep || !Array.isArray(rep?.habitStats)) {
+//         if (!cancelled) {
+//           setDayStatusMap({});
+//         }
+//         return;
+//       }
+
+//       const start = new Date(currentWeekStart);
+//       start.setHours(0, 0, 0, 0);
+//       const end = new Date(start);
+//       end.setDate(start.getDate() + 6);
+
+//       const fmt = (d: Date) => d.toISOString().split('T')[0];
+//       const completedPerDay: Record<string, number> = {};
+
+//       for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+//         completedPerDay[fmt(d)] = 0;
+//       }
+
+//       // Dùng đúng ngày từ BE, KHÔNG lùi 1 ngày nữa
+//       rep.habitStats.forEach((hs: any) => {
+//         (hs.trackings || []).forEach((t: any) => {
+//           if (t?.status === 'completed' && t?.date) {
+//             const ds = String(t.date).split('T')[0];
+//             if (completedPerDay[ds] !== undefined) {
+//               completedPerDay[ds] += 1;
+//             }
+//           }
+//         });
+//       });
+
+//       const total =
+//         typeof rep.overallStats?.activeHabits === 'number' &&
+//         rep.overallStats.activeHabits > 0
+//           ? rep.overallStats.activeHabits
+//           : rep.habitStats.length || 1;
+
+//       const statusMap: DayStatusMap = {};
+
+//       Object.keys(completedPerDay).forEach((key) => {
+//         const completed = completedPerDay[key] || 0;
+//         const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+//         let status: TaskStatus = 'pending';
+//         if (pct >= 100) status = 'completed';
+//         else if (pct > 0) status = 'in-progress';
+
+//         statusMap[key] = status;
+//       });
+
+//       if (!cancelled) {
+//         setDayStatusMap(statusMap);
+//       }
+//     } catch (err) {
+//       console.error('[HorizontalCalendar] weekly report error:', err);
+//       if (!cancelled) {
+//         setError('Không tải được dữ liệu lịch.');
+//         setDayStatusMap({});
+//       }
+//     } finally {
+//       if (!cancelled) setLoading(false);
+//     }
+//   };
+
+//   fetchWeek();
+
+//   return () => {
+//     cancelled = true;
+//   };
+// }, [weekOffset, currentWeekStart, refreshToken]);
+
+  const isToday = (date: Date) => {
+    const today = new Date();
+    return (
+      date.getDate() === today.getDate() &&
+      date.getMonth() === today.getMonth() &&
+      date.getFullYear() === today.getFullYear()
+    );
+  };
+
+  const isSelected = (date: Date) =>
+    date.getTime() === selectedDate.getTime();
+
+  const getMonthYearLabel = () => {
+    const endDate = new Date(currentWeekStart);
+    endDate.setDate(currentWeekStart.getDate() + 6);
+
+    if (currentWeekStart.getMonth() === endDate.getMonth()) {
+      return `${monthNames[currentWeekStart.getMonth()]} ${currentWeekStart.getFullYear()}`;
+    } else {
+      return `${monthNames[currentWeekStart.getMonth()]} - ${
+        monthNames[endDate.getMonth()]
+      } ${currentWeekStart.getFullYear()}`;
+    }
+  };
+
+  const handleDatePress = (date: Date) => {
+    const normalized = new Date(date);
+    normalized.setHours(0, 0, 0, 0);
+    setSelectedDate(normalized);
+    onDateSelect?.(normalized);
+  };
+
+  const goToToday = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    setSelectedDate(today);
+    setWeekOffset(0); // quay về tuần hiện tại
+    onDateSelect?.(today);
+  };
+
+  const changeWeek = (direction: 'prev' | 'next') => {
+    if (isUpdatingWeek) return;
+    setIsUpdatingWeek(true);
+
+    setTimeout(() => {
+      setWeekOffset((prev) =>
+        direction === 'prev' ? prev + 1 : prev - 1,
+      );
+      setTimeout(() => setIsUpdatingWeek(false), 80);
+    }, 120);
+  };
+
+  const getDayStatus = (date: Date): TaskStatus | null => {
+    const key = formatDateKey(date);
+    return dayStatusMap[key] ?? null;
+  };
+
+  const getDayCircleStyle = (
+    status: TaskStatus | null,
+    dayOfWeek: number,
+    isTodayDate: boolean,
+    isSelectedDate: boolean,
+  ) => {
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+    const base: any[] = [stylesCal.dayCircle];
+
+    if (isSelectedDate) base.push(stylesCal.dayCircleSelected);
+    else if (isTodayDate) base.push(stylesCal.dayCircleToday);
+    else if (status === 'completed') base.push(stylesCal.dayCircleCompleted);
+    else if (status === 'in-progress')
+      base.push(stylesCal.dayCircleInProgress);
+    else if (isWeekend) base.push(stylesCal.dayCircleWeekend);
+
+    return base;
+  };
+
+  return (
+    <View style={stylesCal.container}>
+      {/* Header */}
+      <View style={stylesCal.header}>
+        <Text style={stylesCal.title}>{getMonthYearLabel()}</Text>
+        <View style={stylesCal.buttonGroup}>
+          <TouchableOpacity
+            onPress={goToToday}
+            style={stylesCal.todayButton}
+            activeOpacity={0.8}
+          >
+            <Text style={stylesCal.todayButtonText}>Hôm nay</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => changeWeek('prev')}
+            style={stylesCal.navButton}
+            activeOpacity={0.8}
+          >
+            <ChevronLeft size={18} color="#0f172a" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => changeWeek('next')}
+            style={stylesCal.navButton}
+            activeOpacity={0.8}
+          >
+            <ChevronRight size={18} color="#0f172a" />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Calendar row */}
+      <View style={stylesCal.calendarRow}>
+        {days.map((day) => {
+          const dayOfWeek = day.getDay();
+          const isTodayDate = isToday(day);
+          const isSelectedDate = isSelected(day);
+          const status = getDayStatus(day);
+
+          return (
+            <View key={day.getTime()} style={stylesCal.dayColumn}>
+              <TouchableOpacity
+                onPress={() => handleDatePress(day)}
+                activeOpacity={0.8}
+                style={stylesCal.dayButton}
+              >
+                <Text
+                  style={[
+                    stylesCal.dayLabel,
+                    (isTodayDate || isSelectedDate) &&
+                      stylesCal.dayLabelActive,
+                  ]}
+                >
+                  {daysOfWeek[dayOfWeek]}
+                </Text>
+                <View
+                  style={getDayCircleStyle(
+                    status,
+                    dayOfWeek,
+                    isTodayDate,
+                    isSelectedDate,
+                  )}
+                >
+                  <Text style={stylesCal.dayNumber}>{day.getDate()}</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+          );
+        })}
+      </View>
+
+      {/* Loading / error */}
+      {loading && (
+        <View style={stylesCal.loadingRow}>
+          <ActivityIndicator size="small" />
+          <Text style={stylesCal.loadingText}>Đang tải dữ liệu...</Text>
+        </View>
+      )}
+      {error && !loading && (
+        <Text style={stylesCal.errorText}>{error}</Text>
+      )}
+
+      {/* Legend */}
+      <View style={stylesCal.legend}>
+        <View style={stylesCal.legendItem}>
+          <View style={[stylesCal.legendDot, stylesCal.legendCompleted]} />
+          <Text style={stylesCal.legendText}>Hoàn thành</Text>
+        </View>
+        <View style={stylesCal.legendItem}>
+          <View style={[stylesCal.legendDot, stylesCal.legendInProgress]} />
+          <Text style={stylesCal.legendText}>Đang làm</Text>
+        </View>
+        <View style={stylesCal.legendItem}>
+          <View style={[stylesCal.legendDot, stylesCal.legendPending]} />
+          <Text style={stylesCal.legendText}>Chưa làm</Text>
+        </View>
+      </View>
+    </View>
+  );
+};
+
+/* ========================================================= */
+/* MAIN SCREEN: FLOW STATE HABITS                            */
+/* ========================================================= */
+
 export default function FlowStateHabits() {
   const TARGET_DAYS = 21;
 
-  const [chartView, setChartView] = useState<'day' | 'week' | 'month'>('day');
+  // ngày đang chọn (nếu null thì dùng hôm nay)
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+
+  const getCurrentDateStr = () => {
+    const d = selectedDate ?? new Date();
+    d.setHours(0, 0, 0, 0);
+    return formatDateYMD(d);
+  };
+
   const [habitStatus, setHabitStatus] = useState<
-    Record<number, 'success' | 'fail' | 'skip' | 'in_progress' | undefined>
+    Record<number, StatusUI | undefined>
   >({});
   const [activeMenu, setActiveMenu] = useState<number | null>(null);
   const [notes, setNotes] = useState<Record<number, string>>({});
@@ -88,11 +566,16 @@ export default function FlowStateHabits() {
   const [timeEnd, setTimeEnd] = useState<Record<number, string>>({});
   const [activeRow, setActiveRow] = useState<number | null>(null);
   const [activeCountRow, setActiveCountRow] = useState<number | null>(null);
-  const [countViewOpen, setCountViewOpen] = useState<Record<number, boolean>>({});
-  const [countEntries, setCountEntries] = useState<Record<number, CountEntry[]>>({});
-  const [editingEntry, setEditingEntry] = useState<{ habitId: number; entryId: number } | null>(
-    null
+  const [countViewOpen, setCountViewOpen] = useState<Record<number, boolean>>(
+    {},
   );
+  const [countEntries, setCountEntries] = useState<Record<number, CountEntry[]>>(
+    {},
+  );
+  const [editingEntry, setEditingEntry] = useState<{
+    habitId: number;
+    entryId: number;
+  } | null>(null);
 
   const [newCountForm, setNewCountForm] = useState<{
     habitId: number | null;
@@ -113,20 +596,27 @@ export default function FlowStateHabits() {
   const [b2n, setB2N] = useState<Record<string, number>>({});
   const [n2b, setN2B] = useState<Record<number, string>>({});
   const nextIdRef = useRef(1);
-  const [countHabitIds, setCountHabitIds] = useState<Record<number, boolean>>({});
+  const [countHabitIds, setCountHabitIds] = useState<Record<number, boolean>>(
+    {},
+  );
   const [overview, setOverview] = useState<{
     totalHabits: number;
     completedToday: number;
     completionRate: number;
   } | null>(null);
-  const [weeklyBars, setWeeklyBars] = useState<{ day: string; height: number }[] | null>(null);
+  const [weeklyBars, setWeeklyBars] = useState<
+    { day: string; date: number; height: number }[] | null
+  >(null);
   const [unitMap, setUnitMap] = useState<
     Record<number, { current: number; goal: number; unit: string }>
   >({});
 
   const [habitList, setHabitList] = useState<Habit[]>([]);
   const [refreshFlag, setRefreshFlag] = useState(0);
-  const refreshAll = useCallback(() => setRefreshFlag((x) => x + 1), []);
+  const refreshAll = useCallback(
+    () => setRefreshFlag((x) => x + 1),
+    [],
+  );
 
   const [editOpen, setEditOpen] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
@@ -137,14 +627,6 @@ export default function FlowStateHabits() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmName, setConfirmName] = useState('');
   const [confirmId, setConfirmId] = useState<number | null>(null);
-
-  const todayStr = () => {
-    const d = new Date();
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
-  };
 
   const hhmmNow = () => {
     const d = new Date();
@@ -162,45 +644,34 @@ export default function FlowStateHabits() {
   };
 
   const tagToColor = (
-    tag: 'Mindful' | 'Energy' | 'Sleep'
+    tag: 'Mindful' | 'Energy' | 'Sleep',
   ): 'bg-green-500' | 'bg-orange-500' | 'bg-blue-500' => {
     if (tag === 'Mindful') return 'bg-green-500';
     if (tag === 'Energy') return 'bg-orange-500';
     return 'bg-blue-500';
   };
 
-  const labelFor = (d: Date) => {
-    const w = d.getDay();
-    return w === 1
-      ? 'T2'
-      : w === 2
-      ? 'T3'
-      : w === 3
-      ? 'T4'
-      : w === 4
-      ? 'T5'
-      : w === 5
-      ? 'T6'
-      : w === 6
-      ? 'T7'
-      : 'CN';
-  };
-
-  // Load habits + overview + weekly report + tracking hôm nay + count-mode
+  // ================== LOAD DATA THEO NGÀY ĐANG CHỌN ==================
   useEffect(() => {
+    let cancelled = false;
+
     (async () => {
       try {
+        const dateStr = getCurrentDateStr();
+
+        // 1. Lấy danh sách habits
         const res: any = await apiGetHabits();
         const items: any[] = Array.isArray(res?.habits) ? res.habits : [];
 
-        const newB2N: Record<string, number> = { ...b2n };
-        const newN2B: Record<number, string> = { ...n2b };
-        const newStatus: Record<number, 'success' | 'fail' | 'skip' | undefined> = {};
-        let nextNum = nextIdRef.current;
-
+        const newB2N: Record<string, number> = {};
+        const newN2B: Record<number, string> = {};
         const countIds: Record<number, boolean> = {};
-        const newUnitMap: Record<number, { current: number; goal: number; unit: string }> = {};
+        const newUnitMap: Record<
+          number,
+          { current: number; goal: number; unit: string }
+        > = {};
         const initialQuantities: Record<number, number> = {};
+        let nextNum = 1;
 
         const uiHabits: Habit[] = items.map((h: any) => {
           const bid = String(h._id || h.id);
@@ -218,22 +689,11 @@ export default function FlowStateHabits() {
               goal: h.targetCount || 1,
               unit: h.unit || 'lần',
             };
-            initialQuantities[nid] = h.completedCount || 0;
+            initialQuantities[nid] = 0; // sẽ set lại theo date sau
           }
 
           const tag = categoryToTag(h.category);
           const color = tagToColor(tag);
-
-          const s: string | undefined = h.todayStatus;
-          const ui: 'success' | 'fail' | 'skip' | undefined =
-            s === 'completed'
-              ? 'success'
-              : s === 'failed'
-              ? 'fail'
-              : s === 'skipped'
-              ? 'skip'
-              : undefined;
-          newStatus[nid] = ui;
 
           return {
             id: nid,
@@ -242,20 +702,29 @@ export default function FlowStateHabits() {
             tag,
             tagColor: color,
             duration: `${h.currentStreak || 0} ngày`,
+            icon: h.icon || '⭐',
+            color: h.color || undefined,
           } as Habit;
         });
+
+        if (cancelled) return;
 
         nextIdRef.current = nextNum;
         setB2N(newB2N);
         setN2B(newN2B);
         setHabitList(uiHabits);
-        setHabitStatus(newStatus);
         setCountHabitIds(countIds);
         setUnitMap(newUnitMap);
         setQuantities(initialQuantities);
+        setHabitStatus({}); // reset status mỗi lần đổi ngày
 
-        // Tổng quan + báo cáo tuần
-        const [ovr, report] = await Promise.all([apiGetTodayOverview(), apiGetWeeklyReport(0)]);
+        // 2. Tổng quan hôm nay + báo cáo tuần (vẫn dùng "today", không phụ thuộc ngày chọn)
+        const [ovr, report] = await Promise.all([
+          apiGetTodayOverview(),
+          apiGetWeeklyReport(0),
+        ]);
+
+        if (cancelled) return;
 
         const ov = ovr?.overview;
         if (ov && typeof ov.totalHabits === 'number') {
@@ -264,15 +733,19 @@ export default function FlowStateHabits() {
             completedToday: ov.completedToday,
             completionRate: ov.completedRate ?? ov.completionRate ?? 0,
           });
+        } else {
+          setOverview(null);
         }
 
         const rep = report?.report;
         if (rep?.week && Array.isArray(rep?.habitStats)) {
-          const start = new Date(rep.week.start);
-          const end = new Date(rep.week.end);
+          const today = new Date();
+          const start = new Date(today.getFullYear(), today.getMonth(), 1);
+          const end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
           const dayMap: Record<string, number> = {};
           const fmt = (d: Date) => d.toISOString().split('T')[0];
-
+          start.setDate(start.getDate() + 1);
           for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
             dayMap[fmt(d)] = 0;
           }
@@ -287,11 +760,12 @@ export default function FlowStateHabits() {
           });
 
           const total =
-            typeof rep.overallStats?.activeHabits === 'number' && rep.overallStats.activeHabits > 0
+            typeof rep.overallStats?.activeHabits === 'number' &&
+            rep.overallStats.activeHabits > 0
               ? rep.overallStats.activeHabits
-              : uiHabits.length;
+              : rep.habitStats.length;
 
-          const bars: { day: string; height: number }[] = [];
+          const bars: { day: string; date: number; height: number }[] = [];
           for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
             const key = fmt(d);
             const completed = dayMap[key] || 0;
@@ -299,6 +773,7 @@ export default function FlowStateHabits() {
             bars.push({
               day: labelFor(new Date(d)),
               height: Math.min(100, Math.max(0, pct)),
+              date: d.getDate(),
             });
           }
           setWeeklyBars(bars);
@@ -306,26 +781,28 @@ export default function FlowStateHabits() {
           setWeeklyBars(null);
         }
 
-        // Load tracking hôm nay
+        // 3. TRACKINGS check-mode THEO NGÀY
         const uiIds = uiHabits.map((h) => h.id);
         if (uiIds.length > 0) {
           const trackResults = await Promise.all(
             uiIds.map((nid) => {
               const bid = newN2B[nid];
               if (!bid) return Promise.resolve(null);
-              return apiGetHabitTrackings(bid, { date: todayStr(), limit: 1 }).catch(() => null);
-            })
+              return apiGetHabitTrackings(bid, {
+                date: dateStr,
+                limit: 1,
+              }).catch(() => null);
+            }),
           );
 
+          if (cancelled) return;
+
           const initialNotes: Record<number, string> = {};
-          const initialmoods: Record<
+          const initialMoods: Record<
             number,
             'great' | 'good' | 'neutral' | 'bad' | undefined
           > = {};
-          const overrideStatus: Record<
-            number,
-            'success' | 'fail' | 'skip' | 'in_progress' | undefined
-          > = {};
+          const overrideStatus: Record<number, StatusUI | undefined> = {};
 
           uiIds.forEach((nid, idx) => {
             const res: any = trackResults[idx];
@@ -333,9 +810,8 @@ export default function FlowStateHabits() {
             if (!Array.isArray(arr) || arr.length === 0) return;
 
             const t = arr[0];
-
             const s: string | undefined = t.status;
-            let ui: 'success' | 'fail' | 'skip' | 'in_progress' | undefined;
+            let ui: StatusUI | undefined;
             if (s === 'completed') ui = 'success';
             else if (s === 'failed') ui = 'fail';
             else if (s === 'skipped') ui = 'skip';
@@ -350,71 +826,109 @@ export default function FlowStateHabits() {
             const moodRaw = (t.mood || '').toLowerCase();
             if (moodRaw) {
               if (moodRaw === 'great' || moodRaw === 'awesome') {
-                initialmoods[nid] = 'great';
+                initialMoods[nid] = 'great';
               } else if (moodRaw === 'good' || moodRaw === 'ok') {
-                initialmoods[nid] = 'good';
+                initialMoods[nid] = 'good';
               } else if (moodRaw === 'okay' || moodRaw === 'neutral') {
-                initialmoods[nid] = 'neutral';
+                initialMoods[nid] = 'neutral';
               } else if (moodRaw === 'bad') {
-                initialmoods[nid] = 'bad';
+                initialMoods[nid] = 'bad';
               }
             }
           });
 
-          if (Object.keys(initialNotes).length > 0) {
-            setNotes(initialNotes);
-          }
-          if (Object.keys(initialmoods).length > 0) {
-            setmoods(initialmoods);
-          }
-          if (Object.keys(overrideStatus).length > 0) {
-            setHabitStatus((prev) => ({ ...prev, ...overrideStatus }));
+          if (!cancelled) {
+            if (Object.keys(initialNotes).length > 0) {
+              setNotes(initialNotes);
+            }
+            if (Object.keys(initialMoods).length > 0) {
+              setmoods(initialMoods);
+            }
+            if (Object.keys(overrideStatus).length > 0) {
+              setHabitStatus((prev) => ({ ...prev, ...overrideStatus }));
+            }
           }
         }
 
-        // Load count subtrackings
+        // 4. SUBTRACKINGS count-mode THEO NGÀY (dùng summary.totalQuantity)
         const countNids = Object.keys(countIds).map((k) => Number(k));
         if (countNids.length > 0) {
           const results = await Promise.all(
             countNids.map((nid) => {
               const bid = newN2B[nid];
               if (!bid) return Promise.resolve(null);
-              return apiGetHabitSubTrackings(bid, { date: todayStr(), limit: 500 }).catch(
-                () => null
-              );
-            })
+              return apiGetHabitSubTrackings(bid, {
+                date: dateStr,
+                limit: 500,
+              }).catch(() => null);
+            }),
           );
 
-          const override: Record<number, number> = {};
+          if (cancelled) return;
+
+          const newQuantitiesByHabit: Record<number, number> = {};
+          const newStatuses: Record<number, StatusUI | undefined> = {};
+          const newEntries: Record<number, CountEntry[]> = {};
+
           countNids.forEach((nid, idx) => {
-            const res = results[idx] as any;
-            const arr = res?.subTrackings ?? res?.data ?? [];
-            if (Array.isArray(arr)) {
-              const total = arr.reduce((sum: number, s: any) => sum + (s.quantity ?? 0), 0);
-              override[nid] = total;
-            }
+            const res: any = results[idx];
+            if (!res) return;
+
+            const totalQty = res.summary?.totalQuantity ?? 0;
+            const habitMeta = newUnitMap[nid];
+            const goal = habitMeta?.goal ?? res.habit?.targetCount ?? 1;
+
+            newQuantitiesByHabit[nid] = totalQty;
+
+            let s: StatusUI | undefined;
+            if (totalQty >= goal && goal > 0) s = 'success';
+            else if (totalQty > 0 && totalQty < goal) s = 'in_progress';
+            else s = undefined;
+
+            newStatuses[nid] = s;
+
+            const arr = Array.isArray(res.subTrackings)
+              ? res.subTrackings.map((t: any, index: number) => ({
+                  id: index + 1,
+                  qty: t.quantity ?? 1,
+                  start: t.time ?? t.startTime ?? undefined,
+                  end: t.endTime ?? undefined,
+                  note: t.note ?? undefined,
+                  beId: t.id ?? t._id,
+                }))
+              : [];
+            newEntries[nid] = arr;
           });
-          setQuantities((prev) => ({ ...prev, ...override }));
+
+          if (!cancelled) {
+            setQuantities((prev) => ({ ...prev, ...newQuantitiesByHabit }));
+            setHabitStatus((prev) => ({ ...prev, ...newStatuses }));
+            setCountEntries((prev) => ({ ...prev, ...newEntries }));
+          }
         }
       } catch (err) {
         console.error('[habits.index] load error:', err);
-        setHabitList([]);
-        setOverview(null);
-        setWeeklyBars(null);
+        if (!cancelled) {
+          setHabitList([]);
+          setOverview(null);
+          setWeeklyBars(null);
+        }
       }
     })();
+
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refreshFlag]);
+  }, [selectedDate, refreshFlag]);
 
   useFocusEffect(
     useCallback(() => {
       setRefreshFlag((x) => x + 1);
-    }, [])
+    }, []),
   );
 
   const getCurrentCountValue = (habitId: number): number => {
-    const meta = unitMap[habitId];
-    if (!meta) return 0;
     const entries = countEntries[habitId] ?? [];
     if (entries.length > 0) {
       return entries.reduce((acc, e) => acc + Math.max(0, e.qty || 0), 0);
@@ -423,9 +937,7 @@ export default function FlowStateHabits() {
     return typeof base === 'number' ? Math.max(0, base) : 0;
   };
 
-  const computedStatus = (
-    habitId: number
-  ): 'success' | 'fail' | 'skip' | 'in_progress' | undefined => {
+  const computedStatus = (habitId: number): StatusUI | undefined => {
     const s = habitStatus[habitId];
     if (s) return s;
     const meta = unitMap[habitId];
@@ -435,20 +947,6 @@ export default function FlowStateHabits() {
     }
     return undefined;
   };
-
-  // auto sync status count-mode theo số lượng (frontend)
-  useEffect(() => {
-    habitList.forEach((h) => {
-      const meta = unitMap[h.id];
-      if (!meta) return;
-      const cur = getCurrentCountValue(h.id);
-      const isSuccess = habitStatus[h.id] === 'success';
-      if (cur >= meta.goal && !isSuccess) {
-        handleStatusChange(h.id, 'success');
-      }
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [countEntries, quantities]);
 
   const timeDiff = (start?: string, end?: string) => {
     if (!start || !end) return null;
@@ -489,21 +987,20 @@ export default function FlowStateHabits() {
 
   const saveNewCountEntry = () => {
     if (!newCountForm.habitId) return;
-
     const habitId = newCountForm.habitId;
 
     (async () => {
       try {
         const bid = n2b[habitId];
         if (!bid) {
-          alert('Lỗi', 'Không tìm thấy thói quen trên máy chủ.');
+          Alert.alert('Lỗi', 'Không tìm thấy thói quen trên máy chủ.');
           return;
         }
 
         const qty = newCountForm.qty > 0 ? newCountForm.qty : 1;
         const body: any = {
           quantity: qty,
-          date: todayStr(),
+          date: getCurrentDateStr(),
           startTime: newCountForm.start || hhmmNow(),
         };
 
@@ -524,11 +1021,11 @@ export default function FlowStateHabits() {
           mood: undefined,
         });
 
-        loadSubTrackingsForToday(habitId);
+        // refetch theo ngày hiện tại
         refreshAll();
       } catch (err: any) {
         console.error('[habits.index] add subtrack (new form) error:', err);
-        alert(err.message);
+        Alert.alert('Lỗi', err?.message || 'Không thêm được lần đếm');
       }
     })();
   };
@@ -540,10 +1037,8 @@ export default function FlowStateHabits() {
         const entry = arr.find((e) => e.id === entryId);
         const bid = n2b[habitId];
         if (entry?.beId && bid) {
-          await apiDeleteHabitSubTracking(bid, entry.beId);
+          await apiDeleteHabitSubTrackings(bid, entry.beId);
           refreshAll();
-          toggleCountView(habitId);
-          toggleCountView(habitId);
         }
       } catch (err) {
         console.error('[habits.index] delete subtrack error:', err);
@@ -556,7 +1051,7 @@ export default function FlowStateHabits() {
       try {
         const bid = n2b[habitId];
         if (bid) {
-          await apiDeleteHabitTrackingDay(bid, todayStr());
+          await apiDeleteHabitTrackingDay(bid, getCurrentDateStr());
           refreshAll();
         }
       } catch (err) {
@@ -572,7 +1067,9 @@ export default function FlowStateHabits() {
   const updateEntry = (habitId: number, entryId: number, data: Partial<CountEntry>) => {
     setCountEntries((prev) => ({
       ...prev,
-      [habitId]: (prev[habitId] ?? []).map((e) => (e.id === entryId ? { ...e, ...data } : e)),
+      [habitId]: (prev[habitId] ?? []).map((e) =>
+        e.id === entryId ? { ...e, ...data } : e,
+      ),
     }));
   };
 
@@ -582,18 +1079,24 @@ export default function FlowStateHabits() {
         const bid = n2b[habitId];
         const en = (countEntries[habitId] ?? []).find((x) => x.id === entryId);
         if (!bid || !en) return setEditingEntry(null);
+
+        const dateStr = getCurrentDateStr();
+
         if (en.beId) {
           const body: any = {};
           if (en.start !== undefined) body.startTime = en.start;
           if (en.end !== undefined) body.endTime = en.end || null;
           if (en.qty !== undefined) body.quantity = en.qty;
           if (en.note !== undefined) body.note = en.note;
-          if (en.mood !== undefined) body.mood = en.mood === 'neutral' ? 'okay' : en.mood;
+          if (en.mood !== undefined) {
+            body.mood = en.mood === 'neutral' ? 'okay' : en.mood;
+          }
+          body.date = dateStr;
           await apiUpdateHabitSubTracking(bid, en.beId, body);
         } else {
           const body: any = {
             quantity: en.qty || 1,
-            date: todayStr(),
+            date: dateStr,
             startTime: en.start || hhmmNow(),
           };
           if (en.end) body.endTime = en.end;
@@ -610,46 +1113,14 @@ export default function FlowStateHabits() {
     })();
   };
 
-  const loadSubTrackingsForToday = (habitId: number) => {
-    (async () => {
-      try {
-        const bid = n2b[habitId];
-        if (!bid) return;
-        const res: any = await apiGetHabitSubTrackings(bid, {
-          date: todayStr(),
-          limit: 100,
-        });
-        const arr: CountEntry[] = Array.isArray(res?.subTrackings)
-          ? res.subTrackings.map((t: any, idx: number) => ({
-              id: idx + 1,
-              qty: t.quantity ?? 1,
-              start: t.time ?? t.startTime ?? undefined,
-              end: t.endTime ?? undefined,
-              note: t.note ?? undefined,
-              beId: t.id ?? t._id,
-            }))
-          : [];
-        setCountEntries((prev) => ({ ...prev, [habitId]: arr }));
-        const total = arr.reduce((sum, e) => sum + (e.qty || 0), 0);
-        setQuantities((prev) => ({ ...prev, [habitId]: total }));
-      } catch (err) {
-        console.error('[habits.index] load subtrackings error:', err);
-      }
-    })();
-  };
-
   const toggleCountView = (habitId: number) => {
-    setCountViewOpen((prev) => {
-      const next = !prev[habitId];
-      if (next) loadSubTrackingsForToday(habitId);
-      return { ...prev, [habitId]: next };
-    });
+    setCountViewOpen((prev) => ({
+      ...prev,
+      [habitId]: !prev[habitId],
+    }));
   };
 
-  const handleStatusChange = (
-    id: number,
-    status: 'success' | 'fail' | 'skip' | 'in_progress'
-  ) => {
+  const handleStatusChange = (id: number, status: StatusUI) => {
     const prev = habitStatus[id];
     const toggledOff = prev === status;
 
@@ -682,7 +1153,7 @@ export default function FlowStateHabits() {
 
         const payload: any = {
           status: backendStatus,
-          date: todayStr(),
+          date: getCurrentDateStr(),
         };
 
         if (note && note.trim()) {
@@ -724,7 +1195,7 @@ export default function FlowStateHabits() {
 
       const payload: any = {
         status: backendStatus,
-        date: todayStr(),
+        date: getCurrentDateStr(),
       };
 
       if (note && note.trim()) {
@@ -743,19 +1214,18 @@ export default function FlowStateHabits() {
     })();
   };
 
-  const getChartData = () => {
-    if (chartView === 'day') {
-      return weeklyBars ?? [];
-    }
-    return [];
-  };
-
   const openEditModal = (h: Habit) => {
-    setEditId(h.id);
-    setEditTitle(h.title);
-    setEditSubtitle(h.subtitle);
-    setEditTag(h.tag);
-    setEditOpen(true);
+    const backendId = n2b[h.id];
+    if (!backendId) {
+      console.warn('[habits.index] Missing backend id for habit', h);
+      return;
+    }
+    router.push({
+      pathname: '/(tabs)/habits/CreateHabitDetail',
+      params: {
+        templateId: backendId,
+      },
+    });
   };
 
   const closeEditModal = () => {
@@ -822,8 +1292,6 @@ export default function FlowStateHabits() {
     })();
   };
 
-  const chartData = getChartData();
-
   const totalHabits = habitList.length || overview?.totalHabits || 0;
 
   const completedCount = useMemo(() => {
@@ -870,14 +1338,14 @@ export default function FlowStateHabits() {
 
         const body: any = {
           quantity: diff,
-          date: todayStr(),
+          date: getCurrentDateStr(),
           startTime: start,
         };
         if (end) body.endTime = end;
 
         await apiAddHabitSubTracking(bid, body);
 
-        loadSubTrackingsForToday(habitId);
+        refreshAll();
       } catch (err) {
         console.error('[habits.index] saveCountModal error:', err);
       }
@@ -893,14 +1361,16 @@ export default function FlowStateHabits() {
 
     setWeeklyBars((prev) => {
       if (!prev) return prev;
-      return prev.map((bar) =>
-        bar.day === todayLabel ? { ...bar, height: newHeight } : bar
-      );
+      return prev.map((bar) => {
+        if (bar.day !== todayLabel) return bar;
+        const mergedHeight = Math.max(bar.height ?? 0, newHeight ?? 0);
+        return { ...bar, height: mergedHeight };
+      });
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [progressPercent, totalHabits]);
 
-  // ================== JSX MOBILE ==================
+  // ================== JSX ==================
   return (
     <View style={styles.page}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -942,90 +1412,14 @@ export default function FlowStateHabits() {
           </View>
         </View>
 
-        {/* Progress Summary */}
+        {/* Calendar card */}
         <View style={styles.card}>
-          <View style={styles.progressHeaderRow}>
-            <View style={styles.todayChip}>
-              <TrendingUp size={16} color="#4338ca" />
-              <Text style={styles.todayChipText}>Tiến độ hôm nay</Text>
-            </View>
-            <Text style={styles.progressCountText}>
-              {completedCount}/{totalHabits} hoàn thành
-            </Text>
-          </View>
-
-          <View style={styles.progressBarOuter}>
-            <View style={[styles.progressBarInner, { width: `${progressPercent}%` }]} />
-          </View>
-
-          <View style={styles.progressFooterRow}>
-            <Text style={styles.progressGoalText}>Mục tiêu: hoàn thành tất cả</Text>
-            <Text style={styles.progressPercentText}>{progressPercent}%</Text>
-          </View>
-        </View>
-
-        {/* Chart (rút gọn, vẫn giữ logic) */}
-        <View style={styles.card}>
-          <View style={styles.cardHeaderRow}>
-            <Text style={styles.cardTitle}>Biểu đồ tiến bộ</Text>
-            <View style={styles.chartTabsRow}>
-              {(['day', 'week', 'month'] as const).map((v) => (
-                <TouchableOpacity
-                  key={v}
-                  onPress={() => setChartView(v)}
-                  style={[
-                    styles.chartTab,
-                    chartView === v && styles.chartTabActive,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.chartTabText,
-                      chartView === v && styles.chartTabTextActive,
-                    ]}
-                  >
-                    {v === 'day' ? 'Ngày' : v === 'week' ? 'Tuần' : 'Tháng'}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
-          {chartView === 'day' ? (
-            chartData.length > 0 ? (
-              <View style={styles.chartBarContainer}>
-                {chartData.map((item, i) => (
-                  <View key={i} style={styles.chartBarItem}>
-                    <View style={styles.chartBarOuter}>
-                      <View
-                        style={[
-                          styles.chartBarFill,
-                          { height: `${item.height}%` },
-                        ]}
-                      />
-                    </View>
-                    <Text style={styles.chartBarLabel}>{item.day}</Text>
-                  </View>
-                ))}
-              </View>
-            ) : (
-              <View style={styles.emptyBox}>
-                <Text style={styles.emptyText}>Chưa có dữ liệu tuần từ API.</Text>
-              </View>
-            )
-          ) : chartView === 'week' ? (
-            <View style={styles.emptyBox}>
-              <Text style={styles.emptyText}>
-                View &quot;Tuần&quot; đang dùng thẻ &quot;Tổng quan&quot; phía trên.
-              </Text>
-            </View>
-          ) : (
-            <View style={styles.emptyBox}>
-              <Text style={styles.emptyText}>
-                View &quot;Tháng&quot; chưa có API. Có thể dùng stats/calendar nếu BE hỗ trợ.
-              </Text>
-            </View>
-          )}
+          <HorizontalCalendar
+            refreshToken={refreshFlag}
+            onDateSelect={(date) => {
+              setSelectedDate(date);
+            }}
+          />
         </View>
 
         {/* Habits List */}
@@ -1037,7 +1431,7 @@ export default function FlowStateHabits() {
               <Text style={styles.emptyText}>Không có thói quen nào từ API.</Text>
             </View>
           ) : (
-            habitList.map((habit, i) => {
+            habitList.map((habit) => {
               const status = computedStatus(habit.id);
               const m = (habit.duration || '').match(/\d+/);
               const currentDays = m ? parseInt(m[0], 10) : 0;
@@ -1049,30 +1443,25 @@ export default function FlowStateHabits() {
                 meta && meta.goal > 0
                   ? Math.max(
                       0,
-                      Math.min(100, Math.round(((currentVal ?? 0) / meta.goal) * 100))
+                      Math.min(100, Math.round(((currentVal ?? 0) / meta.goal) * 100)),
                     )
                   : Math.max(
                       0,
-                      Math.min(100, Math.round((currentDays / (goalDays || 1)) * 100))
+                      Math.min(100, Math.round((currentDays / (goalDays || 1)) * 100)),
                     );
 
-              const emoji = (() => {
-                const t = (habit.title || '').toLowerCase();
-                if (t.includes('uống')) return '💧';
-                if (t.includes('đọc') || t.includes('doc')) return '📚';
-                if (t.includes('thiền') || t.includes('thien')) return '🧘';
-                if (t.includes('đi bộ') || t.includes('di bo')) return '🚶';
-                if (t.includes('ngủ') || t.includes('ngu')) return '🛌';
-                return '⭐';
-              })();
-
-              const progressColor = (() => {
-                if (emoji === '💧') return '#10b981';
-                if (emoji === '🧘' || emoji === '📚') return '#3b82f6';
-                if (emoji === '🚶') return '#2563eb';
-                if (emoji === '🛌') return '#6366f1';
-                return '#2563eb';
-              })();
+              const emoji = habit.icon || '⭐';
+              const progressColor =
+                habit.color ||
+                (emoji === '💧'
+                  ? '#10b981'
+                  : emoji === '🧘' || emoji === '📚'
+                  ? '#3b82f6'
+                  : emoji === '🚶'
+                  ? '#2563eb'
+                  : emoji === '🛌'
+                  ? '#6366f1'
+                  : '#2563eb');
 
               let chip = (() => {
                 if (status === 'success')
@@ -1118,7 +1507,7 @@ export default function FlowStateHabits() {
                     onPress={() => {
                       if (isCountHabit) {
                         setActiveCountRow(
-                          activeCountRow === habit.id ? null : habit.id
+                          activeCountRow === habit.id ? null : habit.id,
                         );
                       } else {
                         setActiveRow(activeRow === habit.id ? null : habit.id);
@@ -1161,7 +1550,7 @@ export default function FlowStateHabits() {
                         <TouchableOpacity
                           onPress={() =>
                             setActiveMenu(
-                              activeMenu === habit.id ? null : habit.id
+                              activeMenu === habit.id ? null : habit.id,
                             )
                           }
                           style={styles.moreButton}
@@ -1207,7 +1596,10 @@ export default function FlowStateHabits() {
                       </TouchableOpacity>
                       <TouchableOpacity
                         onPress={() => addCountEntry(habit.id)}
-                        style={[styles.actionButton, styles.actionButtonGreenSoft]}
+                        style={[
+                          styles.actionButton,
+                          styles.actionButtonGreenSoft,
+                        ]}
                       >
                         <Plus size={14} color="#047857" />
                         <Text style={styles.actionButtonGreenText}>Thêm lần</Text>
@@ -1221,7 +1613,10 @@ export default function FlowStateHabits() {
                       </TouchableOpacity>
                       <TouchableOpacity
                         onPress={() => openEditModal(habit)}
-                        style={[styles.actionButton, styles.actionButtonAmberSoft]}
+                        style={[
+                          styles.actionButton,
+                          styles.actionButtonAmberSoft,
+                        ]}
                       >
                         <Pencil size={14} color="#b45309" />
                         <Text style={styles.actionButtonAmberText}>Sửa</Text>
@@ -1356,13 +1751,13 @@ export default function FlowStateHabits() {
                     </View>
                   )}
 
-                  {/* danh sách count entries (rút gọn UI, vẫn giữ đầy đủ logic) */}
+                  {/* danh sách count entries */}
                   {countViewOpen[habit.id] && (
                     <View style={{ marginTop: 8 }}>
                       {(countEntries[habit.id] ?? []).length === 0 ? (
                         <View style={styles.emptyBox}>
                           <Text style={styles.emptyText}>
-                            Chưa có lần nào cho hôm nay. Nhấn &quot;Thêm lần&quot; để bắt đầu.
+                            Chưa có lần nào cho ngày này. Nhấn &quot;Thêm lần&quot; để bắt đầu.
                           </Text>
                         </View>
                       ) : (
@@ -1410,7 +1805,6 @@ export default function FlowStateHabits() {
                                 </TouchableOpacity>
                               </View>
 
-                              {/* form sửa entry */}
                               {editingEntry &&
                                 editingEntry.habitId === habit.id &&
                                 editingEntry.entryId === en.id && (
@@ -1474,42 +1868,48 @@ export default function FlowStateHabits() {
                                     </View>
 
                                     <View style={[styles.rowWrap, { marginTop: 10 }]}>
-                                      {(['great', 'good', 'neutral', 'bad'] as const).map(
-                                        (f) => {
-                                          const selected = en.mood === f;
-                                          const label =
-                                            f === 'great'
-                                              ? 'Tuyệt vời'
-                                              : f === 'good'
-                                              ? 'Tốt'
-                                              : f === 'neutral'
-                                              ? 'Bình thường'
-                                              : 'Không tốt';
-                                          return (
-                                            <TouchableOpacity
-                                              key={f}
-                                              onPress={() =>
-                                                updateEntry(habit.id, en.id, {
-                                                  mood: selected ? undefined : f,
-                                                })
-                                              }
+                                      {(
+                                        [
+                                          'great',
+                                          'good',
+                                          'neutral',
+                                          'bad',
+                                        ] as const
+                                      ).map((f) => {
+                                        const selected = en.mood === f;
+                                        const label =
+                                          f === 'great'
+                                            ? 'Tuyệt vời'
+                                            : f === 'good'
+                                            ? 'Tốt'
+                                            : f === 'neutral'
+                                            ? 'Bình thường'
+                                            : 'Không tốt';
+                                        return (
+                                          <TouchableOpacity
+                                            key={f}
+                                            onPress={() =>
+                                              updateEntry(habit.id, en.id, {
+                                                mood: selected ? undefined : f,
+                                              })
+                                            }
+                                            style={[
+                                              styles.moodButton,
+                                              selected && styles.moodButtonSelected,
+                                            ]}
+                                          >
+                                            <Text
                                               style={[
-                                                styles.moodButton,
-                                                selected && styles.moodButtonSelected,
+                                                styles.moodButtonText,
+                                                selected &&
+                                                  styles.moodButtonTextSelected,
                                               ]}
                                             >
-                                              <Text
-                                                style={[
-                                                  styles.moodButtonText,
-                                                  selected && styles.moodButtonTextSelected,
-                                                ]}
-                                              >
-                                                {label}
-                                              </Text>
-                                            </TouchableOpacity>
-                                          );
-                                        }
-                                      )}
+                                              {label}
+                                            </Text>
+                                          </TouchableOpacity>
+                                        );
+                                      })}
                                     </View>
 
                                     <View style={styles.formButtonRow}>
@@ -1543,11 +1943,16 @@ export default function FlowStateHabits() {
                         style={[styles.actionButton, styles.actionButtonBlueSoft]}
                       >
                         <Eye size={14} color="#1e40af" />
-                        <Text style={styles.actionButtonBlueText}>Xem chi tiết</Text>
+                        <Text style={styles.actionButtonBlueText}>
+                          Đánh dấu / cập nhật
+                        </Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         onPress={() => openEditModal(habit)}
-                        style={[styles.actionButton, styles.actionButtonAmberSoft]}
+                        style={[
+                          styles.actionButton,
+                          styles.actionButtonAmberSoft,
+                        ]}
                       >
                         <Pencil size={14} color="#b45309" />
                         <Text style={styles.actionButtonAmberText}>Sửa</Text>
@@ -1622,192 +2027,269 @@ export default function FlowStateHabits() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
-            {detailHabitId != null && (() => {
-              const h = habitList.find((x) => x.id === detailHabitId)!;
-              const status = computedStatus(h.id);
-              let chip = (() => {
-                if (status === 'success')
-                  return { label: 'Hoàn thành', color: '#16a34a', bg: '#dcfce7' };
-                if (status === 'fail')
-                  return { label: 'Thất bại', color: '#dc2626', bg: '#fee2e2' };
-                if (status === 'skip')
-                  return { label: 'Bỏ qua', color: '#d97706', bg: '#ffedd5' };
-                return { label: 'Chờ làm', color: '#334155', bg: '#e5e7eb' };
-              })();
-              if (status === 'in_progress') {
-                chip = { label: 'Đang làm', color: '#0284c7', bg: '#e0f2fe' };
-              }
+            {detailHabitId != null &&
+              (() => {
+                const h = habitList.find((x) => x.id === detailHabitId)!;
+                const status = computedStatus(h.id);
+                let chip = (() => {
+                  if (status === 'success')
+                    return { label: 'Hoàn thành', color: '#16a34a', bg: '#dcfce7' };
+                  if (status === 'fail')
+                    return { label: 'Thất bại', color: '#dc2626', bg: '#fee2e2' };
+                  if (status === 'skip')
+                    return { label: 'Bỏ qua', color: '#d97706', bg: '#ffedd5' };
+                  return { label: 'Chờ làm', color: '#334155', bg: '#e5e7eb' };
+                })();
+                if (status === 'in_progress') {
+                  chip = { label: 'Đang làm', color: '#0284c7', bg: '#e0f2fe' };
+                }
 
-              const noteVal = notes[h.id] || '';
-              const meta = unitMap[h.id];
-              const q = meta != null ? (quantities[h.id] ?? meta.current ?? 0) : 0;
+                const noteVal = notes[h.id] || '';
+                const meta = unitMap[h.id];
+                const q = meta != null ? getCurrentCountValue(h.id) : 0;
 
-              const startVal = timeStart[h.id] ?? '';
-              const endVal = timeEnd[h.id] ?? '';
+                const startVal = timeStart[h.id] ?? '';
+                const endVal = timeEnd[h.id] ?? '';
 
-              return (
-                <>
-                  <View style={styles.detailHeaderRow}>
-                    <View style={styles.habitIconBox}>
-                      <Text style={{ fontSize: 22 }}>⭐</Text>
-                    </View>
-                    <View style={{ flex: 1, marginLeft: 8 }}>
-                      <Text style={styles.habitTitle}>{h.title}</Text>
-                      {!meta && (
-                        <View
-                          style={[
-                            styles.statusChip,
-                            { backgroundColor: chip.bg, marginTop: 4 },
-                          ]}
-                        >
-                          <Text
+                return (
+                  <>
+                    <View style={styles.detailHeaderRow}>
+                      <View style={styles.habitIconBox}>
+                        <Text style={{ fontSize: 22 }}>{h.icon || '⭐'}</Text>
+                      </View>
+                      <View style={{ flex: 1, marginLeft: 8 }}>
+                        <Text style={styles.habitTitle}>{h.title}</Text>
+                        {!meta && (
+                          <View
                             style={[
-                              styles.statusChipText,
-                              { color: chip.color },
+                              styles.statusChip,
+                              { backgroundColor: chip.bg, marginTop: 4 },
                             ]}
                           >
-                            Chế độ: {chip.label}
-                          </Text>
-                        </View>
+                            <Text
+                              style={[
+                                styles.statusChipText,
+                                { color: chip.color },
+                              ]}
+                            >
+                              Chế độ: {chip.label}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                      {meta && (
+                        <Text style={styles.detailQtyTop}>
+                          {q}/{meta.goal} {meta.unit}
+                        </Text>
                       )}
                     </View>
-                    {meta && (
-                      <Text style={styles.detailQtyTop}>
-                        {q}/{meta.goal} {meta.unit}
-                      </Text>
-                    )}
-                  </View>
 
-                  {meta ? (
-                    <>
-                      {/* count-mode: chọn số lượng + thời gian */}
-                      <View style={{ marginTop: 10 }}>
-                        <Text style={styles.formLabel}>Số lượng *</Text>
-                        <View style={styles.detailCountRow}>
-                          <TouchableOpacity
-                            onPress={() =>
-                              setQuantities((prev) => ({
-                                ...prev,
-                                [h.id]: Math.max(
-                                  0,
-                                  (prev[h.id] ?? meta.current ?? 0) - 1
-                                ),
-                              }))
-                            }
-                            style={styles.detailCountBtnMinus}
-                          >
-                            <Text style={styles.detailCountBtnMinusText}>-</Text>
-                          </TouchableOpacity>
-
-                          <View style={{ alignItems: 'center' }}>
-                            <Text style={styles.detailCountNumber}>{q}</Text>
-                            <Text style={styles.detailCountUnit}>{meta.unit}</Text>
-                          </View>
-
-                          <TouchableOpacity
-                            onPress={() =>
-                              setQuantities((prev) => ({
-                                ...prev,
-                                [h.id]: Math.min(
-                                  meta.goal,
-                                  (prev[h.id] ?? meta.current ?? 0) + 1
-                                ),
-                              }))
-                            }
-                            style={styles.detailCountBtnPlus}
-                          >
-                            <Text style={styles.detailCountBtnPlusText}>+</Text>
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-
-                      <View style={styles.detailTimeBox}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                          <Clock size={14} color="#0f172a" />
-                          <Text style={styles.detailTimeTitle}> Thời gian thực hiện *</Text>
-                        </View>
-                        <View style={{ flexDirection: 'row', gap: 12 }}>
-                          <View style={{ flex: 1 }}>
-                            <Text style={styles.detailTimeLabel}>Bắt đầu *</Text>
-                            <TextInput
-                              placeholder="HH:MM"
-                              value={startVal}
-                              onChangeText={(text) =>
-                                setTimeStart((prev) => ({ ...prev, [h.id]: text }))
+                    {meta ? (
+                      <>
+                        {/* count-mode */}
+                        <View style={{ marginTop: 10 }}>
+                          <Text style={styles.formLabel}>Số lượng *</Text>
+                          <View style={styles.detailCountRow}>
+                            <TouchableOpacity
+                              onPress={() =>
+                                setQuantities((prev) => ({
+                                  ...prev,
+                                  [h.id]: Math.max(
+                                    0,
+                                    (prev[h.id] ?? meta.current ?? 0) - 1,
+                                  ),
+                                }))
                               }
-                              style={styles.input}
-                            />
-                          </View>
-                          <View style={{ flex: 1 }}>
-                            <Text style={styles.detailTimeLabel}>Kết thúc (tùy chọn)</Text>
-                            <TextInput
-                              placeholder="HH:MM"
-                              value={endVal}
-                              onChangeText={(text) =>
-                                setTimeEnd((prev) => ({ ...prev, [h.id]: text }))
+                              style={styles.detailCountBtnMinus}
+                            >
+                              <Text style={styles.detailCountBtnMinusText}>-</Text>
+                            </TouchableOpacity>
+
+                            <View style={{ alignItems: 'center' }}>
+                              <Text style={styles.detailCountNumber}>{q}</Text>
+                              <Text style={styles.detailCountUnit}>{meta.unit}</Text>
+                            </View>
+
+                            <TouchableOpacity
+                              onPress={() =>
+                                setQuantities((prev) => ({
+                                  ...prev,
+                                  [h.id]:
+                                    (prev[h.id] ?? meta.current ?? 0) + 1,
+                                }))
                               }
-                              style={styles.input}
-                            />
+                              style={styles.detailCountBtnPlus}
+                            >
+                              <Text style={styles.detailCountBtnPlusText}>+</Text>
+                            </TouchableOpacity>
                           </View>
                         </View>
-                      </View>
-                    </>
-                  ) : (
-                    <>
-                      {/* habit check-mode: chọn trạng thái */}
-                      <Text style={[styles.formLabel, { marginTop: 10 }]}>
-                        Trạng thái *
-                      </Text>
-                      <View style={styles.rowWrap}>
-                        <TouchableOpacity
-                          style={[
-                            styles.statusBtn,
-                            status === 'in_progress' && styles.statusBtnSelectedBlue,
-                          ]}
-                          onPress={() => handleStatusChange(h.id, 'in_progress')}
-                        >
-                          <TrendingUp
-                            size={16}
-                            color={status === 'in_progress' ? '#0284c7' : '#334155'}
-                          />
-                          <Text
+
+                        <View style={styles.detailTimeBox}>
+                          <View
+                            style={{
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              marginBottom: 8,
+                            }}
+                          >
+                            <Clock size={14} color="#0f172a" />
+                            <Text style={styles.detailTimeTitle}>
+                              {' '}
+                              Thời gian thực hiện *
+                            </Text>
+                          </View>
+                          <View style={{ flexDirection: 'row', gap: 12 }}>
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.detailTimeLabel}>Bắt đầu *</Text>
+                              <TextInput
+                                placeholder="HH:MM"
+                                value={startVal}
+                                onChangeText={(text) =>
+                                  setTimeStart((prev) => ({ ...prev, [h.id]: text }))
+                                }
+                                style={styles.input}
+                              />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.detailTimeLabel}>
+                                Kết thúc (tùy chọn)
+                              </Text>
+                              <TextInput
+                                placeholder="HH:MM"
+                                value={endVal}
+                                onChangeText={(text) =>
+                                  setTimeEnd((prev) => ({ ...prev, [h.id]: text }))
+                                }
+                                style={styles.input}
+                              />
+                            </View>
+                          </View>
+                        </View>
+                      </>
+                    ) : (
+                      <>
+                        {/* check-mode */}
+                        <Text style={[styles.formLabel, { marginTop: 10 }]}>
+                          Trạng thái *
+                        </Text>
+                        <View style={styles.rowWrap}>
+                          <TouchableOpacity
                             style={[
-                              styles.statusBtnText,
-                              status === 'in_progress' && { color: '#0284c7' },
+                              styles.statusBtn,
+                              status === 'in_progress' &&
+                                styles.statusBtnSelectedBlue,
                             ]}
+                            onPress={() => handleStatusChange(h.id, 'in_progress')}
                           >
-                            Đang làm
-                          </Text>
-                        </TouchableOpacity>
+                            <TrendingUp
+                              size={16}
+                              color={
+                                status === 'in_progress' ? '#0284c7' : '#334155'
+                              }
+                            />
+                            <Text
+                              style={[
+                                styles.statusBtnText,
+                                status === 'in_progress' && { color: '#0284c7' },
+                              ]}
+                            >
+                              Đang làm
+                            </Text>
+                          </TouchableOpacity>
 
+                          {(
+                            [
+                              { key: 'success', label: 'Hoàn thành', color: '#16a34a' },
+                              { key: 'skip', label: 'Bỏ qua', color: '#d97706' },
+                              { key: 'fail', label: 'Thất bại', color: '#dc2626' },
+                            ] as const
+                          ).map((opt) => {
+                            const selected = status === opt.key;
+                            return (
+                              <TouchableOpacity
+                                key={opt.key}
+                                style={[
+                                  styles.statusBtn,
+                                  selected && { borderColor: opt.color },
+                                ]}
+                                onPress={() => handleStatusChange(h.id, opt.key)}
+                              >
+                                {opt.key === 'success' && (
+                                  <Check size={16} color={opt.color} />
+                                )}
+                                {opt.key === 'skip' && (
+                                  <Minus size={16} color={opt.color} />
+                                )}
+                                {opt.key === 'fail' && (
+                                  <X size={16} color={opt.color} />
+                                )}
+                                <Text
+                                  style={[
+                                    styles.statusBtnText,
+                                    selected && { color: opt.color },
+                                  ]}
+                                >
+                                  {opt.label}
+                                </Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
+                      </>
+                    )}
+
+                    {/* Ghi chú */}
+                    <View style={{ marginTop: 14 }}>
+                      <Text style={styles.formLabel}>Ghi chú</Text>
+                      <TextInput
+                        placeholder="Thêm ghi chú về buổi thực hiện..."
+                        value={noteVal}
+                        onChangeText={(text) =>
+                          setNotes((prev) => ({ ...prev, [h.id]: text }))
+                        }
+                        multiline
+                        maxLength={200}
+                        style={styles.textarea}
+                      />
+                      <Text style={styles.noteCounter}>
+                        {noteVal.length}/200 ký tự
+                      </Text>
+                    </View>
+
+                    {/* Cảm giác */}
+                    <View style={{ marginTop: 14 }}>
+                      <Text style={styles.formLabel}>Cảm giác</Text>
+                      <View style={styles.rowWrap}>
                         {(
                           [
-                            { key: 'success', label: 'Hoàn thành', color: '#16a34a' },
-                            { key: 'skip', label: 'Bỏ qua', color: '#d97706' },
-                            { key: 'fail', label: 'Thất bại', color: '#dc2626' },
+                            { key: 'great', label: 'Tuyệt vời', emoji: '😊' },
+                            { key: 'good', label: 'Tốt', emoji: '🙂' },
+                            { key: 'neutral', label: 'Bình thường', emoji: '😐' },
+                            { key: 'bad', label: 'Không tốt', emoji: '😞' },
                           ] as const
                         ).map((opt) => {
-                          const selected = status === opt.key;
+                          const selected = moods[h.id] === opt.key;
                           return (
                             <TouchableOpacity
                               key={opt.key}
                               style={[
-                                styles.statusBtn,
-                                selected && { borderColor: opt.color },
+                                styles.moodButton,
+                                selected && styles.moodButtonSelected,
+                                { flexBasis: '48%' },
                               ]}
-                              onPress={() => handleStatusChange(h.id, opt.key)}
+                              onPress={() =>
+                                setmoods((prev) => ({
+                                  ...prev,
+                                  [h.id]: selected ? undefined : opt.key,
+                                }))
+                              }
                             >
-                              {opt.key === 'success' && (
-                                <Check size={16} color={opt.color} />
-                              )}
-                              {opt.key === 'skip' && (
-                                <Minus size={16} color={opt.color} />
-                              )}
-                              {opt.key === 'fail' && <X size={16} color={opt.color} />}
+                              <Text style={{ fontSize: 18 }}>{opt.emoji}</Text>
                               <Text
                                 style={[
-                                  styles.statusBtnText,
-                                  selected && { color: opt.color },
+                                  styles.moodButtonText,
+                                  selected && styles.moodButtonTextSelected,
                                 ]}
                               >
                                 {opt.label}
@@ -1816,94 +2298,34 @@ export default function FlowStateHabits() {
                           );
                         })}
                       </View>
-                    </>
-                  )}
-
-                  {/* Ghi chú */}
-                  <View style={{ marginTop: 14 }}>
-                    <Text style={styles.formLabel}>Ghi chú</Text>
-                    <TextInput
-                      placeholder="Thêm ghi chú về buổi thực hiện..."
-                      value={noteVal}
-                      onChangeText={(text) =>
-                        setNotes((prev) => ({ ...prev, [h.id]: text }))
-                      }
-                      multiline
-                      maxLength={200}
-                      style={styles.textarea}
-                    />
-                    <Text style={styles.noteCounter}>{noteVal.length}/200 ký tự</Text>
-                  </View>
-
-                  {/* Cảm giác */}
-                  <View style={{ marginTop: 14 }}>
-                    <Text style={styles.formLabel}>Cảm giác</Text>
-                    <View style={styles.rowWrap}>
-                      {(
-                        [
-                          { key: 'great', label: 'Tuyệt vời', emoji: '😊' },
-                          { key: 'good', label: 'Tốt', emoji: '🙂' },
-                          { key: 'neutral', label: 'Bình thường', emoji: '😐' },
-                          { key: 'bad', label: 'Không tốt', emoji: '😞' },
-                        ] as const
-                      ).map((opt) => {
-                        const selected = moods[h.id] === opt.key;
-                        return (
-                          <TouchableOpacity
-                            key={opt.key}
-                            style={[
-                              styles.moodButton,
-                              selected && styles.moodButtonSelected,
-                              { flexBasis: '48%' },
-                            ]}
-                            onPress={() =>
-                              setmoods((prev) => ({
-                                ...prev,
-                                [h.id]: selected ? undefined : opt.key,
-                              }))
-                            }
-                          >
-                            <Text style={{ fontSize: 18 }}>{opt.emoji}</Text>
-                            <Text
-                              style={[
-                                styles.moodButtonText,
-                                selected && styles.moodButtonTextSelected,
-                              ]}
-                            >
-                              {opt.label}
-                            </Text>
-                          </TouchableOpacity>
-                        );
-                      })}
                     </View>
-                  </View>
 
-                  {/* Buttons */}
-                  <View style={styles.modalButtonsRow}>
-                    <TouchableOpacity
-                      onPress={closeDetail}
-                      style={styles.formCancelButton}
-                    >
-                      <Text style={styles.formCancelText}>Hủy</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => {
-                        const metaLocal = unitMap[h.id];
-                        if (metaLocal) {
-                          saveCountModal(h.id);
-                        } else {
-                          syncHabitMeta(h.id);
-                        }
-                        closeDetail();
-                      }}
-                      style={styles.formSaveButton}
-                    >
-                      <Text style={styles.formSaveText}>Xong</Text>
-                    </TouchableOpacity>
-                  </View>
-                </>
-              );
-            })()}
+                    {/* Buttons */}
+                    <View style={styles.modalButtonsRow}>
+                      <TouchableOpacity
+                        onPress={closeDetail}
+                        style={styles.formCancelButton}
+                      >
+                        <Text style={styles.formCancelText}>Hủy</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => {
+                          const metaLocal = unitMap[h.id];
+                          if (metaLocal) {
+                            saveCountModal(h.id);
+                          } else {
+                            syncHabitMeta(h.id);
+                          }
+                          closeDetail();
+                        }}
+                        style={styles.formSaveButton}
+                      >
+                        <Text style={styles.formSaveText}>Xong</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </>
+                );
+              })()}
           </View>
         </View>
       </Modal>
@@ -1994,7 +2416,10 @@ export default function FlowStateHabits() {
   );
 }
 
-// ============ STYLES ============
+/* ========================================================= */
+/* STYLES MAIN                                               */
+/* ========================================================= */
+
 const styles = StyleSheet.create({
   page: {
     flex: 1,
@@ -2067,118 +2492,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  progressHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  todayChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: '#e0e7ff',
-  },
-  todayChipText: {
-    color: '#4338ca',
-    fontWeight: '700',
-    fontSize: 12,
-    marginLeft: 4,
-  },
-  progressCountText: {
-    fontSize: 13,
-    color: '#334155',
-    fontWeight: '700',
-  },
-  progressBarOuter: {
-    marginTop: 8,
-    height: 10,
-    borderRadius: 999,
-    backgroundColor: '#e5e7eb',
-    overflow: 'hidden',
-  },
-  progressBarInner: {
-    height: '100%',
-    backgroundColor: '#2563eb',
-  },
-  progressFooterRow: {
-    marginTop: 8,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  progressGoalText: {
-    fontSize: 12,
-    color: '#64748b',
-  },
-  progressPercentText: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#0f172a',
-  },
-  cardHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
   cardTitle: {
     fontSize: 16,
     fontWeight: '800',
     color: '#0f172a',
     marginBottom: 8,
-  },
-  chartTabsRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  chartTab: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(99,102,241,0.15)',
-    backgroundColor: '#e2e8f0',
-  },
-  chartTabActive: {
-    backgroundColor: '#2563eb',
-  },
-  chartTabText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#334155',
-  },
-  chartTabTextActive: {
-    color: '#fff',
-  },
-  chartBarContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    height: 140,
-    paddingVertical: 6,
-  },
-  chartBarItem: {
-    alignItems: 'center',
-  },
-  chartBarOuter: {
-    width: 28,
-    height: '100%',
-    borderRadius: 8,
-    backgroundColor: '#e5e7eb',
-    justifyContent: 'flex-end',
-  },
-  chartBarFill: {
-    width: '100%',
-    backgroundColor: '#2563eb',
-    borderRadius: 8,
-  },
-  chartBarLabel: {
-    fontSize: 11,
-    color: '#64748b',
-    fontWeight: '600',
-    marginTop: 4,
   },
   emptyBox: {
     padding: 12,
@@ -2510,7 +2828,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#0f172a',
   },
-  // modal
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(15,23,42,0.35)',
@@ -2669,5 +2986,151 @@ const styles = StyleSheet.create({
     color: '#dc2626',
     fontWeight: '700',
     fontSize: 14,
+  },
+});
+
+/* ========================================================= */
+/* STYLES - CALENDAR                                         */
+/* ========================================================= */
+
+const stylesCal = StyleSheet.create({
+  container: {
+    borderRadius: 16,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#1f2937',
+  },
+  buttonGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  todayButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: '#2563eb',
+    marginRight: 8,
+  },
+  todayButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+  navButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 999,
+    backgroundColor: '#f3f4f6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 4,
+  },
+  calendarRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  dayColumn: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  dayButton: {
+    alignItems: 'center',
+  },
+  dayLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#6b7280',
+    marginBottom: 6,
+  },
+  dayLabelActive: {
+    color: '#2563eb',
+  },
+  dayCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 999,
+    backgroundColor: '#f3f4f6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dayCircleSelected: {
+    backgroundColor: '#2563eb',
+  },
+  dayCircleToday: {
+    backgroundColor: '#3b82f6',
+  },
+  dayCircleCompleted: {
+    backgroundColor: '#dcfce7',
+    borderWidth: 2,
+    borderColor: '#4ade80',
+  },
+  dayCircleInProgress: {
+    backgroundColor: '#fef9c3',
+    borderWidth: 2,
+    borderColor: '#facc15',
+  },
+  dayCircleWeekend: {
+    backgroundColor: '#fef2f2',
+  },
+  dayNumber: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#111827',
+  },
+  legend: {
+    marginTop: 16,
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 8,
+  },
+  legendDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 999,
+    marginRight: 6,
+  },
+  legendCompleted: {
+    backgroundColor: '#dcfce7',
+    borderWidth: 2,
+    borderColor: '#4ade80',
+  },
+  legendInProgress: {
+    backgroundColor: '#fef9c3',
+    borderWidth: 2,
+    borderColor: '#facc15',
+  },
+  legendPending: {
+    backgroundColor: '#e5e7eb',
+  },
+  legendText: {
+    fontSize: 12,
+    color: '#4b5563',
+  },
+  loadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  loadingText: {
+    marginLeft: 8,
+    fontSize: 12,
+    color: '#64748b',
+  },
+  errorText: {
+    marginTop: 8,
+    fontSize: 12,
+    color: '#dc2626',
   },
 });

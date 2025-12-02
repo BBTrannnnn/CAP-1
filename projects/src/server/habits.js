@@ -13,6 +13,9 @@ export function getHabits() {
   // GET /api/habits
   return apiRequest('/api/habits', { auth: true });
 }
+export function getHabit(id) {
+  return apiRequest(`/api/habits/${id}`, { auth: true });
+}
 
 export function createHabit(payload) {
   // POST /api/habits
@@ -99,13 +102,23 @@ export function deleteTrackingDay(habitId, date) {
 /* SUB-TRACKING (COUNT MODE)                                          */
 /* ------------------------------------------------------------------ */
 
-export function getSubTrackings(habitId, query) {
-  // GET /api/habits/:habitId/subtrack
-  const q = buildQuery(query);
-  var res = apiRequest(`/api/habits/${habitId}/subtrack${q}`, { auth: true });
-  console.log('subtrack',res);
+export function getSubTrackings(habitId, query = {}) {
+  // Tách riêng date ra khỏi query
+  const { date, ...rest } = query || {};
+
+  // buildQuery cho phần còn lại (limit, page, ...)
+  const q = buildQuery(rest); // vd: ?limit=100
+
+  // nếu có date thì gắn thêm vào cuối path
+  const dateSegment = date ? `?date=${encodeURIComponent(date)}` : '';
+
+  const url = `/api/habits/${habitId}/subtrack${dateSegment}`;
+
+  const res = apiRequest(url, { auth: true });
+  console.log('subtrack url:', url, 'res:', res);
   return res;
 }
+
 
 export function addSubTracking(habitId, payload) {
   // POST /api/habits/:habitId/subtrack

@@ -515,9 +515,10 @@ function generateInterpretation(category, confidence, dreamText) {
 
 
 //TIPS 
-function generateTips(category) {
+function generateTips(category, language = 'vi') {
   const allTips = {
-    stress: [
+    stress: {
+      vi: [
       'Thiền và thở sâu: Dành 10-15 phút mỗi ngày để thực hành mindfulness. Ngồi yên, tập trung vào hơi thở, để tâm trí được nghỉ ngơi.',
       'Viết nhật ký: Viết ra cảm xúc và suy nghĩ giúp "đổ" stress ra khỏi đầu. Không cần viết hay, chỉ cần thành thật.',
       'Vận động nhẹ nhàng: Đi bộ, yoga, hoặc stretching 20-30 phút giúp giải phóng endorphin - hormone hạnh phúc tự nhiên.',
@@ -526,55 +527,123 @@ function generateTips(category) {
       'Nghỉ ngơi thường xuyên: Áp dụng quy tắc 52-17: Làm việc tập trung 52 phút, nghỉ 17 phút. Tránh làm việc liên tục nhiều giờ.',
       'Nhạc thư giãn: Nghe nhạc không lời, âm thanh thiên nhiên (sóng biển, mưa rừng) giúp giảm cortisol - hormone stress.',
     ],
-    fear: [
+      en: [
+        'Meditation and Deep Breathing: Dedicate 10-15 minutes daily to mindfulness practice. Sit quietly, focus on your breath, and let your mind rest.',
+        'Journaling: Writing down emotions and thoughts helps "dump" stress out of your head. No need to write well, just be honest.',
+        'Gentle Exercise: Walking, yoga, or stretching for 20-30 minutes releases endorphins - natural happiness hormones.',
+        'Sleep Enough: Ensure 7-8 hours every night. Sleep deprivation doubles stress. Create a consistent sleep schedule.',
+        'Share Emotions: Talk to trusted family or friends. Sometimes just having someone listen is enough to lighten the burden.',
+        'Regular Breaks: Apply the 52-17 rule: Work focused for 52 minutes, rest for 17 minutes. Avoid working continuously for many hours.',
+        'Relaxing Music: Listen to instrumental music, nature sounds (ocean waves, forest rain) to reduce cortisol - the stress hormone.',
+      ]
+    },
+    fear: {
+      vi: [
       'Đối mặt từng bước: Chia nỗi sợ thành các bước nhỏ. Ví dụ sợ nói trước đám đông: bắt đầu với 2-3 người, rồi tăng dần.',
       'Kỹ thuật 5-4-3-2-1: Khi sợ hãi: kể 5 thứ nhìn thấy, 4 thứ chạm vào, 3 thứ nghe thấy, 2 thứ ngửi được, 1 thứ nếm được. Giúp grounding.',
       'Nhạc an thần: Nghe nhạc thư giãn trước khi ngủ giúp giảm ác mộng và cảm giác sợ hãi kéo dài từ giấc mơ.',
       'Nội dung tích cực: Đọc sách, xem phim truyền cảm hứng trước ngủ thay vì tin tức tiêu cực hoặc phim kinh dị.',
       'Hỗ trợ chuyên môn: Nếu nỗi sợ ảnh hưởng đến cuộc sống hàng ngày, hãy tìm gặp chuyên gia tâm lý để được hướng dẫn phù hợp.',
     ],
-    anxiety: [
-      'Lập kế hoạch cụ thể: Viết ra công việc/học tập cần làm, chia thành checklist nhỏ. Mỗi item hoàn thành = giảm lo lắng.',
-      'Chia nhỏ mục tiêu: Mục tiêu lớn gây choáng ngợp. Chia thành 3-5 bước nhỏ, tập trung hoàn thành từng bước một.',
-      'Kiểm soát được gì: Tập trung vào những gì trong tầm kiểm soát (chuẩn bị tốt), buông những gì không kiểm soát được (kết quả).',
-      'Thở 4-7-8: Hít vào 4 giây, giữ 7 giây, thở ra 8 giây. Lặp lại 4 lần. Kích hoạt hệ thần kinh phó giao cảm, giảm lo âu ngay lập tức.',
-      'Giảm stimulant: Hạn chế caffeine (cà phê, trà, năng lượng) và đường sau 2PM. Chúng làm lo âu tăng và khó ngủ.',
-      'Brain dump: Viết ra TẤT CẢ lo lắng trong đầu (10-15 phút). "Đổ" ra giấy giúp não bộ nhẹ nhõm, không phải nhớ.',
-      'Thói quen ngủ: Ngủ và dậy cùng giờ mỗi ngày (kể cả cuối tuần). Giúp cơ thể có rhythm ổn định, giảm lo âu.',
-    ],
-    sadness: [
-      'Ánh sáng tự nhiên: Dành 15-30 phút ngoài trời mỗi ngày. Ánh sáng mặt trời tăng serotonin - chất chống trầm cảm tự nhiên.',
-      'Hoạt động sáng tạo: Vẽ, viết, chơi nhạc, làm vườn... Sáng tạo giúp xử lý cảm xúc buồn một cách lành mạnh.',
-      'Kết nối con người: Gọi điện, gặp mặt người thân yêu. Cô đơn làm buồn tăng. Kết nối là "thuốc" mạnh nhất.',
-      'Nhật ký biết ơn: Mỗi tối viết 3 điều biết ơn trong ngày (dù nhỏ). Giúp não bộ tập trung vào tích cực thay vì tiêu cực.',
-      'Vận động: Chạy bộ, gym, nhảy... bất kỳ hoạt động nào tăng nhịp tim. Endorphin từ vận động giảm buồn hiệu quả.',
-      'Cho phép buồn: Đừng ép mình vui. Buồn là cảm xúc tự nhiên. Cho phép bản thân khóc, buồn một lúc, rồi từ từ vượt qua.',
-    ],
-    happy: [
-      'Duy trì habits tốt: Ghi lại những hoạt động đang làm bạn hạnh phúc (thể thao, sở thích, gặp bạn...) và duy trì đều đặn.',
-      'Lưu giữ kỷ niệm: Chụp ảnh, viết nhật ký, ghi âm... Khi khó khăn, xem lại sẽ giúp bạn nhớ rằng cuộc sống có nhiều điều tốt đẹp.',
-      'Chia sẻ niềm vui: Kể cho người khác nghe điều tốt đẹp. Chia sẻ làm hạnh phúc tăng gấp đôi.',
-      'Mục tiêu mới: Đặt mục tiêu phát triển (học kỹ năng, đi du lịch, làm dự án...). Có điều mong đợi giúp duy trì động lực.',
-      'Hành động tử tế: Làm một điều tốt cho người khác mỗi ngày (khen, giúp đỡ, tặng quà nhỏ). Cho đi càng nhiều, nhận lại càng nhiều.',
-    ],
-    neutral: [
-      'Thử nghiệm mới: Làm điều chưa từng làm (món ăn mới, đường đi mới, sở thích mới). Phá vỡ routine tạo sự thú vị.',
-      'Học kỹ năng: Học ngôn ngữ, nhạc cụ, nấu ăn, code... Phát triển bản thân tạo ý nghĩa cho cuộc sống.',
-      'Duy trì habits: Bạn đang ổn, hãy giữ vững thói quen tốt hiện tại (ngủ đủ, ăn healthy, vận động...).',
-      'Micro goals: Đặt mục tiêu nhỏ hàng tuần (đọc 1 chương sách, chạy 5km, gọi 1 người bạn cũ...) để tạo động lực.',
-      'Mindfulness: Tận hưởng những điều đơn giản: tách cà phê buổi sáng, ánh nắng chiều, cuộc gọi với người thân...',
-    ],
-    confusion: [
-      'Mind mapping: Viết vấn đề ở giữa, vẽ các nhánh cho mỗi khía cạnh. Visualize giúp làm rõ suy nghĩ rối.',
-      'Nói chuyện: Giải thích vấn đề cho người khác (hoặc nói to với bản thân). Quá trình diễn đạt giúp suy nghĩ rõ ràng hơn.',
-      'Pause quyết định: Nếu bối rối, đừng quyết định gấp. Ngủ một đêm, suy nghĩ lại vào sáng hôm sau khi đầu óc tỉnh táo.',
-      'Chia nhỏ vấn đề: Vấn đề phức tạp = nhiều vấn đề nhỏ. Giải quyết từng cái một, rồi ghép lại thành giải pháp tổng thể.',
-      'Grounding: Thực hành mindfulness 10 phút/ngày. Tập trung vào hiện tại giúp giảm suy nghĩ rối bời về quá khứ/tương lai.',
-      'Ưu tiên: Liệt kê tất cả, xếp hạng độ quan trọng. Tập trung vào top 3, bỏ qua phần còn lại tạm thời.',
-    ],
+      en: [
+        'Face Step by Step: Break fear into small steps. For example, fear of public speaking: start with 2-3 people, then gradually increase.',
+        '5-4-3-2-1 Technique: When afraid: name 5 things you see, 4 things you touch, 3 things you hear, 2 things you smell, 1 thing you taste. Helps with grounding.',
+        'Calming Music: Listen to relaxing music before sleep to reduce nightmares and lingering fear from dreams.',
+        'Positive Content: Read books, watch inspiring movies before bed instead of negative news or horror films.',
+        'Professional Support: If fear affects daily life, seek guidance from a mental health professional.',
+      ]
+    },
+    anxiety: {
+      vi: [
+        'Lập kế hoạch cụ thể: Viết ra công việc/học tập cần làm, chia thành checklist nhỏ. Mỗi item hoàn thành = giảm lo lắng.',
+        'Chia nhỏ mục tiêu: Mục tiêu lớn gây choáng ngợp. Chia thành 3-5 bước nhỏ, tập trung hoàn thành từng bước một.',
+        'Kiểm soát được gì: Tập trung vào những gì trong tầm kiểm soát (chuẩn bị tốt), buông những gì không kiểm soát được (kết quả).',
+        'Thở 4-7-8: Hít vào 4 giây, giữ 7 giây, thở ra 8 giây. Lặp lại 4 lần. Kích hoạt hệ thần kinh phó giao cảm, giảm lo âu ngay lập tức.',
+        'Giảm stimulant: Hạn chế caffeine (cà phê, trà, năng lượng) và đường sau 2PM. Chúng làm lo âu tăng và khó ngủ.',
+        'Brain dump: Viết ra TẤT CẢ lo lắng trong đầu (10-15 phút). "Đổ" ra giấy giúp não bộ nhẹ nhõm, không phải nhớ.',
+        'Thói quen ngủ: Ngủ và dậy cùng giờ mỗi ngày (kể cả cuối tuần). Giúp cơ thể có rhythm ổn định, giảm lo âu.',
+      ],
+      en: [
+        'Make Specific Plans: Write down tasks/studies needed, break into small checklist. Each completed item = reduced anxiety.',
+        'Break Down Goals: Big goals overwhelm. Divide into 3-5 small steps, focus on completing one at a time.',
+        'Control What You Can: Focus on what you can control (preparation), let go of what you cannot (outcomes).',
+        '4-7-8 Breathing: Breathe in for 4 seconds, hold for 7 seconds, breathe out for 8 seconds. Repeat 4 times. Activates parasympathetic nervous system, reduces anxiety immediately.',
+        'Reduce Stimulants: Limit caffeine (coffee, tea, energy drinks) and sugar after 2PM. They increase anxiety and disrupt sleep.',
+        'Brain Dump: Write ALL worries in your head (10-15 minutes). "Dumping" on paper helps brain relax, no need to remember.',
+        'Sleep Routine: Sleep and wake at same time daily (including weekends). Helps body maintain stable rhythm, reduces anxiety.',
+      ]
+    },
+    sadness: {
+      vi: [
+        'Ánh sáng tự nhiên: Dành 15-30 phút ngoài trời mỗi ngày. Ánh sáng mặt trời tăng serotonin - chất chống trầm cảm tự nhiên.',
+        'Hoạt động sáng tạo: Vẽ, viết, chơi nhạc, làm vườn... Sáng tạo giúp xử lý cảm xúc buồn một cách lành mạnh.',
+        'Kết nối con người: Gọi điện, gặp mặt người thân yêu. Cô đơn làm buồn tăng. Kết nối là "thuốc" mạnh nhất.',
+        'Nhật ký biết ơn: Mỗi tối viết 3 điều biết ơn trong ngày (dù nhỏ). Giúp não bộ tập trung vào tích cực thay vì tiêu cực.',
+        'Vận động: Chạy bộ, gym, nhảy... bất kỳ hoạt động nào tăng nhịp tim. Endorphin từ vận động giảm buồn hiệu quả.',
+        'Cho phép buồn: Đừng ép mình vui. Buồn là cảm xúc tự nhiên. Cho phép bản thân khóc, buồn một lúc, rồi từ từ vượt qua.',
+      ],
+      en: [
+        'Natural Light: Spend 15-30 minutes outdoors daily. Sunlight increases serotonin - natural antidepressant.',
+        'Creative Activities: Drawing, writing, playing music, gardening... Creativity helps process sadness in healthy ways.',
+        'Human Connection: Call or meet loved ones. Loneliness increases sadness. Connection is the strongest "medicine".',
+        'Gratitude Journal: Each evening write 3 things you are grateful for (even small). Helps brain focus on positive instead of negative.',
+        'Physical Activity: Running, gym, dancing... any activity that increases heart rate. Endorphins from exercise effectively reduce sadness.',
+        'Allow Sadness: Don\'t force happiness. Sadness is a natural emotion. Allow yourself to cry, be sad for a while, then gradually overcome.',
+      ]
+    },
+    happy: {
+      vi: [
+        'Duy trì habits tốt: Ghi lại những hoạt động đang làm bạn hạnh phúc (thể thao, sở thích, gặp bạn...) và duy trì đều đặn.',
+        'Lưu giữ kỷ niệm: Chụp ảnh, viết nhật ký, ghi âm... Khi khó khăn, xem lại sẽ giúp bạn nhớ rằng cuộc sống có nhiều điều tốt đẹp.',
+        'Chia sẻ niềm vui: Kể cho người khác nghe điều tốt đẹp. Chia sẻ làm hạnh phúc tăng gấp đôi.',
+        'Mục tiêu mới: Đặt mục tiêu phát triển (học kỹ năng, đi du lịch, làm dự án...). Có điều mong đợi giúp duy trì động lực.',
+        'Hành động tử tế: Làm một điều tốt cho người khác mỗi ngày (khen, giúp đỡ, tặng quà nhỏ). Cho đi càng nhiều, nhận lại càng nhiều.',
+      ],
+      en: [
+        'Maintain Good Habits: Record activities that make you happy (sports, hobbies, meeting friends...) and maintain regularly.',
+        'Preserve Memories: Take photos, write journals, record... When facing difficulties, reviewing helps remember life has many good things.',
+        'Share Joy: Tell others about good things. Sharing doubles happiness.',
+        'New Goals: Set development goals (learn skills, travel, do projects...). Having something to look forward to maintains motivation.',
+        'Acts of Kindness: Do one good thing for others daily (compliment, help, give small gifts). The more you give, the more you receive.',
+      ]
+    },
+    neutral: {
+      vi: [
+        'Thử nghiệm mới: Làm điều chưa từng làm (món ăn mới, đường đi mới, sở thích mới). Phá vỡ routine tạo sự thú vị.',
+        'Học kỹ năng: Học ngôn ngữ, nhạc cụ, nấu ăn, code... Phát triển bản thân tạo ý nghĩa cho cuộc sống.',
+        'Duy trì habits: Bạn đang ổn, hãy giữ vững thói quen tốt hiện tại (ngủ đủ, ăn healthy, vận động...).',
+        'Micro goals: Đặt mục tiêu nhỏ hàng tuần (đọc 1 chương sách, chạy 5km, gọi 1 người bạn cũ...) để tạo động lực.',
+        'Mindfulness: Tận hưởng những điều đơn giản: tách cà phê buổi sáng, ánh nắng chiều, cuộc gọi với người thân...',
+      ],
+      en: [
+        'Try New Things: Do something you have never done (new food, new route, new hobby). Breaking routine creates excitement.',
+        'Learn Skills: Learn language, instrument, cooking, coding... Personal development creates meaning in life.',
+        'Maintain Habits: You are doing well, keep up current good habits (sleep enough, eat healthy, exercise...).',
+        'Micro Goals: Set small weekly goals (read 1 chapter, run 5km, call 1 old friend...) to create motivation.',
+        'Mindfulness: Enjoy simple things: morning coffee, afternoon sunlight, call with loved ones...',
+      ]
+    },
+    confusion: {
+      vi: [
+        'Mind mapping: Viết vấn đề ở giữa, vẽ các nhánh cho mỗi khía cạnh. Visualize giúp làm rõ suy nghĩ rối.',
+        'Nói chuyện: Giải thích vấn đề cho người khác (hoặc nói to với bản thân). Quá trình diễn đạt giúp suy nghĩ rõ ràng hơn.',
+        'Pause quyết định: Nếu bối rối, đừng quyết định gấp. Ngủ một đêm, suy nghĩ lại vào sáng hôm sau khi đầu óc tỉnh táo.',
+        'Chia nhỏ vấn đề: Vấn đề phức tạp = nhiều vấn đề nhỏ. Giải quyết từng cái một, rồi ghép lại thành giải pháp tổng thể.',
+        'Grounding: Thực hành mindfulness 10 phút/ngày. Tập trung vào hiện tại giúp giảm suy nghĩ rối bời về quá khứ/tương lai.',
+        'Ưu tiên: Liệt kê tất cả, xếp hạng độ quan trọng. Tập trung vào top 3, bỏ qua phần còn lại tạm thời.',
+      ],
+      en: [
+        'Mind Mapping: Write problem in center, draw branches for each aspect. Visualizing helps clarify confused thoughts.',
+        'Talk It Out: Explain problem to others (or speak aloud to yourself). The process of articulation clarifies thinking.',
+        'Pause Decisions: If confused, do not rush decisions. Sleep on it, reconsider in the morning when mind is clear.',
+        'Break Down Problems: Complex problem = many small problems. Solve one by one, then combine into overall solution.',
+        'Grounding: Practice mindfulness 10 minutes/day. Focus on present reduces confused thoughts about past/future.',
+        'Prioritize: List everything, rank importance. Focus on top 3, temporarily ignore the rest.',
+      ]
+    },
   };
   
-  const categoryTips = allTips[category];
+  const categoryTips = allTips[category]?.[language] || allTips[category]?.vi || [];
   // Shuffle và lấy 3-4 tips ngẫu nhiên
   const shuffled = [...categoryTips].sort(() => Math.random() - 0.5);
   const numTips = Math.min(4, categoryTips.length);
@@ -605,9 +674,12 @@ export const analyzeDream = async (req, res, next) => {
     // Predict
     const prediction = await predictCategory(dreamText);
     
+    // Detect language for tips
+    const language = detectLanguage(dreamText);
+    
     // Generate interpretation & tips (truyền dreamText để phân tích từ khóa)
     const interpretation = generateInterpretation(prediction.category, prediction.confidence, dreamText);
-    const tips = generateTips(prediction.category);
+    const tips = generateTips(prediction.category, language);
     
     // Save to database
     const dream = await Dream.create({

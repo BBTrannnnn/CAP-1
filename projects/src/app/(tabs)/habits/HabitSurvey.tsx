@@ -222,7 +222,7 @@ export default function HabitSurveyMobile() {
       setIsLoading(true);
       setErrorMsg(null);
 
-      const res: any = await recommendHabits(answers, 5);
+      const res: any = await recommendHabits(answers,20);
       console.log('[HabitSurvey] recommendHabits response:', res);
 
       // Parse mảng habits từ nhiều định dạng BE

@@ -1,4 +1,4 @@
-
+﻿
 import React, { useMemo, useState, useEffect } from 'react';
 import { Stack, Link, useLocalSearchParams, router } from 'expo-router';
 import {
@@ -9,7 +9,7 @@ import {
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { X, ChevronLeft, Check, Plus } from '@tamagui/lucide-icons';
 import {
-  getHabitTemplateById,
+  getHabit,
   createHabit,
   updateHabit,
   deleteHabit,
@@ -36,26 +36,12 @@ function fmtDate(d: Date) {
 
 // Loại bỏ key có giá trị undefined hoặc null (deep)
 function deepStrip<T = any>(obj: T): T {
-  if (Array.isArray(obj)) {
-    // @ts-ignore
-    return obj.map(deepStrip).filter(v => v !== undefined && v !== null) as any;
-  }
-  if (obj && typeof obj === 'object') {
-    const out: any = {};
-    Object.entries(obj as any).forEach(([k, v]) => {
-      const vv = deepStrip(v);
-      if (vv !== undefined && vv !== null) out[k] = vv;
-    });
-    return out;
-  }
   return obj;
 }
 
 // Xoá cứng các key
 function drop<T extends Record<string, any>>(obj: T, keys: string[]): T {
-  const clone: any = { ...obj };
-  for (const k of keys) delete clone[k];
-  return clone;
+  return obj
 }
 
 // Trả về phần tần suất: nếu custom → CHỈ gửi customFrequency (+ targetCount nếu count)
@@ -71,20 +57,19 @@ function buildFrequencyPart(
     if (Number.isFinite(n) && n > 0) {
       const customObj = { times: n, period: customPeriod };
       return {
+        frequency,
         customFrequency: customObj,
         ...(trackingMode === 'count' ? { targetCount: n } : {}),
       };
     }
-    return {};
+    return { frequency };
   }
   return { frequency };
 }
 
 // Bảo hiểm cuối: nếu đang có customFrequency/customFrequence → xoá frequency (nếu lỡ còn sót)
 function sanitizeFrequency<T extends Record<string, any>>(payload: T): T {
-  const hasCustom =
-    !!(payload as any).customFrequency || !!(payload as any).customFrequence;
-  return hasCustom ? drop(payload, ['frequency']) : payload;
+  return payload;
 }
 
 export default function CreateHabitDetail() {
@@ -105,6 +90,8 @@ export default function CreateHabitDetail() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [description, setDescription] = useState('');
   const [trackingMode, setTrackingMode] = useState<TrackingMode>('check');
+  const [countTarget, setCountTarget] = useState('1');
+  const [countUnit, setCountUnit] = useState('lần');
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -153,6 +140,13 @@ export default function CreateHabitDetail() {
     const primaryCategory = selectedCategories[0];
     const categorySlug = primaryCategory ? primaryCategory.toLowerCase() : undefined;
     const habitType = repeatType === 'avoid' ? 'quit' : 'build';
+    const parsedCount = parseInt(countTarget || '0', 10);
+    const normalizedTarget =
+      trackingMode === 'count'
+        ? Number.isFinite(parsedCount) && parsedCount > 0
+          ? parsedCount
+          : 1
+        : undefined;
 
     const base: any = {
       name: habitName?.trim() || undefined,
@@ -166,9 +160,20 @@ export default function CreateHabitDetail() {
       ...(endDate ? { endDate: fmtDate(endDate) } : {}),
     };
 
-    const freqPart = buildFrequencyPart(frequency, customTimes, customPeriod, trackingMode);
+    const freqPart = buildFrequencyPart(
+      frequency,
+      customTimes,
+      customPeriod,
+      trackingMode,
+      normalizedTarget
+    );
     let payload: any = sanitizeFrequency(deepStrip({ ...base, ...freqPart }));
-    console.log('[CreateHabitDetail] payload:', payload);
+
+    if (trackingMode === 'count') {
+      payload.targetCount = normalizedTarget ?? 1;
+      payload.unit = countUnit?.trim() || '';
+    }
+    //console.log('[CreateHabitDetail] payload:', payload);
     return payload;
   };
 
@@ -183,7 +188,7 @@ export default function CreateHabitDetail() {
       setIsSubmitting(true);
       const payload = buildPayload();
       const res = await createHabit(payload);
-      console.log('[CreateHabitDetail] createHabit API:', res);
+      //console.log('[CreateHabitDetail] createHabit API:', res);
       alert('Thành công', 'Đã tạo thói quen mới.');
       setIsSubmitting(false);
       router.replace('/(tabs)/habits');
@@ -209,29 +214,50 @@ export default function CreateHabitDetail() {
       setStartDate(new Date());
       setEndDate(null);
       setTrackingMode('check');
+      setCountTarget('1');
+      setCountUnit('lần');
+      setIsSubmitting(false);
     };
 
     if (!isEditMode) {
       resetForm();
       return;
     }
+    else{
+      setIsSubmitting(false);
+    }
 
     (async () => {
       try {
-        const res: any = await getHabitTemplateById(templateId);
-        const t = res?.template || res?.habitTemplate || res;
+        setIsSubmitting(false);
+        const res: any = await getHabit(templateId);
+        const t = res?.habit || res?.template || res?.habitTemplate || res;
         if (!t) return resetForm();
 
-        if (t.name) setHabitName(t.name);
-        if (t.description) setDescription(t.description);
-        if (t.icon) setSelectedIcon(t.icon);
-        if (t.color) setSelectedColor(t.color);
+        if (t.name) setHabitName(String(t.name));
+        if (t.description) setDescription(String(t.description));
+        if (t.icon) setSelectedIcon(String(t.icon));
+        if (t.color) setSelectedColor(String(t.color));
 
-        if (t.frequency === 'weekly') setFrequency('weekly');
-        else if (t.frequency === 'custom') setFrequency('custom');
-        else setFrequency('daily');
+        if (t.startDate) setStartDate(new Date(t.startDate));
+        if (t.endDate) setEndDate(new Date(t.endDate));
 
         const tmplCustom = t.customFrequency || t.customFrequence;
+        const customTimes = Number(tmplCustom?.times ?? 1);
+        const customPeriod = tmplCustom?.period;
+        const shouldForceCustom =
+          !!tmplCustom && (frequency === 'custom');
+
+        if (shouldForceCustom) {
+          setFrequency('custom');
+        } else if (t.frequency === 'weekly') {
+          setFrequency('weekly');
+        } else if (t.frequency === 'custom') {
+          setFrequency('custom');
+        } else {
+          setFrequency('daily');
+        }
+
         if (tmplCustom) {
           const times = Number(tmplCustom.times || t.targetCount || 1);
           if (Number.isFinite(times) && times > 0) setCustomTimes(String(times));
@@ -244,8 +270,15 @@ export default function CreateHabitDetail() {
         if (t.habitType === 'quit') setRepeatType('avoid');
         else setRepeatType('everyday');
 
-        if (t.trackingMode === 'count') setTrackingMode('count');
-        else setTrackingMode('check');
+        if (String(t.trackingMode || '').toLowerCase() === 'count') {
+          setTrackingMode('count');
+          if (t.targetCount) setCountTarget(String(t.targetCount));
+          if (t.unit) setCountUnit(String(t.unit));
+        } else {
+          setTrackingMode('check');
+          setCountTarget('1');
+          setCountUnit('lần');
+        }
 
         if (t.category) {
           const found = categories.find(
@@ -288,17 +321,21 @@ export default function CreateHabitDetail() {
     try {
       setIsSubmitting(true);
       if (isEditMode) {
+        //console.log(templateId);
+        
+        console.log(payload);
+        
         const res = await updateHabit(templateId as string, payload);
-        console.log('[CreateHabitDetail] updateHabit API:', res);
+        //console.log('[CreateHabitDetail] updateHabit API:', res);
         alert('Thành công', 'Đã cập nhật thói quen.');
       } else {
         const res = await createHabit(payload);
-        console.log('[CreateHabitDetail] createHabit API:', res);
+        //console.log('[CreateHabitDetail] createHabit API:', res);
       }
       router.replace('/(tabs)/habits');
     } catch (err) {
       console.error(`[CreateHabitDetail] ${isEditMode ? 'updateHabit' : 'createHabit'} error:`, err);
-      alert('Lỗi', `Không thể ${isEditMode ? 'cập nhật' : 'tạo'} thói quen. Vui lòng thử lại.`);
+      alert(err.message);
       setIsSubmitting(false);
     }
   };
@@ -308,7 +345,7 @@ export default function CreateHabitDetail() {
     try {
       setIsSubmitting(true);
       const res = await deleteHabit(templateId as string);
-      console.log('[CreateHabitDetail] deleteHabit API:', res);
+      //console.log('[CreateHabitDetail] deleteHabit API:', res);
       alert('Thành công', 'Đã xóa thói quen.');
       router.replace('/(tabs)/habits');
     } catch (err) {
@@ -340,12 +377,16 @@ export default function CreateHabitDetail() {
 
         <View style={{ flexDirection: 'row', gap: 8 }}>
           <Pressable 
-            style={sx(styles.createBtn, { backgroundColor: '#10b981' })} 
-            onPress={handleCreateNew}
+            style={sx(styles.createBtn, { backgroundColor: isEditMode ? '#2563eb' : '#10b981' })} 
+            onPress={isEditMode ? handleSave : handleCreateNew}
             disabled={isSubmitting}
           >
-            <Plus size={18} color="#fff" strokeWidth={3} />
-            <Text style={styles.createBtnText}>Tạo mới</Text>
+            {isEditMode ? (
+              <Check size={18} color="#fff" strokeWidth={3} />
+            ) : (
+              <Plus size={18} color="#fff" strokeWidth={3} />
+            )}
+            <Text style={styles.createBtnText}>{isEditMode ? 'Cập nhật' : 'Tạo mới'}</Text>
           </Pressable>
           <Link href="/(tabs)/habits" asChild>
             <Pressable style={styles.iconGhost}>
@@ -375,6 +416,29 @@ export default function CreateHabitDetail() {
               </Pressable>
             ))}
           </View>
+
+          {trackingMode === 'count' && (
+            <View style={{ marginTop: 12, gap: 8 }}>
+              <Text style={styles.label}>Mục tiêu # Count</Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TextInput
+                  style={sx(styles.input, { flex: 1, paddingVertical: 10, textAlign: 'center' })}
+                  value={countTarget}
+                  onChangeText={setCountTarget}
+                  placeholder="Số lượng"
+                  placeholderTextColor="#94a3b8"
+                  keyboardType="number-pad"
+                />
+                <TextInput
+                  style={sx(styles.input, { flex: 1, paddingVertical: 10 })}
+                  value={countUnit}
+                  onChangeText={setCountUnit}
+                  placeholder="Đơn vị (lần, phút, ...)"
+                  placeholderTextColor="#94a3b8"
+                />
+              </View>
+            </View>
+          )}
         </View>
 
         {/* Tên + mô tả */}
@@ -940,3 +1004,4 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 });
+
