@@ -1328,9 +1328,14 @@ const updateHabitSubTracking = asyncHandler(async (req, res) => {
     });
   }
 
-  // Get the tracking date
-  const trackingDate = new Date(subTracking.startTime);
-  trackingDate.setHours(0, 0, 0, 0);
+  // ✅ FIX: Get the tracking date với UTC
+  const startTimeDate = new Date(subTracking.startTime);
+  const trackingDate = new Date(Date.UTC(
+    startTimeDate.getUTCFullYear(),
+    startTimeDate.getUTCMonth(),
+    startTimeDate.getUTCDate(),
+    0, 0, 0, 0
+  ));
 
   // Get parent tracking record
   const habitTracking = await HabitTracking.findOne({
@@ -1370,8 +1375,10 @@ const updateHabitSubTracking = asyncHandler(async (req, res) => {
       });
     }
     const [hours, minutes] = actualStartTime.split(':').map(Number);
+    
+    // ✅ FIX: Dùng UTC time
     const newStartTime = new Date(trackingDate);
-    newStartTime.setHours(hours, minutes, 0, 0);
+    newStartTime.setUTCHours(hours, minutes, 0, 0);
 
     // Validate không track tương lai
     if (newStartTime > new Date()) {
@@ -1397,8 +1404,10 @@ const updateHabitSubTracking = asyncHandler(async (req, res) => {
       }
 
       const [hours, minutes] = endTime.split(':').map(Number);
+      
+      // ✅ FIX: Dùng UTC time
       const newEndTime = new Date(trackingDate);
-      newEndTime.setHours(hours, minutes, 0, 0);
+      newEndTime.setUTCHours(hours, minutes, 0, 0);
 
       // Validate endTime phải sau startTime
       if (newEndTime <= subTracking.startTime) {
@@ -1455,8 +1464,12 @@ const updateHabitSubTracking = asyncHandler(async (req, res) => {
       if (!habitTracking.completedAt) {
         habitTracking.completedAt = new Date();
       }
+    } else if (habitTracking.completedCount === 0) {
+      habitTracking.status = 'pending';
+      habitTracking.completedAt = null;
     } else {
       habitTracking.status = 'in-progress';
+      habitTracking.completedAt = null;
     }
 
     await habitTracking.save();
@@ -1468,14 +1481,15 @@ const updateHabitSubTracking = asyncHandler(async (req, res) => {
     ? Math.round((subTracking.endTime - subTracking.startTime) / 60000)
     : null;
 
+  // ✅ FIX: Format response với UTC time
   res.json({
     success: true,
     message: 'Sub-tracking updated successfully',
     subTracking: {
       id: subTracking._id,
-      date: formatLocalDate(trackingDate),
-      startTime: subTracking.startTime.toTimeString().slice(0, 5),
-      endTime: subTracking.endTime ? subTracking.endTime.toTimeString().slice(0, 5) : null,
+      date: new Date(trackingDate).toISOString().split('T')[0],
+      startTime: new Date(subTracking.startTime).toISOString().slice(11, 16),
+      endTime: subTracking.endTime ? new Date(subTracking.endTime).toISOString().slice(11, 16) : null,
       duration: duration ? `${duration} phút` : null,
       quantity: subTracking.quantity,
       note: subTracking.note,
@@ -1492,7 +1506,6 @@ const deleteHabitSubTracking = asyncHandler(async (req, res) => {
   const { habitId, subId } = req.params;
   const userId = req.user.id;
 
-  // Verify habit
   const habit = await Habit.findOne({ _id: habitId, userId, isActive: true });
   if (!habit) {
     return res.status(404).json({
@@ -1501,7 +1514,6 @@ const deleteHabitSubTracking = asyncHandler(async (req, res) => {
     });
   }
 
-  // Find and delete sub-tracking
   const subTracking = await HabitSubTracking.findOne({
     _id: subId,
     habitId,
@@ -1516,8 +1528,15 @@ const deleteHabitSubTracking = asyncHandler(async (req, res) => {
   }
 
   const quantity = subTracking.quantity;
-  const trackingDate = new Date(subTracking.startTime);
-  trackingDate.setHours(0, 0, 0, 0);
+  
+  // ✅ FIX: Dùng Date.UTC() giống như addHabitSubTracking
+  const startTime = new Date(subTracking.startTime);
+  const trackingDate = new Date(Date.UTC(
+    startTime.getUTCFullYear(),
+    startTime.getUTCMonth(),
+    startTime.getUTCDate(),
+    0, 0, 0, 0
+  ));
 
   // Delete the sub-tracking
   await HabitSubTracking.findByIdAndDelete(subId);
@@ -1543,6 +1562,14 @@ const deleteHabitSubTracking = asyncHandler(async (req, res) => {
 
     await habitTracking.save();
     await updateHabitStats(habitId, userId);
+  } else {
+    // 🔧 Debug: Log nếu không tìm thấy
+    console.error(`[DELETE] HabitTracking not found:`, {
+      habitId,
+      userId,
+      trackingDate: trackingDate.toISOString(),
+      subTrackingStartTime: subTracking.startTime
+    });
   }
 
   res.json({
