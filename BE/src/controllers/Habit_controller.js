@@ -963,8 +963,8 @@ const getHabitSubTrackings = asyncHandler(async (req, res) => {
     return {
       id: sub._id,
       date: new Date(sub.startTime).toISOString().split('T')[0],
-      time: new Date(sub.startTime).toTimeString().slice(0, 5),
-      endTime: sub.endTime ? new Date(sub.endTime).toTimeString().slice(0, 5) : null,
+      time: new Date(sub.startTime).toISOString().slice(11, 16), // ✅ Sửa: dùng toISOString() như tracking
+      endTime: sub.endTime ? new Date(sub.endTime).toISOString().slice(11, 16) : null, // ✅ Sửa
       duration: duration ? `${duration} phút` : null,
       quantity: sub.quantity,
       note: sub.note || '',
@@ -1012,7 +1012,7 @@ const getHabitSubTrackings = asyncHandler(async (req, res) => {
       unit: habit.unit || 'lần',
       targetCount: habit.targetCount
     },
-    ...(trackingInfo && { tracking: trackingInfo }), // Only include if exists
+    ...(trackingInfo && { tracking: trackingInfo }),
     pagination: {
       page: parseInt(page),
       limit: parseInt(limit),
