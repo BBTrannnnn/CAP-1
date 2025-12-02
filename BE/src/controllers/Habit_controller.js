@@ -1077,25 +1077,37 @@ const addHabitSubTracking = async (req, res) => {
       });
     }
 
-    const formatLocalDate = (date) => {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    };
-
+    // ✅ SỬA: Parse date ĐÚNG - tạo UTC date giống trackHabit
     let trackingDate;
     if (date) {
-      trackingDate = new Date(date);
+      const parts = date.split('-');
+      trackingDate = new Date(Date.UTC(
+        parseInt(parts[0]),
+        parseInt(parts[1]) - 1,
+        parseInt(parts[2]),
+        0, 0, 0, 0
+      ));
     } else {
-      trackingDate = new Date();
+      const now = new Date();
+      trackingDate = new Date(Date.UTC(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate(),
+        0, 0, 0, 0
+      ));
     }
-    trackingDate.setHours(0, 0, 0, 0);
 
+    // ✅ SỬA: So sánh date phải cùng format UTC
     if (date) {
       const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const daysDiff = Math.floor((today - trackingDate) / (1000 * 60 * 60 * 24));
+      const todayUTC = new Date(Date.UTC(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate(),
+        0, 0, 0, 0
+      ));
+
+      const daysDiff = Math.floor((todayUTC - trackingDate) / (1000 * 60 * 60 * 24));
 
       if (daysDiff > 30) {
         return res.status(400).json({
@@ -1104,7 +1116,7 @@ const addHabitSubTracking = async (req, res) => {
         });
       }
 
-      if (trackingDate > today) {
+      if (trackingDate > todayUTC) {
         return res.status(400).json({
           success: false,
           message: 'Cannot track future dates'
@@ -1112,9 +1124,10 @@ const addHabitSubTracking = async (req, res) => {
       }
     }
 
+    // ✅ Parse time và tạo timestamp UTC
     const [startH, startM] = startTime.split(':').map(Number);
     const actualStartTime = new Date(trackingDate);
-    actualStartTime.setHours(startH, startM, 0, 0);
+    actualStartTime.setUTCHours(startH, startM, 0, 0); // ✅ Dùng setUTCHours thay vì setHours
 
     const now = new Date();
 
@@ -1136,7 +1149,7 @@ const addHabitSubTracking = async (req, res) => {
 
       const [endH, endM] = endTime.split(':').map(Number);
       actualEndTime = new Date(trackingDate);
-      actualEndTime.setHours(endH, endM, 0, 0);
+      actualEndTime.setUTCHours(endH, endM, 0, 0); // ✅ Dùng setUTCHours
 
       if (actualEndTime <= actualStartTime) {
         return res.status(400).json({
@@ -1225,18 +1238,29 @@ const addHabitSubTracking = async (req, res) => {
     const unitLabel = habit.unit ? habit.unit : 'lần';
     const progress = `${habitTracking.completedCount}/${habitTracking.targetCount}`;
 
+    // ✅ Check isToday với UTC
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const isToday = trackingDate.getTime() === today.getTime();
+    const todayUTC = new Date(Date.UTC(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+      0, 0, 0, 0
+    ));
+    const isToday = trackingDate.getTime() === todayUTC.getTime();
+
+    // ✅ Format response giống như getHabitSubTrackings
+    const duration = actualEndTime
+      ? Math.round((actualEndTime - actualStartTime) / 60000)
+      : null;
 
     res.status(201).json({
       success: true,
-      message: `Đã ghi nhận ${quantity} ${unitLabel}${!isToday ? ' cho ngày ' + formatLocalDate(trackingDate) : ''}`,
+      message: `Đã ghi nhận ${quantity} ${unitLabel}${!isToday ? ' cho ngày ' + new Date(trackingDate).toISOString().split('T')[0] : ''}`,
       tracking: {
-        date: formatLocalDate(trackingDate),
-        startTime: `${String(startH).padStart(2, '0')}:${String(startM).padStart(2, '0')}`,
-        endTime: endTime || null,
-        duration: actualEndTime ? `${Math.round((actualEndTime - actualStartTime) / 60000)} phút` : null,
+        date: new Date(trackingDate).toISOString().split('T')[0],
+        startTime: new Date(actualStartTime).toISOString().slice(11, 16),
+        endTime: actualEndTime ? new Date(actualEndTime).toISOString().slice(11, 16) : null,
+        duration: duration ? `${duration} phút` : null,
         isToday,
         progress,
         status: habitTracking.status,
