@@ -6,6 +6,7 @@ const registerFCMToken = asyncHandler(async (req, res) => {
   const { token, device, deviceId } = req.body;
   const userId = req.user.id;
 
+  // 1. Validate FCM token
   if (!token) {
     return res.status(400).json({ 
       success: false, 
@@ -13,7 +14,8 @@ const registerFCMToken = asyncHandler(async (req, res) => {
     });
   }
 
-  const user = await User.findById(userId);
+  // 2. Kiểm tra user (không query password fields)
+  const user = await User.findById(userId).select('-password -confirmPassword');
   if (!user) {
     return res.status(404).json({ 
       success: false, 
@@ -21,14 +23,19 @@ const registerFCMToken = asyncHandler(async (req, res) => {
     });
   }
 
-  // Kiểm tra token đã tồn tại chưa
-  const existingTokenIndex = user.fcmTokens.findIndex(t => t.token === token);
+  // 3. Kiểm tra token đã tồn tại chưa
+  const existingTokenIndex = user.fcmTokens?.findIndex(t => t.token === token) ?? -1;
 
   if (existingTokenIndex >= 0) {
-    // Update lastUsed nếu token đã tồn tại
+    // 4a. Update lastUsed nếu token đã tồn tại
     user.fcmTokens[existingTokenIndex].lastUsed = new Date();
+    user.fcmTokens[existingTokenIndex].device = device || user.fcmTokens[existingTokenIndex].device;
+    user.fcmTokens[existingTokenIndex].deviceId = deviceId || user.fcmTokens[existingTokenIndex].deviceId;
   } else {
-    // Thêm token mới
+    // 4b. Thêm token mới
+    if (!user.fcmTokens) {
+      user.fcmTokens = [];
+    }
     user.fcmTokens.push({
       token,
       device: device || 'unknown',
@@ -37,12 +44,21 @@ const registerFCMToken = asyncHandler(async (req, res) => {
     });
   }
 
-  await user.save();
+  // 5. Lưu với runValidators: false để tránh validate confirmPassword
+  await user.save({ validateBeforeSave: false });
 
+  // 6. Response theo format chuẩn
   res.json({
     success: true,
-    message: 'FCM token registered successfully',
-    totalDevices: user.fcmTokens.length
+    message: '📱 FCM token registered successfully',
+    data: {
+      totalDevices: user.fcmTokens.length,
+      currentDevice: {
+        token: token.substring(0, 20) + '...', // Chỉ hiển thị một phần token
+        device: device || 'unknown',
+        deviceId: deviceId || null
+      }
+    }
   });
 });
 
