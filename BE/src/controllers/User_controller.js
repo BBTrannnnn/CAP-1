@@ -888,6 +888,32 @@ const resetPassword = asyncHandler(async (req, res) => {
   });
 });
 
+// Xem public profile của người dùng khác (không cần auth, trả về thông tin công khai)
+const getPublicProfile = asyncHandler(async (req, res) => {
+  const userId = req.params.userId;
+
+  if (!userId.match(/^[0-9a-fA-F]{24}$/)) {
+    return res.status(400).json({
+      success: false,
+      message: 'ID người dùng không hợp lệ'
+    });
+  }
+
+  const user = await User.findById(userId).select('name email avatar bio createdAt');
+  
+  if (!user) {
+    return res.status(404).json({
+      success: false,
+      message: 'Người dùng không tồn tại'
+    });
+  }
+
+  res.status(200).json({
+    success: true,
+    data: user
+  });
+});
+
 export { 
   register, 
   getAllUsers, 
@@ -904,5 +930,6 @@ export {
   resetPassword,
   verifyOTP,
   updateUserRole,
+  getPublicProfile,
 };
 

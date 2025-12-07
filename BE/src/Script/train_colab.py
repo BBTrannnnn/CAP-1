@@ -10,20 +10,20 @@ import os
 print("TensorFlow version:", tf.__version__)
 print("GPU Available:", tf.config.list_physical_devices('GPU'))
 
-#CONFIG - OPTIMIZED FOR INTELLIGENCE
+#CONFIG - HIGH QUALITY with 10 epochs
 CONFIG = {
-    'max_words': 5000,           # Increased vocabulary size
-    'max_len': 50,
-    'embedding_dim': 256,        # Increased embedding dimension
-    'lstm_units': 128,           # Increased LSTM units
-    'epochs': 70,                # Increased epochs for better learning
-    'batch_size': 32,            # Increased batch size
-    'validation_split': 0.2,
-    'learning_rate': 0.001,      # Decreased learning rate for stability
-    'dropout_rate': 0.5,         # Dropout rate
-    'recurrent_dropout': 0.3,    # Recurrent dropout for LSTM
-    'label_smoothing': 0.1,      # Label smoothing to prevent overconfidence
-    'focal_loss_gamma': 2.0,     # Focal loss gamma for hard examples
+    'max_words': 10000,          # INCREASED: More vocabulary = better understanding
+    'max_len': 100,              # INCREASED: 50→100 to capture more context
+    'embedding_dim': 256,        # INCREASED BACK: 128→256 for richer representations
+    'lstm_units': 128,           # INCREASED BACK: 64→128 for better learning capacity
+    'epochs': 10,                # 10 epochs but with HIGHER QUALITY
+    'batch_size': 32,            # INCREASED BACK: 16→32 for stable gradients
+    'validation_split': 0.15,    # Keep 15% for more training data
+    'learning_rate': 0.002,      # DECREASED: 0.003→0.002 for better convergence
+    'dropout_rate': 0.5,         # INCREASED BACK: Prevent overfitting
+    'recurrent_dropout': 0.3,    # INCREASED BACK: Better regularization
+    'label_smoothing': 0.1,
+    'focal_loss_gamma': 2.0,
 }
 
 CATEGORIES = ['stress', 'fear', 'anxiety', 'sadness', 'happy', 'neutral', 'confusion']
@@ -205,13 +205,13 @@ def build_model(vocab_size, config):
         name='bidirectional_2'
     )(x)
     
-    # Dense layers with BatchNormalization
+    # Dense layers with BatchNormalization + LayerNormalization
     x = layers.Dense(128, activation='relu', name='dense_1')(x)
-    x = layers.BatchNormalization(name='batch_norm_1')(x)
+    x = layers.LayerNormalization(name='layer_norm_1')(x)  # Better than BatchNorm for NLP
     x = layers.Dropout(config['dropout_rate'], name='dropout_1')(x)
     
     x = layers.Dense(64, activation='relu', name='dense_2')(x)
-    x = layers.BatchNormalization(name='batch_norm_2')(x)
+    x = layers.LayerNormalization(name='layer_norm_2')(x)
     x = layers.Dropout(config['dropout_rate'], name='dropout_2')(x)
     
     # Output layer
@@ -234,7 +234,8 @@ def build_model(vocab_size, config):
     
     total_params = model.count_params()
     print(f"\nTotal parameters: {total_params:,}")
-    print("Improvements: Bidirectional LSTM (2 layers) + Keyword Emphasis + Aggressive Class Weights")
+    print("Strategy: HIGH QUALITY model optimized for 10 epochs")
+    print("Features: Bi-LSTM + LayerNorm + 10K vocab + Aggressive Weights + Keyword Emphasis")
     
     return model
 
@@ -270,13 +271,15 @@ def train_model(model, X_train, y_train, config):
     anxiety_count = np.sum(y_train == anxiety_idx)
     ratio = neutral_count / anxiety_count  # Should be ~35x
     
-    # DRASTICALLY reduce neutral (it's 71% of data)
-    class_weight_dict[neutral_idx] *= 0.3  # Cut by 70%!
+    # AGGRESSIVE rebalancing for HIGH QUALITY (even with 10 epochs)
+    class_weight_dict[neutral_idx] *= 0.35  # Cut by 65% (strong penalty)
     
-    # SIGNIFICANTLY boost minorities
-    class_weight_dict[anxiety_idx] *= 3.0   # Triple anxiety (only 2%)
-    class_weight_dict[stress_idx] *= 1.5    # Boost stress
-    class_weight_dict[fear_idx] *= 1.5      # Boost fear
+    # STRONG BOOST for minorities - model MUST learn these!
+    class_weight_dict[anxiety_idx] *= 2.5   # 2.5x anxiety boost
+    class_weight_dict[stress_idx] *= 1.8    # 1.8x stress boost
+    class_weight_dict[fear_idx] *= 1.8      # 1.8x fear boost
+    class_weight_dict[CATEGORIES.index('sadness')] *= 1.5  # Also boost sadness
+    class_weight_dict[CATEGORIES.index('confusion')] *= 1.5  # And confusion
     
     print("\n⚖️  Class weights (AGGRESSIVE rebalancing):")
     for idx, cat in enumerate(CATEGORIES):
@@ -285,12 +288,13 @@ def train_model(model, X_train, y_train, config):
         pct = (count / len(y_train)) * 100
         print(f"   {cat:10s} {count:5d} ({pct:4.1f}%) → weight={weight:.3f}")
     
-    print(f"\n💡 INTELLIGENT Training Strategy:")
-    print(f"   - neutral: 71% data → weight cut by 70% (force model to be cautious)")
-    print(f"   - anxiety: 2% data → weight × 3 (force model to learn)")
-    print(f"   - Label smoothing: {config['label_smoothing']} (prevent overconfidence)")
-    print(f"   - Focal loss: gamma={config['focal_loss_gamma']} (focus on hard examples)")
-    print(f"   → Model will be MUCH smarter, not default to neutral")
+    print(f"\n💡 HIGH QUALITY Training Strategy (10 epochs optimized):")
+    print(f"   - neutral: 71% data → weight cut by 65% (aggressive penalty)")
+    print(f"   - anxiety: 2% data → weight × 2.5 (strong boost)")
+    print(f"   - Larger model (256 emb, 128 LSTM) → Better capacity")
+    print(f"   - More context (max_len=100) → Understand dreams better")
+    print(f"   - 10K vocab → Richer language understanding")
+    print(f"   → HIGH QUALITY model even with few epochs!")
     
     # Stratified split for better validation
     X_tr, X_val, y_tr, y_val = train_test_split(
@@ -302,19 +306,19 @@ def train_model(model, X_train, y_train, config):
     
     print(f"\nAfter split: {len(X_tr)} training, {len(X_val)} validation")
     
-    #Callbacks - MORE PATIENCE for better convergence
+    #Callbacks - QUALITY FOCUSED for 10 epochs
     callbacks = [
         keras.callbacks.EarlyStopping(
             monitor='val_accuracy',
-            patience=10,  # More patience for complex learning
+            patience=3,  # More patience for quality convergence
             restore_best_weights=True,
             verbose=1,
-            min_delta=0.001  # Only stop if no improvement > 0.1%
+            min_delta=0.001
         ),
         keras.callbacks.ReduceLROnPlateau(
             monitor='val_loss',
             factor=0.5,
-            patience=4,  # More patience before reducing LR
+            patience=2,  # Give model time to learn before reducing LR
             verbose=1,
             min_lr=0.00001,
             min_delta=0.001
