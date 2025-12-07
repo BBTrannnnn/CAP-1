@@ -249,38 +249,23 @@
     }
   },
   {
-    "name": "Tập thể dục ngoài trời",
-    "description": "Tập thể dục ngoài trời 30 phút mỗi ngày để cải thiện sức khỏe và tâm trạng",
+    "name": "Tắm nước lạnh buổi sáng",
+    "description": "Tắm nước lạnh 5 phút mỗi sáng để tăng cường hệ miễn dịch và sự tỉnh táo",
     "category": "health",
-    "difficulty": "medium",
+    "difficulty": "hard",
     "frequency": "daily",
     "trackingMode": "check",
     "targetCount": 1,
     "unit": "lần",
-    "icon": "🏞️",
-    "color": "#4CAF50",
-    "tags": [
-      "fitness",
-      "ngoài trời"
-    ],
-    "requiredScore": 0,
-    "targetPersonas": [
-      "health-focused",
-      "fitness-enthusiast"
-    ],
-    "targetAgeGroups": [
-      "young_adult",
-      "adult"
-    ],
-    "targetGenders": [
-      "male",
-      "female"
-    ],
+    "icon": "🚿",
+    "color": "#00BCD4",
+    "tags": ["sức khỏe", "năng lượng"],
+    "requiredScore": 2,
+    "targetPersonas": ["health-focused", "fitness-enthusiast"],
+    "targetAgeGroups": ["young_adult", "adult"],
+    "targetGenders": ["male", "female"],
     "triggerConditions": {
-      "question_id": [
-        1,
-        2
-      ]
+      "question_id": [1, 2]
     }
   },
   {
@@ -318,6 +303,51 @@
       ]
     }
   },
+
+
+  {
+    "name": "Ngủ trưa 20 phút",
+    "description": "Ngủ trưa ngắn 15-20 phút để phục hồi năng lượng cho buổi chiều",
+    "category": "health",
+    "difficulty": "medium",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "😌",
+    "color": "#FF9800",
+    "tags": ["nghỉ ngơi", "năng lượng"],
+    "requiredScore": 1,
+    "targetPersonas": ["health-focused", "productivity-driven"],
+    "targetAgeGroups": ["young_adult", "adult"],
+    "targetGenders": ["male", "female"],
+    "triggerConditions": {
+      "question_id": [5, 1]
+    }
+  },
+
+
+  {
+    "name": "Vẽ hoặc tô màu 20 phút",
+    "description": "Vẽ hoặc tô màu để giải tỏa căng thẳng và kích thích sáng tạo",
+    "category": "mindful",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "🎨",
+    "color": "#9C27B0",
+    "tags": ["sáng tạo", "thư giãn"],
+    "requiredScore": 0,
+    "targetPersonas": ["mindful-seeker", "knowledge-seeker"],
+    "targetAgeGroups": ["young_adult", "adult", "teens"],
+    "targetGenders": ["female", "male"],
+    "triggerConditions": {
+      "mindful_2": [1]
+    }
+  },
+
   {
     "name": "Bắt đầu công việc đúng giờ",
     "description": "Bắt đầu công việc vào lúc 8h mỗi sáng để tăng năng suất",
@@ -2079,40 +2109,26 @@
     }
   },
   {
-    "name": "Tập yoga 30 phút",
-    "description": "Tập yoga giúp cải thiện sự linh hoạt và giảm stress",
-    "category": "fitness",
-    "difficulty": "easy",
+    "name": "Nấu ăn tại nhà",
+    "description": "Nấu ít nhất 1 bữa ăn tại nhà để tiết kiệm và ăn uống lành mạnh hơn",
+    "category": "health",
+    "difficulty": "medium",
     "frequency": "daily",
     "trackingMode": "check",
     "targetCount": 1,
-    "unit": "lần",
-    "icon": "🧘",
-    "color": "#8BC34A",
-    "tags": [
-      "tập yoga",
-      "sức khỏe"
-    ],
-    "requiredScore": 0,
-    "targetPersonas": [
-      "mindful-seeker",
-      "fitness-enthusiast"
-    ],
-    "targetAgeGroups": [
-      "young_adult",
-      "adult"
-    ],
-    "targetGenders": [
-      "female",
-      "male"
-    ],
+    "unit": "bữa",
+    "icon": "🍳",
+    "color": "#FF5722",
+    "tags": ["nấu ăn", "dinh dưỡng"],
+    "requiredScore": 1,
+    "targetPersonas": ["health-focused", "finance-conscious"],
+    "targetAgeGroups": ["young_adult", "adult"],
+    "targetGenders": ["male", "female"],
     "triggerConditions": {
-      "fitness_3": [
-        1,
-        2
-      ]
+      "question_id": [2, 4]
     }
   },
+  
   {
     "name": "Uống 8 ly nước mỗi ngày",
     "description": "Uống nước giúp cải thiện sức khỏe và tinh thần",
@@ -2149,42 +2165,50 @@
     }
   },
   {
-    "name": "Ngủ đủ 8 tiếng mỗi đêm",
-    "description": "Ngủ đủ giấc giúp cải thiện sức khỏe và tinh thần",
-    "category": "fitness",
-    "difficulty": "medium",
+    "name": "Massage chân trước ngủ",
+    "description": "Tự massage chân 10 phút trước khi ngủ để thư giãn và ngủ ngon hơn",
+    "category": "sleep",
+    "difficulty": "easy",
     "frequency": "daily",
     "trackingMode": "check",
     "targetCount": 1,
     "unit": "lần",
-    "icon": "😴",
-    "color": "#9C27B0",
-    "tags": [
-      "ngủ đủ giấc",
-      "sức khỏe"
-    ],
-    "requiredScore": 1,
-    "targetPersonas": [
-      "health-focused",
-      "productivity-driven"
-    ],
-    "targetAgeGroups": [
-      "adult",
-      "middle_aged"
-    ],
-    "targetGenders": [
-      "male",
-      "female"
-    ],
+    "icon": "💆",
+    "color": "#00BCD4",
+    "tags": ["thư giãn", "giấc ngủ"],
+    "requiredScore": 0,
+    "targetPersonas": ["health-focused", "mindful-seeker"],
+    "targetAgeGroups": ["adult", "middle_aged"],
+    "targetGenders": ["male", "female"],
     "triggerConditions": {
-      "fitness_5": [
-        1,
-        2
-      ]
+      "sleep_5": [1]
     }
   },
+
   {
-    "name": "Tập thể dục cường độ cao 45 phút",
+    "name": "Giãn cơ toàn thân 10 phút",
+    "description": "Giãn cơ và kéo dãn cơ thể để tăng tính linh hoạt và giảm đau mỏi",
+    "category": "fitness",
+    "difficulty": "easy",
+    "frequency": "daily",
+    "trackingMode": "check",
+    "targetCount": 1,
+    "unit": "lần",
+    "icon": "🤸",
+    "color": "#009688",
+    "tags": ["giãn cơ", "linh hoạt"],
+    "requiredScore": 0,
+    "targetPersonas": ["health-focused", "fitness-enthusiast"],
+    "targetAgeGroups": ["young_adult", "adult", "middle_aged"],
+    "targetGenders": ["male", "female"],
+    "triggerConditions": {
+      "fitness_1": [1, 2]
+    }
+  },
+
+
+  {
+    "name": "Tập thể dục cường độ cao 60 phút",
     "description": "Tập thể dục cường độ cao giúp cải thiện sức khỏe và giảm cân",
     "category": "fitness",
     "difficulty": "hard",
@@ -2691,38 +2715,6 @@
     }
   },
   {
-    "name": "Tập thể dục buổi sáng",
-    "description": "Tập thể dục 30 phút vào buổi sáng để tăng cường năng lượng",
-    "category": "energy",
-    "difficulty": "easy",
-    "frequency": "daily",
-    "trackingMode": "check",
-    "targetCount": 1,
-    "unit": "lần",
-    "icon": "🏋️",
-    "color": "#8BC34A",
-    "tags": [
-      "fitness",
-      "morning"
-    ],
-    "requiredScore": 0,
-    "targetPersonas": [
-      "health-focused",
-      "fitness-enthusiast"
-    ],
-    "targetAgeGroups": [
-      "young_adult",
-      "adult"
-    ],
-    "targetGenders": [
-      "male",
-      "female"
-    ],
-    "triggerConditions": {
-      "question_id": 1
-    }
-  },
-  {
     "name": "Uống đủ nước",
     "description": "Uống 8 ly nước mỗi ngày để giữ cơ thể đủ nước",
     "category": "energy",
@@ -2883,38 +2875,6 @@
     ],
     "triggerConditions": {
       "question_id": 6
-    }
-  },
-  {
-    "name": "Tập thể dục cường độ cao",
-    "description": "Tập thể dục cường độ cao để tăng cường sức khỏe",
-    "category": "energy",
-    "difficulty": "hard",
-    "frequency": "daily",
-    "trackingMode": "check",
-    "targetCount": 1,
-    "unit": "lần",
-    "icon": "🏋️",
-    "color": "#FF9800",
-    "tags": [
-      "fitness",
-      "intensity"
-    ],
-    "requiredScore": 2,
-    "targetPersonas": [
-      "fitness-enthusiast",
-      "productivity-driven"
-    ],
-    "targetAgeGroups": [
-      "young_adult",
-      "adult"
-    ],
-    "targetGenders": [
-      "male",
-      "female"
-    ],
-    "triggerConditions": {
-      "question_id": 1
     }
   },
   {

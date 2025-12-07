@@ -1758,69 +1758,21 @@ export async function updateHabitStats(habitId, userId) {
       habit.streakProtection?.isFrozen &&
       habit.streakProtection?.frozenEndDate > now;
 
-    // ✅ Tìm ngày gần nhất có tracking completed hoặc protected
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
     const todayKey = today.toISOString().split('T')[0];
 
-    let startDate = null;
-    const sortedDates = Array.from(trackingMap.keys()).sort((a, b) => {
-      return new Date(b) - new Date(a);
-    });
-
-    for (const dateKey of sortedDates) {
-      const tracking = trackingMap.get(dateKey);
-      const checkDate = new Date(dateKey);
-      
-      const isCompleted = tracking.status === 'completed';
-      
-      // ✅ FIX: Check shield - phải check tracking.isProtected === true (không phải undefined)
-      const isShieldProtected = tracking.status === 'failed' && tracking.isProtected === true;
-      
-      const isToday = dateKey === todayKey;
-      
-      const isInFrozenPeriod = isFrozen &&
-        habit.streakProtection?.frozenStartDate &&
-        habit.streakProtection?.frozenEndDate &&
-        checkDate >= habit.streakProtection.frozenStartDate &&
-        checkDate <= habit.streakProtection.frozenEndDate;
-
-      const countAsCompleted = isCompleted ||
-        isShieldProtected || // ✅ Shield protection
-        (isToday && isProtectedToday) ||
-        isInFrozenPeriod;
-
-      if (countAsCompleted) {
-        startDate = new Date(checkDate);
-        break;
-      }
-    }
-
-    if (!startDate) {
-      if (isProtectedToday) {
-        startDate = new Date(today);
-      } else {
-        habit.currentStreak = 0;
-        if (habit.longestStreak === undefined) {
-          habit.longestStreak = 0;
-        }
-        await habit.save();
-        const newAchievements = await achievementService.checkAndUnlockAchievements(habitId, userId);
-        return newAchievements;
-      }
-    }
-
-    // ✅ Tính streak từ startDate trở về trước
+    // ✅ Tính streak: Bắt đầu từ hôm nay, đếm ngược về trước
     let currentStreak = 0;
-    let checkDate = new Date(startDate);
+    let checkDate = new Date(today);
+    let hasStartedStreak = false;
 
     for (let i = 0; i < 365; i++) {
       const dateKey = checkDate.toISOString().split('T')[0];
       const tracking = trackingMap.get(dateKey);
 
       const isCompleted = tracking && tracking.status === 'completed';
-      
-      // ✅ FIX: CHECK SHIELD - phải đảm bảo tracking.status === 'failed' + isProtected === true
+      const isFrozenDay = tracking && tracking.status === 'frozen';
       const isShieldProtected = tracking && 
                                 tracking.status === 'failed' && 
                                 tracking.isProtected === true;
@@ -1832,17 +1784,28 @@ export async function updateHabitStats(habitId, userId) {
         checkDate <= habit.streakProtection.frozenEndDate;
 
       const isToday = dateKey === todayKey;
+
       const countAsCompleted = isCompleted ||
-        isShieldProtected ||  // ✅ Shield protection
-        (isToday && isProtectedToday) ||
-        isInFrozenPeriod;
+        isShieldProtected ||
+        (isToday && isProtectedToday);
 
       if (countAsCompleted) {
         currentStreak++;
+        hasStartedStreak = true;
         checkDate.setDate(checkDate.getDate() - 1);
-      } else {
-        break;
+        continue;
       }
+
+      if (isFrozenDay || isInFrozenPeriod) {
+        if (hasStartedStreak) {
+          checkDate.setDate(checkDate.getDate() - 1);
+          continue;
+        } else {
+          break;
+        }
+      }
+
+      break;
     }
 
     habit.currentStreak = currentStreak;
@@ -1866,7 +1829,6 @@ export async function updateHabitStats(habitId, userId) {
 
     await habit.save();
 
-    // Check achievements
     const newAchievements = await achievementService.checkAndUnlockAchievements(habitId, userId);
     
     return newAchievements;
@@ -2062,6 +2024,10 @@ const getHabitStats = asyncHandler(async (req, res) => {
     });
   }
 
+  await updateHabitStats(habitId, userId);
+
+  const updatedHabit = await Habit.findById(habitId);
+
   // Get ALL tracking history
   const allTracking = await HabitTracking.find({
     userId,
@@ -2108,7 +2074,6 @@ const getHabitStats = asyncHandler(async (req, res) => {
     const isToday = currentDate.getTime() === today.getTime();
     const isFuture = currentDate > today;
 
-    // ✅ Build calendar day
     const calendarDay = {
       date: formatLocalDate(currentDate),
       day: currentDate.getDate(),
@@ -2117,49 +2082,39 @@ const getHabitStats = asyncHandler(async (req, res) => {
       isFuture
     };
 
-    // ✅ Logic khác nhau cho CHECK vs COUNT mode
     if (habit.trackingMode === 'check') {
-      // === CHECK MODE ===
       if (isFuture) {
-        // Ngày tương lai - không hiển thị gì
         calendarDay.status = null;
       } else if (!dayTracking) {
-        // Không có tracking record
         if (isToday) {
-          calendarDay.status = 'pending'; // Hôm nay chưa làm
+          calendarDay.status = 'pending';
         } else {
-          calendarDay.status = 'failed'; // Ngày qua không làm = thất bại
+          calendarDay.status = 'failed';
         }
       } else {
-        // Có tracking record
         calendarDay.status = dayTracking.status;
         calendarDay.completedAt = dayTracking.completedAt;
         calendarDay.notes = dayTracking.notes;
         calendarDay.mood = dayTracking.mood;
         
-        // ✅ FIX: THÊM isProtected vào response
         if (dayTracking.isProtected) {
           calendarDay.isProtected = true;
         }
       }
     }
     else if (habit.trackingMode === 'count') {
-      // === COUNT MODE ===
       if (isFuture) {
-        // Ngày tương lai
         calendarDay.status = null;
         calendarDay.progress = null;
       } else if (!dayTracking) {
-        // Không có tracking record
         if (isToday) {
-          calendarDay.status = 'pending'; // Hôm nay chưa bắt đầu
+          calendarDay.status = 'pending';
           calendarDay.progress = { completed: 0, target: habit.targetCount || 0, percentage: 0 };
         } else {
-          calendarDay.status = 'failed'; // Ngày qua không làm = thất bại
+          calendarDay.status = 'failed';
           calendarDay.progress = { completed: 0, target: habit.targetCount || 0, percentage: 0 };
         }
       } else {
-        // Có tracking record
         calendarDay.status = dayTracking.status;
         calendarDay.progress = {
           completed: dayTracking.completedCount || 0,
@@ -2172,7 +2127,6 @@ const getHabitStats = asyncHandler(async (req, res) => {
         calendarDay.notes = dayTracking.notes;
         calendarDay.mood = dayTracking.mood;
         
-        // ✅ FIX: THÊM isProtected vào response
         if (dayTracking.isProtected) {
           calendarDay.isProtected = true;
         }
@@ -2183,7 +2137,6 @@ const getHabitStats = asyncHandler(async (req, res) => {
     currentDate.setDate(currentDate.getDate() + 1);
   }
 
-  // ✅ Stats với logic đúng cho từng mode
   const statsData = {
     completed: stats.completed,
     failed: stats.failed,
@@ -2193,12 +2146,10 @@ const getHabitStats = asyncHandler(async (req, res) => {
     averageProgress: stats.averageProgress
   };
 
-  // Thêm pending và in-progress cho COUNT mode
   if (habit.trackingMode === 'count') {
     statsData.pending = allTracking.filter(t => t.status === 'pending').length;
     statsData.inProgress = allTracking.filter(t => t.status === 'in-progress').length;
   } else {
-    // CHECK mode chỉ có pending
     statsData.pending = allTracking.filter(t => t.status === 'pending').length;
   }
 
@@ -2218,8 +2169,8 @@ const getHabitStats = asyncHandler(async (req, res) => {
         })
       },
       streaks: {
-        current: stats.currentStreak,
-        best: stats.bestStreak
+        current: updatedHabit.currentStreak,  // ✅ Lấy từ habit đã update
+        best: updatedHabit.longestStreak      // ✅ Lấy từ habit đã update
       },
       stats: statsData,
       calendar: {

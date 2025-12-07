@@ -185,7 +185,7 @@ const useShield = asyncHandler(async (req, res) => {
 });
 
 const useFreezeToken = asyncHandler(async (req, res) => {
-    const { habitId, days } = req.body;
+    const { habitId, days, startDate } = req.body; // ✨ Thêm startDate
 
     // Validate input
     if (!habitId) {
@@ -214,9 +214,8 @@ const useFreezeToken = asyncHandler(async (req, res) => {
     if (days <= 5) cost = 1;
     else if (days <= 10) cost = 2;
     else if (days <= 15) cost = 3;
-    else cost = 4; // 16–30
+    else cost = 4;
 
-    // Find user
     const user = await User.findById(req.user.id);
 
     if (!user) {
@@ -226,7 +225,6 @@ const useFreezeToken = asyncHandler(async (req, res) => {
         });
     }
 
-    // Check habit existence + ownership
     const habit = await Habit.findById(habitId);
 
     if (!habit) {
@@ -235,15 +233,7 @@ const useFreezeToken = asyncHandler(async (req, res) => {
             message: 'Habit not found'
         });
     }
-
-    if (habit.user.toString() !== req.user.id) {
-        return res.status(403).json({
-            success: false,
-            message: 'Bạn không có quyền thao tác habit này'
-        });
-    }
-
-    // Check token balance
+    
     if (user.inventory.freezeTokens < cost) {
         return res.status(400).json({
             success: false,
@@ -251,7 +241,71 @@ const useFreezeToken = asyncHandler(async (req, res) => {
         });
     }
 
-    // Update user data
+    // ✨ Parse startDate hoặc dùng hôm nay
+    let freezeStartDate;
+    if (startDate) {
+        const parts = startDate.split('-');
+        freezeStartDate = new Date(Date.UTC(
+            parseInt(parts[0]),
+            parseInt(parts[1]) - 1,
+            parseInt(parts[2]),
+            0, 0, 0, 0
+        ));
+    } else {
+        freezeStartDate = new Date();
+        freezeStartDate.setUTCHours(0, 0, 0, 0);
+    }
+
+    // ✨ Validate: không freeze quá 30 ngày về trước
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    const daysDiff = Math.floor((today - freezeStartDate) / (1000 * 60 * 60 * 24));
+    
+    if (daysDiff > 30) {
+        return res.status(400).json({
+            success: false,
+            message: 'Không thể freeze quá 30 ngày về trước'
+        });
+    }
+
+    if (freezeStartDate > today) {
+        return res.status(400).json({
+            success: false,
+            message: 'Không thể freeze ngày trong tương lai'
+        });
+    }
+    
+    // ✨ Tạo tracking records với status "frozen"
+    const freezePromises = [];
+    
+    for (let i = 0; i < days; i++) {
+        const freezeDate = new Date(freezeStartDate);
+        freezeDate.setDate(freezeDate.getDate() + i);
+        
+        // ✨ Chỉ freeze các ngày <= hôm nay
+        if (freezeDate <= today) {
+            freezePromises.push(
+                HabitTracking.findOneAndUpdate(
+                    { userId: req.user.id, habitId, date: freezeDate },
+                    {
+                        $set: { // ✨ Dùng $set để force update
+                            status: 'frozen',
+                            notes: `Đóng băng bằng Freeze Token (${days} ngày)`,
+                            completedCount: 0,
+                            targetCount: 1
+                        }
+                    },
+                    { upsert: true, new: true }
+                )
+            );
+        }
+    }
+    
+    await Promise.all(freezePromises);
+
+    // ✨ Cập nhật streak sau khi freeze
+    await updateHabitStats(habitId, req.user.id);
+
     const updatedUser = await User.findByIdAndUpdate(
         req.user.id,
         {
@@ -263,7 +317,8 @@ const useFreezeToken = asyncHandler(async (req, res) => {
                     usedAt: new Date(),
                     autoUsed: false,
                     freezeDays: days,
-                    cost
+                    cost,
+                    startDate: freezeStartDate // ✨ Lưu startDate
                 }
             }
         },
@@ -281,7 +336,7 @@ const useFreezeToken = asyncHandler(async (req, res) => {
 });
 
 const useReviveToken = asyncHandler(async (req, res) => {
-    const { habitId } = req.body;
+    const { habitId, date } = req.body; // ✅ Thêm date
 
     if (!habitId) {
         return res.status(400).json({
@@ -290,7 +345,13 @@ const useReviveToken = asyncHandler(async (req, res) => {
         });
     }
 
-    // Kiểm tra user có đủ revive token không
+    if (!date) {
+        return res.status(400).json({
+            success: false,
+            message: 'date is required (format: YYYY-MM-DD)'
+        });
+    }
+
     const user = await User.findById(req.user.id);
 
     if (!user) {
@@ -307,7 +368,69 @@ const useReviveToken = asyncHandler(async (req, res) => {
         });
     }
 
-    // ✅ Update trực tiếp không qua validation
+    // ✅ Parse date từ input (format: YYYY-MM-DD)
+    const parts = date.split('-');
+    const targetDate = new Date(Date.UTC(
+        parseInt(parts[0]),
+        parseInt(parts[1]) - 1,
+        parseInt(parts[2]),
+        0, 0, 0, 0
+    ));
+
+    // ✅ Validate: không hồi sinh ngày tương lai
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+
+    if (targetDate >= today) {
+        return res.status(400).json({
+            success: false,
+            message: 'Không thể hồi sinh ngày hôm nay hoặc tương lai'
+        });
+    }
+
+    // ✅ Validate: không hồi sinh quá 30 ngày về trước
+    const daysDiff = Math.floor((today - targetDate) / (1000 * 60 * 60 * 24));
+    if (daysDiff > 30) {
+        return res.status(400).json({
+            success: false,
+            message: 'Chỉ có thể hồi sinh trong vòng 30 ngày gần đây'
+        });
+    }
+
+    // ✅ TÌM TRACKING RECORD CỦA NGÀY ĐÓ
+    const tracking = await HabitTracking.findOne({
+        userId: req.user.id,
+        habitId,
+        date: targetDate
+    });
+
+    // ✅ Validate: ngày đó phải là failed
+    if (!tracking || tracking.status !== 'failed') {
+        return res.status(400).json({
+            success: false,
+            message: 'Ngày này không phải là ngày failed, không thể hồi sinh'
+        });
+    }
+
+    // ✅ Validate: ngày đó chưa được bảo vệ
+    if (tracking.isProtected) {
+        return res.status(400).json({
+            success: false,
+            message: 'Ngày này đã được bảo vệ rồi'
+        });
+    }
+
+    // ✅ ĐÁNH DẤU NGÀY ĐÓ ĐƯỢC BẢO VỆ
+    tracking.isProtected = true;
+    tracking.notes = tracking.notes 
+        ? `${tracking.notes} (Hồi sinh bằng Revive Token)`
+        : 'Hồi sinh bằng Revive Token';
+    await tracking.save();
+
+    // ✅ CẬP NHẬT STREAK
+    await updateHabitStats(habitId, req.user.id);
+
+    // ✅ TRỪ TOKEN VÀ LƯU LỊCH SỬ
     const updatedUser = await User.findByIdAndUpdate(
         req.user.id,
         {
@@ -317,7 +440,8 @@ const useReviveToken = asyncHandler(async (req, res) => {
                     itemType: 'reviveToken',
                     habitId: habitId,
                     usedAt: new Date(),
-                    autoUsed: false
+                    autoUsed: false,
+                    protectedDate: targetDate
                 }
             }
         },
@@ -329,7 +453,8 @@ const useReviveToken = asyncHandler(async (req, res) => {
 
     res.json({
         success: true,
-        message: 'Đã hồi sinh streak thành công',
+        message: `Đã hồi sinh streak! Ngày ${date} được bảo vệ`,
+        protectedDate: date,
         inventory: updatedUser.inventory
     });
 });
