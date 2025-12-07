@@ -25,6 +25,9 @@ import mongoose from 'mongoose';
 import achievementRoutes from './routes/Achievement-routes.js'; 
 import inventoryRoutes from './routes/Inventory-routes.js';
 import adminRoutes from './routes/Admin-routes.js';
+import socialRoutes from './routes/Social-routes.js';
+import postRoutes from './routes/Post-routes.js';
+import commentRoutes from './routes/Comment-routes.js';
 
 // Load environment variables
 dotenv.config();
@@ -50,6 +53,9 @@ app.use('/api/test', testRoutes);
 app.use('/api/achievements', achievementRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/social', socialRoutes);
+app.use('/api/posts', postRoutes);
+app.use('/api/comments', commentRoutes);
 
 // Error handler
 app.use(errorHandler);

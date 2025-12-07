@@ -51,6 +51,24 @@ const userSchema = new mongoose.Schema({
     dateOfBirth: {
         type: Date,
     },
+    avatar: {
+        type: String,
+        default: 'https://ui-avatars.com/api/?name=User&background=random'
+    },
+    bio: {
+        type: String,
+        maxLength: [200, 'Bio không được vượt quá 200 ký tự'],
+        default: ''
+    },
+    badge: {
+        type: String,
+        maxLength: [50, 'Badge không được vượt quá 50 ký tự'],
+        default: ''
+    },
+    lastActive: {
+        type: Date,
+        default: Date.now
+    },
     fcmTokens: [{
         token: { 
             type: String, 

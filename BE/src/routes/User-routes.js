@@ -12,6 +12,7 @@ import {
   forgotPassword, 
   resetPassword, 
   verifyOTP,
+  getPublicProfile,
 } from "../controllers/User_controller.js";
 import { validateRequest } from "../../middlewares/validateReuqest.js";
 import authenticateToken from "../../middlewares/auth.js";
@@ -31,6 +32,9 @@ const router = express.Router();
  router.put('/:id',validateRequest,authenticateToken,updateProfileById);
  router.get('/:id',authenticateToken,getProfileById);
  router.delete('/:id',authenticateToken,deleteProfileById);
+
+ // Public profile (không cần auth)
+ router.get('/public/:userId', getPublicProfile);
 
 // Route đăng nhập (email/sđt + password)
 router.post("/login", validateRequest, login);

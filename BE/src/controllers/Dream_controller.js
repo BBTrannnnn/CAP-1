@@ -81,15 +81,50 @@ async function loadModel() {
   }
 }
 
+//INTELLIGENT TEXT PREPROCESSING - MUST MATCH TRAINING SCRIPT
+function preprocessDreamText(text) {
+  // Apply same keyword emphasis as training script
+  text = text.toLowerCase().trim();
+  
+  // Define strong emotional keywords (bilingual) - SAME AS TRAINING
+  const emotionKeywords = {
+    'stress': ['stress', 'áp lực', 'ap luc', 'căng thẳng', 'cang thang', 'deadline', 'overwhelm', 'quá tải', 'qua tai', 'kiệt sức', 'kiet suc', 'mệt mỏi', 'met moi', 'pressure', 'busy', 'tired', 'exhaust'],
+    'fear': ['sợ', 'so', 'scared', 'afraid', 'fear', 'terrif', 'horror', 'nightmare', 'ác mộng', 'ac mong', 'ma', 'ghost', 'quỷ', 'quy', 'quái vật', 'quai vat', 'monster', 'demon', 'chase', 'chạy trốn', 'chay tron', 'bị đuổi', 'bi duoi'],
+    'anxiety': ['lo lắng', 'lo lang', 'lo âu', 'lo au', 'anxious', 'anxiety', 'worry', 'nervous', 'restless', 'bối rối', 'boi roi', 'thi', 'exam', 'test', 'kiểm tra', 'kiem tra', 'quên', 'quen', 'forget', 'mất', 'mat', 'lost', 'uncertain'],
+    'sadness': ['buồn', 'buon', 'sad', 'depressed', 'unhappy', 'sorrow', 'grief', 'khóc', 'khoc', 'cry', 'tears', 'nước mắt', 'nuoc mat', 'cô đơn', 'co don', 'lonely', 'alone', 'chết', 'chet', 'death', 'died', 'funeral'],
+    'happy': ['vui', 'happy', 'joy', 'delight', 'cười', 'cuoi', 'laugh', 'smile', 'hạnh phúc', 'hanh phuc', 'wonderful', 'amazing', 'great', 'yêu', 'yeu', 'love'],
+    'confusion': ['lạ', 'la', 'weird', 'strange', 'bizarre', 'không hiểu', 'khong hieu', 'confused', 'kỳ lạ', 'ky la', 'unusual', 'peculiar', 'mysterious', 'mơ hồ', 'mo ho', 'unclear']
+  };
+  
+  // KEYWORD REPETITION: Repeat important emotional words 2x (SAME AS TRAINING)
+  for (const category in emotionKeywords) {
+    for (const keyword of emotionKeywords[category]) {
+      // Use word boundary regex for whole words only
+      const pattern = new RegExp(`\\b${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
+      if (pattern.test(text)) {
+        text = text.replace(pattern, `${keyword} ${keyword}`);
+      }
+    }
+  }
+  
+  // Remove excessive whitespace
+  text = text.replace(/\s+/g, ' ').trim();
+  
+  return text;
+}
+
 //TOKENIZE, PREDICT
 function preprocessText(text) {
-  //check xem tokenizer đã load 
+  //check xem tokenizer đã load 
   if (!tokenizer || !tokenizer.word_index) {
     throw new Error('Tokenizer not loaded');
   }
   
-  const vocabSize = 2000; // Model chỉ có 2000 từ
-  const maxLen = 50;
+  // CRITICAL: Apply intelligent preprocessing FIRST (same as training)
+  text = preprocessDreamText(text);
+  
+  const vocabSize = 10000; // UPDATED: Match training config (10K vocab)
+  const maxLen = 100;      // UPDATED: Match training config (100 max_len)
   const words = text.toLowerCase().match(/\S+/g) || [];
   const sequence = [];
   for (const word of words) {
