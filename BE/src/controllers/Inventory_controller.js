@@ -336,7 +336,7 @@ const useFreezeToken = asyncHandler(async (req, res) => {
 });
 
 const useReviveToken = asyncHandler(async (req, res) => {
-    const { habitId, date } = req.body; // ✅ Thêm date
+    const { habitId, date } = req.body;
 
     if (!habitId) {
         return res.status(400).json({
@@ -368,7 +368,7 @@ const useReviveToken = asyncHandler(async (req, res) => {
         });
     }
 
-    // ✅ Parse date từ input (format: YYYY-MM-DD)
+    // ✅ Parse date
     const parts = date.split('-');
     const targetDate = new Date(Date.UTC(
         parseInt(parts[0]),
@@ -397,18 +397,30 @@ const useReviveToken = asyncHandler(async (req, res) => {
         });
     }
 
-    // ✅ TÌM TRACKING RECORD CỦA NGÀY ĐÓ
-    const tracking = await HabitTracking.findOne({
+    // ✅ TÌM HOẶC TẠO TRACKING RECORD
+    let tracking = await HabitTracking.findOne({
         userId: req.user.id,
         habitId,
         date: targetDate
     });
 
-    // ✅ Validate: ngày đó phải là failed
-    if (!tracking || tracking.status !== 'failed') {
+    // ✅ Nếu chưa có record → TẠO MỚI với status = failed
+    if (!tracking) {
+        tracking = new HabitTracking({
+            userId: req.user.id,
+            habitId,
+            date: targetDate,
+            status: 'failed',
+            completedCount: 0,
+            targetCount: 1
+        });
+    }
+
+    // ✅ Validate: chỉ hồi sinh failed hoặc skipped
+    if (tracking.status !== 'failed' && tracking.status !== 'skipped') {
         return res.status(400).json({
             success: false,
-            message: 'Ngày này không phải là ngày failed, không thể hồi sinh'
+            message: `Không thể hồi sinh ngày này (status: ${tracking.status})`
         });
     }
 
