@@ -384,11 +384,21 @@ const HorizontalCalendar: React.FC<HorizontalCalendarProps> = ({
   };
 
   const handleDatePress = (date: Date) => {
-    const normalized = new Date(date);
-    normalized.setHours(0, 0, 0, 0);
-    setSelectedDate(normalized);
-    onDateSelect?.(normalized);
-  };
+  const normalized = new Date(date);
+  normalized.setHours(0, 0, 0, 0);
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // 🚨 Thêm kiểm tra để ngăn chọn ngày trong tương lai
+  if (normalized.getTime() > today.getTime()) {
+    Alert.alert('Không thể theo dõi', 'Bạn không thể ghi nhận thói quen cho ngày trong tương lai.');
+    return;
+  }
+  
+  setSelectedDate(normalized);
+  onDateSelect?.(normalized);
+};
 
   const goToToday = () => {
     const today = new Date();
@@ -985,9 +995,67 @@ export default function FlowStateHabits() {
     });
   };
 
+ // Thay thế toàn bộ hàm saveNewCountEntry (khoảng dòng 1058 đến 1092)
   const saveNewCountEntry = () => {
     if (!newCountForm.habitId) return;
     const habitId = newCountForm.habitId;
+
+    const now = new Date();
+
+    // 1. Lấy thông tin ngày giờ theo UTC (Giờ của Server)
+    const utcY = now.getUTCFullYear();
+    const utcM = String(now.getUTCMonth() + 1).padStart(2, '0');
+    const utcD = String(now.getUTCDate()).padStart(2, '0');
+    const utcDateStr = `${utcY}-${utcM}-${utcD}`; // Ví dụ: 2025-12-08
+
+    const utcH = String(now.getUTCHours()).padStart(2, '0');
+    const utcMin = String(now.getUTCMinutes()).padStart(2, '0');
+    const utcTimeStr = `${utcH}:${utcMin}`; // Ví dụ: 17:30
+
+    // 2. Lấy ngày đang chọn trên giao diện (Local time)
+    const selectedDateStr = getCurrentDateStr(); // Ví dụ: 2025-12-09
+    const localTodayStr = formatDateYMD(now);
+
+    // --- LOGIC XỬ LÝ DATE ---
+    let finalDateToSend = selectedDateStr;
+    let finalTimeToSend = newCountForm.start;
+
+    // Nếu người dùng chọn ngày tương lai so với lịch máy -> Chặn luôn
+    if (selectedDateStr > localTodayStr) {
+      Alert.alert('Lỗi', 'Không thể nhập cho ngày tương lai.');
+      return;
+    }
+
+    // NẾU ĐANG NHẬP CHO "HÔM NAY" (Của máy bạn)
+    if (selectedDateStr === localTodayStr) {
+        // Kiểm tra xem Local Date có lớn hơn UTC Date không?
+        // (Ví dụ: VN là ngày 9, UTC vẫn là ngày 8)
+        if (selectedDateStr > utcDateStr) {
+            console.log(`[Timezone Fix] Local (${selectedDateStr}) > UTC (${utcDateStr}). Sending UTC instead.`);
+            // BẮT BUỘC gửi ngày UTC để Server không báo lỗi Future Time
+            finalDateToSend = utcDateStr;
+            
+            // Nếu đổi ngày sang UTC, thì giờ cũng phải đổi sang UTC tương ứng
+            // Trừ khi người dùng cố tình nhập giờ tay, lúc đó ta chấp nhận rủi ro hoặc ép về UTC
+            if (!newCountForm.start) {
+                finalTimeToSend = utcTimeStr;
+            } else {
+                // Nếu user nhập tay, ta vẫn ưu tiên dùng UTC Time hiện tại để an toàn nhất
+                // vì giờ nhập tay theo giờ VN (ví dụ 00:30) lắp vào ngày UTC (hôm qua) sẽ ra sai lệch logic
+                finalTimeToSend = utcTimeStr; 
+            }
+        } 
+        // Trường hợp ngày khớp nhau (VN ngày 8, UTC ngày 8)
+        else {
+             if (!finalTimeToSend) {
+                 // Nếu không nhập giờ, lấy giờ UTC cho chắc ăn
+                 finalTimeToSend = utcTimeStr;
+             }
+        }
+    }
+
+    // Fallback cuối cùng: Đảm bảo không bao giờ gửi startTime rỗng
+    if (!finalTimeToSend) finalTimeToSend = utcTimeStr;
 
     (async () => {
       try {
@@ -998,10 +1066,12 @@ export default function FlowStateHabits() {
         }
 
         const qty = newCountForm.qty > 0 ? newCountForm.qty : 1;
+        
+        // Gửi payload đã được "biến hình" sang UTC nếu cần thiết
         const body: any = {
           quantity: qty,
-          date: getCurrentDateStr(),
-          startTime: newCountForm.start || hhmmNow(),
+          date: finalDateToSend, 
+          startTime: finalTimeToSend,
         };
 
         if (newCountForm.end) body.endTime = newCountForm.end;
@@ -1010,6 +1080,7 @@ export default function FlowStateHabits() {
           body.mood = newCountForm.mood === 'neutral' ? 'okay' : newCountForm.mood;
         }
 
+        console.log('[Debug] Sending Body:', body);
         await apiAddHabitSubTracking(bid, body);
 
         setNewCountForm({
@@ -1021,11 +1092,10 @@ export default function FlowStateHabits() {
           mood: undefined,
         });
 
-        // refetch theo ngày hiện tại
         refreshAll();
       } catch (err: any) {
-        console.error('[habits.index] add subtrack (new form) error:', err);
-        Alert.alert('Lỗi', err?.message || 'Không thêm được lần đếm');
+        console.error('[habits.index] add subtrack error:', err);
+        Alert.alert('Lỗi Server', err?.message || 'Không thể lưu.');
       }
     })();
   };
@@ -1559,28 +1629,33 @@ export default function FlowStateHabits() {
                         </TouchableOpacity>
                       </View>
 
-                      {/* Progress header */}
-                      <View style={styles.habitProgressHeader}>
-                        <Text style={styles.habitProgressLabel}>Tiến độ</Text>
-                        <Text style={styles.habitProgressValue}>
-                          {meta
-                            ? `${currentVal ?? 0}/${meta.goal} ${meta.unit}`
-                            : `${currentDays}/${goalDays} ngày`}
-                        </Text>
-                      </View>
+                      {meta ? (
+                        <>
+                          {/* Progress header */}
+                          <View style={styles.habitProgressHeader}>
+                            <Text style={styles.habitProgressLabel}>Tiến độ</Text>
+                            <Text style={styles.habitProgressValue}>
+                              {`${currentVal ?? 0}/${meta.goal} ${meta.unit}`}
+                            </Text>
+                          </View>
 
-                      {/* Progress bar */}
-                      <View style={styles.habitProgressBarOuter}>
-                        <View
-                          style={[
-                            styles.habitProgressBarInner,
-                            {
-                              width: `${itemPercent}%`,
-                              backgroundColor: progressColor,
-                            },
-                          ]}
-                        />
-                      </View>
+                          {/* Progress bar */}
+                          <View style={styles.habitProgressBarOuter}>
+                            <View
+                              style={[
+                                styles.habitProgressBarInner,
+                                {
+                                  width: `${itemPercent}%`,
+                                  backgroundColor: progressColor,
+                                },
+                              ]}
+                            />
+                          </View>
+                        </>
+                      ) : (
+                        /* Nếu là thói quen thường (abc, tập yoga check-box) thì thêm khoảng trống nhỏ cho đẹp */
+                        <View style={{ marginBottom: 4 }} />
+                      )}
                     </View>
                   </TouchableOpacity>
 
@@ -1611,7 +1686,7 @@ export default function FlowStateHabits() {
                         <Trash2 size={14} color="#dc2626" />
                         <Text style={styles.actionButtonRedText}>Xóa ngày</Text>
                       </TouchableOpacity>
-                      <TouchableOpacity
+                      {/* <TouchableOpacity
                         onPress={() => openEditModal(habit)}
                         style={[
                           styles.actionButton,
@@ -1620,7 +1695,7 @@ export default function FlowStateHabits() {
                       >
                         <Pencil size={14} color="#b45309" />
                         <Text style={styles.actionButtonAmberText}>Sửa</Text>
-                      </TouchableOpacity>
+                      </TouchableOpacity> */}
                     </View>
                   )}
 
