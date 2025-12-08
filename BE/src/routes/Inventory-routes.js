@@ -13,12 +13,17 @@ import {
 const router = express.Router();
 router.use(authenticateToken);
 
+// Inventory
 router.get('/', getInventory);
+
+// Use items
 router.post('/use-shield', useShield);
 router.post('/use-freeze', useFreezeToken);
 router.post('/use-revive', useReviveToken);
-router.get('/settings', getProtectionSettings);
-router.put('/settings', updateProtectionSettings);
+
+// Protection settings
+router.get('/protection-settings', getProtectionSettings);
+router.put('/protection-settings', updateProtectionSettings);
 
 // Test endpoint
 router.post('/test-all-items', testAllItems);

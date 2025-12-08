@@ -1,5 +1,4 @@
 import {Habit , HabitTracking} from '../models/Habit.js';
-
 import User from '../models/User.js';
 import pushService from './pushNotificationService.js';
 import { updateHabitStats } from'../controllers/Habit_controller.js';
@@ -20,17 +19,14 @@ class StreakProtectionService {
       console.log(`   Found ${users.length} users with protection enabled`);
       
       let totalWarnings = 0;
-      let totalAutoProtected = 0;
       
       for (const user of users) {
         const result = await this.checkUserHabits(user, today);
         totalWarnings += result.warnings;
-        totalAutoProtected += result.autoProtected;
       }
       
       console.log(`   ✅ Check complete:`);
-      console.log(`      - ${totalWarnings} warnings sent`);
-      console.log(`      - ${totalAutoProtected} auto-protected\n`);
+      console.log(`      - ${totalWarnings} warnings sent\n`);
       
     } catch (error) {
       console.error('❌ Streak protection check error:', error);
@@ -39,7 +35,6 @@ class StreakProtectionService {
   
   async checkUserHabits(user, today) {
     let warnings = 0;
-    let autoProtected = 0;
     
     try {
       const habits = await Habit.find({
@@ -48,7 +43,7 @@ class StreakProtectionService {
         currentStreak: { $gt: 0 }
       });
       
-      if (habits.length === 0) return { warnings, autoProtected };
+      if (habits.length === 0) return { warnings };
       
       for (const habit of habits) {
         const todayTracking = await HabitTracking.findOne({
@@ -87,16 +82,7 @@ class StreakProtectionService {
           continue;
         }
         
-        if (
-          user.streakProtectionSettings.autoUseShield &&
-          habit.currentStreak >= user.streakProtectionSettings.minStreakToAutoProtect &&
-          user.inventory.streakShields > 0
-        ) {
-          await this.autoProtectStreak(user, habit, today); // ✅ Truyền today
-          autoProtected++;
-          continue;
-        }
-        
+        // ✅ CHỈ GỬI WARNING - ĐÃ BỎ AUTO-PROTECT
         await this.sendStreakWarning(user, habit);
         warnings++;
         
@@ -109,110 +95,145 @@ class StreakProtectionService {
       console.error(`Error checking habits for user ${user._id}:`, error);
     }
     
-    return { warnings, autoProtected };
+    return { warnings };
   }
   
-  // ✅ SỬA HÀM NÀY
-  async autoProtectStreak(user, habit, today) {
-    try {
-      // ✅ Tìm hoặc tạo tracking cho hôm nay
-      let tracking = await HabitTracking.findOne({
-        userId: user._id,
-        habitId: habit._id,
-        date: today
+async sendStreakWarning(user, habit) {
+  try {
+    const hasShield = user.inventory.streakShields > 0;
+    const hasFreezeToken = user.inventory.freezeTokens > 0;
+    const hasReviveToken = user.inventory.reviveTokens > 0;
+    
+    // Tính thời gian còn lại trong ngày
+    const now = new Date();
+    const endOfDay = new Date(now);
+    endOfDay.setHours(23, 59, 59, 999);
+    const hoursLeft = Math.ceil((endOfDay - now) / (1000 * 60 * 60));
+    
+    // Tạo message phong phú
+    let detailedMessage = `🔥 Streak ${habit.currentStreak} ngày của bạn đang gặp nguy hiểm!\n\n`;
+    detailedMessage += `📋 Habit: "${habit.name}"\n`;
+    detailedMessage += `⏰ Còn ${hoursLeft} giờ trong ngày hôm nay\n\n`;
+    
+    // Thông tin inventory
+    detailedMessage += `🎒 Kho đồ của bạn:\n`;
+    if (hasShield) {
+      detailedMessage += `   🛡️  Streak Shield: ${user.inventory.streakShields} cái\n`;
+      detailedMessage += `      → Bảo vệ streak 1 ngày\n`;
+    }
+    if (hasFreezeToken) {
+      detailedMessage += `   ❄️  Freeze Token: ${user.inventory.freezeTokens} cái\n`;
+      detailedMessage += `      → Đóng băng streak nhiều ngày\n`;
+    }
+    if (hasReviveToken) {
+      detailedMessage += `   💫 Revive Token: ${user.inventory.reviveTokens} cái\n`;
+      detailedMessage += `      → Hồi sinh streak đã mất\n`;
+    }
+    
+    if (!hasShield && !hasFreezeToken && !hasReviveToken) {
+      detailedMessage += `   ⚠️  Không có item nào!\n`;
+      detailedMessage += `   💡 Hoàn thành goals để nhận thêm items\n`;
+    }
+    
+    detailedMessage += `\n💪 Hành động ngay:`;
+    
+    // Tạo actions động
+    const actions = [];
+    
+    if (hasShield) {
+      actions.push({
+        type: 'use_shield',
+        label: `🛡️  Dùng Shield (còn ${user.inventory.streakShields})`,
+        description: 'Bảo vệ streak hôm nay'
       });
-
-      if (!tracking) {
-        tracking = new HabitTracking({
-          userId: user._id,
-          habitId: habit._id,
-          date: today,
-          status: 'failed',
-          isProtected: true, // ✅ Đánh dấu được shield
-          notes: 'Auto-protected by shield'
-        });
-      } else {
-        tracking.isProtected = true; // ✅ Đánh dấu được shield
+    }
+    
+    if (hasFreezeToken) {
+      actions.push({
+        type: 'use_freeze',
+        label: `❄️  Dùng Freeze (còn ${user.inventory.freezeTokens})`,
+        description: 'Đóng băng 1-30 ngày'
+      });
+    }
+    
+    actions.push({
+      type: 'complete_now',
+      label: '✅ Hoàn thành ngay',
+      description: 'Track habit bây giờ'
+    });
+    
+    actions.push({
+      type: 'view_habit',
+      label: '👀 Xem chi tiết',
+      description: 'Mở habit này'
+    });
+    
+    // Gửi notification với đầy đủ thông tin
+    await pushService.sendToUser(user._id, {
+      title: `⚠️ CẢNH BÁO: Streak ${habit.currentStreak} ngày sắp mất!`,
+      message: detailedMessage,
+      type: 'STREAK_BREAK_WARNING',
+      priority: 'high',
+      soundEnabled: true,
+      vibrationPattern: [0, 400, 200, 400],
+      habitId: habit._id,
+      data: {
+        habitName: habit.name,
+        habitId: habit._id.toString(),
+        currentStreak: habit.currentStreak,
+        longestStreak: habit.longestStreak,
+        hoursLeft: hoursLeft,
+        hasShield,
+        hasFreezeToken,
+        hasReviveToken,
+        remainingShields: user.inventory.streakShields,
+        remainingFreezeTokens: user.inventory.freezeTokens,
+        remainingReviveTokens: user.inventory.reviveTokens,
+        streakHistory: {
+          current: habit.currentStreak,
+          longest: habit.longestStreak,
+          total: habit.totalCompletions,
+          lastCompleted: habit.lastCompletedDate
+        },
+        actions: actions,
+        urgency: hoursLeft <= 3 ? 'critical' : hoursLeft <= 6 ? 'high' : 'medium',
+        deepLink: `habittracker://habit/${habit._id}/protect`,
+        sentAt: new Date().toISOString()
+      },
+      android: {
+        channelId: 'streak_warnings',
+        priority: 'high',
+        importance: 'high',
+        style: {
+          type: 'bigText',
+          text: detailedMessage
+        },
+        color: '#FF6B6B',
+        largeIcon: 'ic_streak_warning',
+        badge: habit.currentStreak
+      },
+      ios: {
+        sound: 'streak_warning.wav',
+        badge: habit.currentStreak,
+        threadId: `habit_${habit._id}`,
+        categoryId: 'STREAK_WARNING',
+        interruptionLevel: 'timeSensitive'
       }
-
-      await tracking.save();
-
-      // Trừ shield
-      user.inventory.streakShields -= 1;
-      user.itemUsageHistory.push({
-        itemType: 'streakShield',
-        habitId: habit._id,
-        usedAt: new Date(),
-        streakSaved: habit.currentStreak,
-        autoUsed: true,
-        protectedDate: today // ✅ Lưu ngày được bảo vệ
-      });
-      await user.save();
-      
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      tomorrow.setHours(23, 59, 59, 999);
-      
-      habit.streakProtection.isProtected = true;
-      habit.streakProtection.protectedUntil = tomorrow;
-      habit.streakProtection.protectedBy = 'auto';
-      await habit.save();
-
-      // ✅ Tính lại streak
-      await updateHabitStats(habit._id, user._id);
-      
-      await pushService.sendToUser(user._id, {
-        title: '🛡️ Streak được tự động bảo vệ',
-        message: `Habit "${habit.name}" (${habit.currentStreak} ngày) đã được Shield cứu!`,
-        type: 'STREAK_AUTO_PROTECTED',
-        soundEnabled: true,
-        habitId: habit._id,
-        data: {
-          habitName: habit.name,
-          streakSaved: habit.currentStreak,
-          remainingShields: user.inventory.streakShields
-        }
-      });
-      
-      console.log(`   ✅ Auto-protected: "${habit.name}" (${habit.currentStreak} days)`);
-      
-    } catch (error) {
-      console.error('Auto protect error:', error);
-    }
+    });
+    
+    console.log(`   ⚠️  Enhanced warning sent to ${user.name}:`);
+    console.log(`      Habit: "${habit.name}"`);
+    console.log(`      Streak: ${habit.currentStreak} days`);
+    console.log(`      Hours left: ${hoursLeft}h`);
+    console.log(`      Inventory: Shield(${user.inventory.streakShields}) | Freeze(${user.inventory.freezeTokens}) | Revive(${user.inventory.reviveTokens})`);
+    console.log(`      Actions: ${actions.length} available`);
+    
+  } catch (error) {
+    console.error('Send enhanced warning error:', error);
   }
+}
   
-  async sendStreakWarning(user, habit) {
-    try {
-      const hasShield = user.inventory.streakShields > 0;
-      
-      await pushService.sendToUser(user._id, {
-        title: `⚠️ Streak ${habit.currentStreak} ngày sắp mất!`,
-        message: `"${habit.name}" chưa hoàn thành hôm nay${hasShield ? '. Dùng Shield để bảo vệ?' : '!'}`,
-        type: 'STREAK_BREAK_WARNING',
-        soundEnabled: true,
-        habitId: habit._id,
-        data: {
-          habitName: habit.name,
-          currentStreak: habit.currentStreak,
-          hasShield,
-          remainingShields: user.inventory.streakShields,
-          actions: hasShield ? [
-            { type: 'use_shield', label: 'Dùng Shield 🛡️' },
-            { type: 'complete_now', label: 'Hoàn thành ngay' }
-          ] : [
-            { type: 'complete_now', label: 'Hoàn thành ngay' }
-          ]
-        }
-      });
-      
-      console.log(`   ⚠️  Warning sent: "${habit.name}" (${habit.currentStreak} days)`);
-      
-    } catch (error) {
-      console.error('Send warning error:', error);
-    }
-  }
-  
-  // ✅ SỬA HÀM NÀY
+  // ✅ MANUAL SHIELD - User tự dùng
   async useShieldManually(userId, habitId, date) {
     try {
       const user = await User.findById(userId);
@@ -229,7 +250,7 @@ class StreakProtectionService {
         };
       }
 
-      // ✅ Parse date (default = today)
+      // Parse date (default = today)
       let targetDate;
       if (date) {
         const parts = date.split('-');
@@ -249,7 +270,7 @@ class StreakProtectionService {
         ));
       }
 
-      // ✅ Kiểm tra không shield ngày tương lai
+      // Kiểm tra không shield ngày tương lai
       const today = new Date();
       today.setUTCHours(0, 0, 0, 0);
       if (targetDate > today) {
@@ -259,7 +280,7 @@ class StreakProtectionService {
         };
       }
 
-      // ✅ Tìm hoặc tạo tracking
+      // Tìm hoặc tạo tracking
       let tracking = await HabitTracking.findOne({
         userId,
         habitId,
@@ -301,7 +322,7 @@ class StreakProtectionService {
         usedAt: new Date(),
         streakSaved: habit.currentStreak,
         autoUsed: false,
-        protectedDate: targetDate // ✅ Lưu ngày được bảo vệ
+        protectedDate: targetDate
       });
       await user.save();
       
@@ -315,7 +336,7 @@ class StreakProtectionService {
       habit.streakProtection.warningSent = false;
       await habit.save();
 
-      // ✅ Tính lại streak
+      // Tính lại streak
       await updateHabitStats(habitId, userId);
       
       return {
@@ -522,20 +543,17 @@ class StreakProtectionService {
     }
   }
 
-  // ✅ THÊM HÀM TEST
+  // ✅ HÀM TEST
   async testShieldScenario() {
     try {
       console.log('\n🧪 [TEST] Starting shield test scenario...\n');
 
-      // Test data
-      const testUserId = '673ad56e01e20c1479073be2'; // Thay bằng userId thật
-      const testHabitId = '692a873582d5d5eddf1ab07d'; // Thay bằng habitId thật
+      const testUserId = '673ad56e01e20c1479073be2';
+      const testHabitId = '692a873582d5d5eddf1ab07d';
 
-      // Scenario: Tracking 24,25,26 -> Shield 27 -> Tracking 28,29
       console.log('📝 Scenario: Track 24,25,26 → Shield 27 → Track 28,29');
       console.log('Expected: Streak = 6\n');
 
-      // Tìm user và habit
       const user = await User.findById(testUserId);
       const habit = await Habit.findById(testHabitId);
 
@@ -548,7 +566,6 @@ class StreakProtectionService {
       console.log(`Habit: ${habit.name}`);
       console.log(`Current shields: ${user.inventory.streakShields}\n`);
 
-      // Test: Shield ngày 27
       console.log('🛡️  Testing shield for 2025-11-27...');
       const result = await this.useShieldManually(testUserId, testHabitId, '2025-11-27');
       
@@ -560,7 +577,6 @@ class StreakProtectionService {
         console.log(`❌ ${result.message}\n`);
       }
 
-      // Kiểm tra tracking
       const tracking = await HabitTracking.findOne({
         userId: testUserId,
         habitId: testHabitId,
@@ -572,7 +588,6 @@ class StreakProtectionService {
       console.log(`   isProtected: ${tracking?.isProtected || false}`);
       console.log(`   Notes: ${tracking?.notes || 'N/A'}\n`);
 
-      // Tính lại stats
       console.log('🔄 Recalculating stats...');
       await updateHabitStats(testHabitId, testUserId);
 
