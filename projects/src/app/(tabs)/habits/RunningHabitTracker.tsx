@@ -154,12 +154,15 @@ const HabitTracker: React.FC = () => {
       if (rawDays.length === 7 && typeof rawDays[0] === 'boolean') {
         days = rawDays;
       } else if (rawDays.length && typeof rawDays[0] === 'number') {
-        days = days.map((_, i) => rawDays.includes(i));
+        days = days.map((_, i) => {
+          const dayNumber = i === 6 ? 0 : i + 1; // API: 0 = CN, 1 = T2, ...
+          return rawDays.includes(dayNumber);
+        });
       }
     }
 
-    const enabled: boolean = r.enabled ?? r.isActive ?? true;
-    const note: string = r.note ?? r.description ?? '';
+    const enabled: boolean = r.enabled ?? r.isActive ?? r.soundEnabled ?? r.vibrationEnabled ?? true;
+    const note: string = r.note ?? r.description ?? r.message ?? '';
 
     return { id, time, days, enabled, note };
   };
@@ -348,6 +351,26 @@ const HabitTracker: React.FC = () => {
     setConfirmOpen(true);
   };
 
+  const buildReminderPayload = (reminder: Reminder) => {
+    const dayNumbers = Array.isArray(reminder.days)
+      ? reminder.days.reduce<number[]>((acc, active, idx) => {
+          if (active) acc.push(idx === 6 ? 0 : idx + 1); // API expects 0=CN, 1=T2
+          return acc;
+        }, [])
+      : [];
+
+    const time = (reminder.time || '').slice(0, 5) || '07:00';
+    const message = reminder.note && reminder.note.trim().length > 0 ? reminder.note : 'đến giờ';
+
+    return {
+      time,
+      days: dayNumbers,
+      soundEnabled: reminder.enabled,
+      message,
+      vibrationEnabled: reminder.enabled,
+    };
+  };
+
   // ====== SAVE / DELETE REMINDER (API) ======
   const resetReminderForm = () => {
     setEditingReminder(null);
@@ -362,12 +385,7 @@ const HabitTracker: React.FC = () => {
 
   const handleSaveReminder = async () => {
     try {
-      const payload: any = {
-        time: newReminder.time,
-        days: newReminder.days,
-        enabled: newReminder.enabled,
-        note: newReminder.note,
-      };
+      const payload: any = buildReminderPayload(newReminder);
 
       if (habitId) {
         if (editingReminder) {
@@ -404,12 +422,7 @@ const HabitTracker: React.FC = () => {
 
     if (habitId) {
       try {
-        const payload: any = {
-          time: updated.time,
-          days: updated.days,
-          enabled: updated.enabled,
-          note: updated.note,
-        };
+        const payload: any = buildReminderPayload(updated);
         await updateHabitReminder(habitId as string, id, payload);
         await refetchAll();
       } catch (e) {

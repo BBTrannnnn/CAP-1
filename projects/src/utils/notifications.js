@@ -1,15 +1,13 @@
-// utils/notifications.ts
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
-import { Platform, Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
+import { getBaseUrl } from '../server/users';
 
-// 👉 NÊU CÓ env EXPO_PUBLIC_API_BASE_URL thì ưu tiên dùng, không thì fallback về URL cố định
-const API_BASE =
-  process.env.EXPO_PUBLIC_API_BASE_URL ||
-  'http://localhost:5000'; // ⬅️ sửa thành URL Render / IP BE của bạn
+const BACKEND_URL = getBaseUrl();
+const DEVICE_ID = Constants.deviceId ?? Device.osInternalBuildId ?? null;
 
-// Cấu hình cách hiện notification
+// Configure notification behavior globally
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
@@ -18,11 +16,11 @@ Notifications.setNotificationHandler({
   }),
 });
 
-// Hàm đăng ký FCM/Expo Push Token
-export async function registerForPushNotifications(authToken) {
-  let token;
+const getProjectId = () =>
+  Constants.expoConfig?.extra?.eas?.projectId || Constants.easConfig?.projectId || '';
 
-  // Android: tạo notification channel
+// Register device for push notifications and send the token to backend
+export async function registerForPushNotifications(authToken) {
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('habit_reminders', {
       name: 'Habit Reminders',
@@ -32,79 +30,67 @@ export async function registerForPushNotifications(authToken) {
     });
   }
 
-  if (Device.isDevice) {
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
+  if (!Device.isDevice) {
+    Alert.alert('Physical device required', 'Push notifications need to run on a real device.');
+    return null;
+  }
 
-    if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
-    }
+  const { status: existingStatus } = await Notifications.getPermissionsAsync();
+  let finalStatus = existingStatus;
 
-    if (finalStatus !== 'granted') {
-      Alert.alert(
-        'Thông báo',
-        'App cần quyền thông báo để gửi nhắc nhở thói quen.',
-      );
-      return;
-    }
+  if (existingStatus !== 'granted') {
+    const { status } = await Notifications.requestPermissionsAsync();
+    finalStatus = status;
+  }
 
-    // ⚠️ Cần có projectId trong app.json → expo.extra.eas.projectId
-    const projectId =
-      // SDK mới
-      (Constants).expoConfig?.extra?.eas?.projectId ??
-      // Một số SDK cũ
-      (Constants).easConfig?.projectId;
+  if (finalStatus !== 'granted') {
+    Alert.alert('Permission denied', 'Failed to get push notification permissions.');
+    return null;
+  }
 
-    if (!projectId) {
-      console.warn(
-        '[notifications] Không tìm thấy projectId trong app.json (expo.extra.eas.projectId)',
-      );
-    }
+  const projectId = getProjectId();
+  const pushTokenResponse = await Notifications.getExpoPushTokenAsync(
+    projectId ? { projectId } : undefined
+  );
+  const token = pushTokenResponse.data;
 
-    const expoToken = await Notifications.getExpoPushTokenAsync(
-      projectId ? { projectId } : undefined,
-    );
+  console.log('FCM Token:', token);
 
-    token = expoToken.data;
-    console.log('Expo Push Token:', token);
+  if (!authToken || !token) {
+    return token;
+  }
 
-    try {
-      const response = await fetch(`${API_BASE}/api/fcm/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${authToken}`,
-        },
-        body: JSON.stringify({
-          token,
-          device: Platform.OS,
-          deviceId: (Constant).deviceId,
-        }),
-      });
+  try {
+    const response = await fetch(`${BACKEND_URL}/api/fcm/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${authToken}`,
+      },
+      body: JSON.stringify({
+        token,
+        device: Platform.OS,
+        deviceId: DEVICE_ID,
+      }),
+    });
 
-      const data = await response.json();
-      console.log('Token registered:', data);
-    } catch (error) {
-      console.error('Error registering token:', error);
-    }
-  } else {
-    Alert.alert(
-      'Thông báo',
-      'Push notification chỉ hoạt động trên thiết bị thật.',
-    );
+    const data = await response.json();
+    console.log('Token registered:', data);
+  } catch (error) {
+    console.error('Error registering token:', error);
   }
 
   return token;
 }
 
-// Hàm xoá token khi logout
-export async function unregisterPushNotifications(
-  authToken,
-  fcmToke,
-) {
+// Remove token from backend on logout
+export async function unregisterPushNotifications(authToken, fcmToken) {
+  if (!authToken || !fcmToken) return;
+
   try {
-    await fetch(`${API_BASE}/api/fcm/unregister`, {
+    console.log(`${BACKEND_URL}/api/fcm/unregister`);
+    
+    await fetch(`${BACKEND_URL}/api/fcm/unregister`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
