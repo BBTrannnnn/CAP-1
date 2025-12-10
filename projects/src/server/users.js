@@ -1,22 +1,45 @@
-// ==========================
+﻿// ==========================
 //  USER API CLIENT (MERGED)
 // ==========================
 
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Toast from 'react-native-toast-message';
+import { showErrorToast } from './toastConfig';
 
 // =======================================
 // BASE URL (tự động detect theo platform)
 // =======================================
 let BASE_URL = 'http://192.168.1.155:5000';
 
+// Auto-detect host for emulator / web preview
+function inferBaseUrl() {
+  // Expo web (http://localhost:8081/...) reuse current host
+  if (typeof window !== 'undefined' && window.location?.hostname) {
+    return `http://${window.location.hostname}:5000`;
+  }
+
+  // Mobile platforms
+  if (Platform.OS === 'android') {
+    return 'http://10.0.2.2:5000';
+  }
+  if (Platform.OS === 'ios') {
+    return 'http://localhost:5000';
+  }
+
+  return BASE_URL;
+}
+
+BASE_URL = inferBaseUrl();
+
 export function setBaseUrl(url) {
   BASE_URL = url;
-  console.log('[API BASE]', BASE_URL);
 }
 export function getBaseUrl() {
   return BASE_URL;
 }
+
+// Toast helper
 
 
 // =======================================
@@ -42,30 +65,13 @@ export async function clearToken() {
 // =======================================
 // Lõi gọi API – KHÔNG được đổi nữa
 // =======================================
-export async function apiRequest(path, { method = 'GET', body, auth = false } = {}) {
+export async function apiRequest(path, { method = "GET", body, auth = false } = {}) {
   const headers = { 'Content-Type': 'application/json' };
-
-  const label = `[apiRequest] ${method} ${path}`;
-  let maskedBody = body;
-  if (body && typeof body === 'object') {
-    try {
-      maskedBody = JSON.parse(JSON.stringify(body));
-      Object.keys(maskedBody).forEach((k) => {
-        if (String(k).toLowerCase().includes('password')) {
-          maskedBody[k] = '***';
-        }
-      });
-    } catch {}
-  }
-
-  console.groupCollapsed?.(label);
-  console.log('request:', { method, path, auth, body: maskedBody });
 
   try {
     if (auth) {
       const token = await getToken();
       if (!token) {
-        console.groupEnd?.();
         throw new Error('No auth token, please login first');
       }
       headers.Authorization = `Bearer ${token}`;
@@ -82,30 +88,55 @@ export async function apiRequest(path, { method = 'GET', body, auth = false } = 
     try {
       json = text ? JSON.parse(text) : null;
     } catch (e) {
-      console.warn('Cannot parse JSON, raw text:', text);
       throw new Error(`Invalid JSON from server: ${e.message}`);
     }
 
-    console.log('response status:', res.status);
-    console.log('response body:', json);
+    const resMessage = (json && (json.message || json.error)) || '';
 
-    if (!res.ok) {
+    if (json && json.success === false) {
       const msg =
-        (json && (json.message || json.error)) ||
-        `Request failed with status ${res.status}`;
-      throw new Error(msg);
+        resMessage ||
+        json.details?.suggestion ||
+        json.details?.message ||
+        json.details?.reason ||
+        'Loi he thong';
+      const err = new Error(msg);
+      err.status = res.status;
+      err.data = json;
+      err.toastShown = true;
+      showErrorToast(msg);
+      throw err;
     }
 
-    console.groupEnd?.();
+    if (!res.ok) {
+      const msg = resMessage || `Request failed with status ${res.status}`;
+      const err = new Error(msg);
+      err.status = res.status;
+      err.data = json;
+
+      if (res.status >= 500) {
+        showErrorToast('Loi he thong', 'May chu gap su co. Vui long thu lai sau.');
+      } else if (res.status === 404) {
+        showErrorToast('Khong tim thay', 'Tai nguyen khong ton tai (404).');
+      } else if (res.status === 401) {
+        showErrorToast('Phien dang nhap het han', 'Vui long dang nhap lai.');
+      } else {
+        showErrorToast('Da xay ra loi', msg);
+      }
+      err.toastShown = true;
+      throw err;
+    }
+
     return json;
   } catch (err) {
     console.error('API error:', err);
-    console.groupEnd?.();
+    if (!err.toastShown) {
+      showErrorToast(err.message || 'Da co loi');
+      err.toastShown = true;
+    }
     throw err;
   }
-}
-
-// =======================================
+}// =======================================
 // AUTH – LOGIN / REGISTER / LOGOUT
 // =======================================
 
@@ -276,3 +307,5 @@ export function buildQuery(obj = {}) {
     .join('&');
   return q ? `?${q}` : '';
 }
+
+

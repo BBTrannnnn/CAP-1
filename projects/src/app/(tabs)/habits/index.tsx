@@ -51,6 +51,8 @@ import {
   // tracking habit check-mode
   getHabitTrackings as apiGetHabitTrackings,
 } from '../../../server/habits';
+import { Input } from 'tamagui';
+import api from '../../../server/notifi'
 
 /* ========================================================= */
 /* TYPES                                                     */
@@ -257,7 +259,7 @@ const HorizontalCalendar: React.FC<HorizontalCalendarProps> = ({
           setDayStatusMap(statusMap);
         }
       } catch (err) {
-        console.error('[HorizontalCalendar] weekly report error:', err);
+        //console.error('[HorizontalCalendar] weekly report error:', err);
         if (!cancelled) {
           setError('Không tải được dữ liệu lịch.');
           setDayStatusMap({});
@@ -341,7 +343,7 @@ const HorizontalCalendar: React.FC<HorizontalCalendarProps> = ({
 //         setDayStatusMap(statusMap);
 //       }
 //     } catch (err) {
-//       console.error('[HorizontalCalendar] weekly report error:', err);
+//       //console.error('[HorizontalCalendar] weekly report error:', err);
 //       if (!cancelled) {
 //         setError('Không tải được dữ liệu lịch.');
 //         setDayStatusMap({});
@@ -637,6 +639,8 @@ export default function FlowStateHabits() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmName, setConfirmName] = useState('');
   const [confirmId, setConfirmId] = useState<number | null>(null);
+  const [typeForm, setTypeForm] = useState<string>('');
+
 
   const hhmmNow = () => {
     const d = new Date();
@@ -644,7 +648,13 @@ export default function FlowStateHabits() {
     const m = String(d.getMinutes()).padStart(2, '0');
     return `${h}:${m}`;
   };
-
+ // onChangeTime(e.target.value,newCountForm.start)
+ const onChangeTime = (timeValue: string, fieldType: 'start' | 'end') => {
+  setNewCountForm(prev => ({ 
+    ...prev, 
+    [fieldType]: timeValue 
+  }));
+}
   const categoryToTag = (cat?: string): 'Mindful' | 'Energy' | 'Sleep' => {
     const c = String(cat || '').toLowerCase();
     if (c === 'mindful') return 'Mindful';
@@ -917,7 +927,7 @@ export default function FlowStateHabits() {
           }
         }
       } catch (err) {
-        console.error('[habits.index] load error:', err);
+        //console.error('[habits.index] load error:', err);
         if (!cancelled) {
           setHabitList([]);
           setOverview(null);
@@ -1031,7 +1041,7 @@ export default function FlowStateHabits() {
         // Kiểm tra xem Local Date có lớn hơn UTC Date không?
         // (Ví dụ: VN là ngày 9, UTC vẫn là ngày 8)
         if (selectedDateStr > utcDateStr) {
-            console.log(`[Timezone Fix] Local (${selectedDateStr}) > UTC (${utcDateStr}). Sending UTC instead.`);
+            //console.log(`[Timezone Fix] Local (${selectedDateStr}) > UTC (${utcDateStr}). Sending UTC instead.`);
             // BẮT BUỘC gửi ngày UTC để Server không báo lỗi Future Time
             finalDateToSend = utcDateStr;
             
@@ -1080,7 +1090,7 @@ export default function FlowStateHabits() {
           body.mood = newCountForm.mood === 'neutral' ? 'okay' : newCountForm.mood;
         }
 
-        console.log('[Debug] Sending Body:', body);
+        //console.log('[Debug] Sending Body:', body);
         await apiAddHabitSubTracking(bid, body);
 
         setNewCountForm({
@@ -1094,7 +1104,7 @@ export default function FlowStateHabits() {
 
         refreshAll();
       } catch (err: any) {
-        console.error('[habits.index] add subtrack error:', err);
+        //console.error('[habits.index] add subtrack error:', err);
         Alert.alert('Lỗi Server', err?.message || 'Không thể lưu.');
       }
     })();
@@ -1111,7 +1121,7 @@ export default function FlowStateHabits() {
           refreshAll();
         }
       } catch (err) {
-        console.error('[habits.index] delete subtrack error:', err);
+        //console.error('[habits.index] delete subtrack error:', err);
       }
     })();
   };
@@ -1125,7 +1135,7 @@ export default function FlowStateHabits() {
           refreshAll();
         }
       } catch (err) {
-        console.error('[habits.index] clear day error:', err);
+        //console.error('[habits.index] clear day error:', err);
       } finally {
         setCountEntries((prev) => ({ ...prev, [habitId]: [] }));
         setCountViewOpen((v) => ({ ...v, [habitId]: false }));
@@ -1176,7 +1186,7 @@ export default function FlowStateHabits() {
         }
         refreshAll();
       } catch (err) {
-        console.error('[habits.index] save subtrack error:', err);
+        //console.error('[habits.index] save subtrack error:', err);
       } finally {
         setEditingEntry(null);
       }
@@ -1237,7 +1247,7 @@ export default function FlowStateHabits() {
         await apiTrackHabit(bid, payload);
         refreshAll();
       } catch (err) {
-        console.error('[habits.index] track error:', err);
+        //console.error('[habits.index] track error:', err);
       }
     })();
   };
@@ -1279,7 +1289,7 @@ export default function FlowStateHabits() {
         await apiTrackHabit(bid, payload);
         refreshAll();
       } catch (err) {
-        console.error('[habits.index] syncHabitMeta error:', err);
+        //console.error('[habits.index] syncHabitMeta error:', err);
       }
     })();
   };
@@ -1287,7 +1297,7 @@ export default function FlowStateHabits() {
   const openEditModal = (h: Habit) => {
     const backendId = n2b[h.id];
     if (!backendId) {
-      console.warn('[habits.index] Missing backend id for habit', h);
+      //console.warn('[habits.index] Missing backend id for habit', h);
       return;
     }
     router.push({
@@ -1339,7 +1349,7 @@ export default function FlowStateHabits() {
           refreshAll();
         }
       } catch (err) {
-        console.error('[habits.index] update error:', err);
+        //console.error('[habits.index] update error:', err);
       } finally {
         closeEditModal();
       }
@@ -1353,7 +1363,7 @@ export default function FlowStateHabits() {
         if (bid) await apiDeleteHabit(bid);
         refreshAll();
       } catch (err) {
-        console.error('[habits.index] delete error:', err);
+        //console.error('[habits.index] delete error:', err);
       } finally {
         if (activeMenu === id) setActiveMenu(null);
         closeConfirm();
@@ -1380,7 +1390,8 @@ export default function FlowStateHabits() {
   const progressPercent =
     totalHabits > 0 ? Math.round((completedCount / totalHabits) * 100) : 0;
 
-  const openDetail = (h: Habit) => {
+  const openDetail = (h: Habit,type:string) => {
+    setTypeForm(type)
     setDetailHabitId(h.id);
     setDetailOpen(true);
   };
@@ -1417,7 +1428,7 @@ export default function FlowStateHabits() {
 
         refreshAll();
       } catch (err) {
-        console.error('[habits.index] saveCountModal error:', err);
+        //console.error('[habits.index] saveCountModal error:', err);
       }
     })();
   };
@@ -1723,7 +1734,7 @@ export default function FlowStateHabits() {
                         {/* start */}
                         <View style={styles.formField}>
                           <Text style={styles.formLabel}>Bắt đầu *</Text>
-                          <TextInput
+                          {/* <TextInput
                             placeholder="HH:MM"
                             value={newCountForm.start}
                             onChangeText={(text) =>
@@ -1733,13 +1744,19 @@ export default function FlowStateHabits() {
                               }))
                             }
                             style={styles.input}
-                          />
+                          /> */}
+                          <input
+        type="time"
+        value={newCountForm.start}
+        onChange={(e) => onChangeTime(e.target.value,"start")}
+        style={styles.inputTime}
+      />
                         </View>
 
                         {/* end */}
                         <View style={styles.formField}>
                           <Text style={styles.formLabel}>Kết thúc (tùy chọn)</Text>
-                          <TextInput
+                          {/* <TextInput
                             placeholder="HH:MM"
                             value={newCountForm.end}
                             onChangeText={(text) =>
@@ -1749,7 +1766,13 @@ export default function FlowStateHabits() {
                               }))
                             }
                             style={styles.input}
-                          />
+                          /> */}
+                          <input
+        type="time"
+        value={newCountForm.end}
+        onChange={(e) => onChangeTime(e.target.value,"end")}
+        style={styles.inputTime}
+      />
                         </View>
                       </View>
 
@@ -2014,7 +2037,7 @@ export default function FlowStateHabits() {
                   {!isCountHabit && activeRow === habit.id && (
                     <View style={styles.actionRow}>
                       <TouchableOpacity
-                        onPress={() => openDetail(habit)}
+                        onPress={() => openDetail(habit,"Xong")}
                         style={[styles.actionButton, styles.actionButtonBlueSoft]}
                       >
                         <Eye size={14} color="#1e40af" />
@@ -2023,7 +2046,8 @@ export default function FlowStateHabits() {
                         </Text>
                       </TouchableOpacity>
                       <TouchableOpacity
-                        onPress={() => openEditModal(habit)}
+                      onPress={() => openDetail(habit,"Lưu")}
+                        //onPress={() => openEditModal(habit)}
                         style={[
                           styles.actionButton,
                           styles.actionButtonAmberSoft,
@@ -2395,7 +2419,7 @@ export default function FlowStateHabits() {
                         }}
                         style={styles.formSaveButton}
                       >
-                        <Text style={styles.formSaveText}>Xong</Text>
+                        <Text style={styles.formSaveText}>{typeForm}</Text>
                       </TouchableOpacity>
                     </View>
                   </>
@@ -2496,6 +2520,22 @@ export default function FlowStateHabits() {
 /* ========================================================= */
 
 const styles = StyleSheet.create({
+  inputTime: {
+    width: "calc(100% - 20px)",
+    height : "36.36px",
+    borderLeftWidth: "1px",
+    borderRightWidth: "1px",
+    borderStyle: "solid",
+    borderTopWidth: "1px",
+    borderBottomWidth: "1px",
+    borderColor: "rgba(203, 213, 225, 1.00)",
+    borderRadius: 10,
+    outline: "none",
+    background : "none",
+    paddingLeft : "10px",
+    paddingRight : "10px",
+    color : "rgba(15, 23, 42, 1.00)"
+  },
   page: {
     flex: 1,
     backgroundColor: '#eef2ff',

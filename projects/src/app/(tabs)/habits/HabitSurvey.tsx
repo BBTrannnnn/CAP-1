@@ -52,6 +52,15 @@ type SurveySessionResponse = {
   message?: string;
 };
 
+type UserInfo = {
+  name?: string;
+  age?: number;
+  ageGroup?: string;
+  ageGroupCode?: string;
+  gender?: string;
+  genderCode?: string;
+};
+
 // Gợi ý thói quen
 type Suggestion = {
   id?: string;
@@ -116,6 +125,7 @@ export default function HabitSurveyMobile() {
   const [domainScores, setDomainScores] = useState(defaultDomainScores);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [selectedHabits, setSelectedHabits] = useState<Record<string, boolean>>({});
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
 
   const selectedCount = useMemo(
     () => Object.values(selectedHabits).filter(Boolean).length,
@@ -213,6 +223,7 @@ export default function HabitSurveyMobile() {
     setDone(false);
     setErrorMsg(null);
     setIsLoading(false);
+    setUserInfo(null);
     setView('survey');
   };
 
@@ -224,6 +235,28 @@ export default function HabitSurveyMobile() {
 
       const res: any = await recommendHabits(answers,20);
       console.log('[HabitSurvey] recommendHabits response:', res);
+
+      let extractedUserInfo: UserInfo | null = null;
+      const resUser =
+        res?.userInfo ||
+        res?.recommendations?.userInfo ||
+        res?.data?.userInfo;
+      if (resUser && typeof resUser === 'object') {
+        extractedUserInfo = {
+          name: resUser.name,
+          age: resUser.age,
+          ageGroup: resUser.ageGroup || resUser.ageGroupLabel,
+          ageGroupCode: resUser.ageGroupCode,
+          gender: resUser.gender || resUser.genderLabel,
+          genderCode: resUser.genderCode,
+        };
+      } else if (res?.metadata?.personalizationSummary) {
+        const summary = res.metadata.personalizationSummary;
+        extractedUserInfo = {
+          ageGroup: summary.ageGroupLabel || summary.ageGroup,
+          gender: summary.genderLabel || summary.gender,
+        };
+      }
 
       // Parse mảng habits từ nhiều định dạng BE
       let base: Suggestion[] = [];
@@ -238,6 +271,8 @@ export default function HabitSurveyMobile() {
         setErrorMsg('Không tìm thấy gợi ý thói quen phù hợp.');
         return;
       }
+
+      setUserInfo(extractedUserInfo);
 
       // Ở đây tạm dùng domainScores mặc định (có thể sau này tính theo answers)
       const ds = defaultDomainScores;
@@ -439,22 +474,44 @@ export default function HabitSurveyMobile() {
 
         {/* Hồ sơ + tóm tắt */}
         <View style={styles.profileBanner}>
-          <Text style={styles.profileTitle}>Hồ sơ của bạn</Text>
-          <Text style={styles.profileSubtitle}>Người bận rộn cần cân bằng</Text>
+          <Text style={styles.profileTitle}>Ho so cua ban</Text>
+          <Text style={styles.profileSubtitle}>
+            {userInfo?.name || 'Nguoi ban ron can can bang'}
+          </Text>
+
+          {userInfo ? (
+            <View style={styles.profileTagsRow}>
+              {userInfo.gender ? (
+                <View style={styles.profileTag}>
+                  <Text style={styles.profileTagText}>Gioi tinh: {userInfo.gender}</Text>
+                </View>
+              ) : null}
+              {userInfo.age != null ? (
+                <View style={styles.profileTag}>
+                  <Text style={styles.profileTagText}>{userInfo.age} tuoi</Text>
+                </View>
+              ) : null}
+              {userInfo.ageGroup ? (
+                <View style={styles.profileTag}>
+                  <Text style={styles.profileTagText}>{userInfo.ageGroup}</Text>
+                </View>
+              ) : null}
+            </View>
+          ) : null}
+
           <View style={styles.profileTagsRow}>
             <View style={styles.profileTag}>
               <Text style={styles.profileTagText}>
-                {Object.keys(answers).length || 0}/{total} câu hỏi đã trả lời
+                {Object.keys(answers).length || 0}/{total} cau hoi da tra loi
               </Text>
             </View>
             <View style={styles.profileTag}>
               <Text style={styles.profileTagText}>
-                {suggestions.length} gợi ý thói quen
+                {suggestions.length} goi y thoi quen
               </Text>
             </View>
           </View>
         </View>
-
         {/* 4 scores */}
         <View style={styles.scoreGrid}>
           {renderScoreBar('Mental', domainScores.mental)}
