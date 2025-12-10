@@ -4,7 +4,7 @@ import { Stack } from 'expo-router';
 import * as Notifications from 'expo-notifications';
 import { router } from 'expo-router';
 import { Alert, Platform } from 'react-native';
-
+import Toast from 'react-native-toast-message';
 export default function RootLayout() {
   const notificationListener = useRef<Notifications.Subscription | null>(null);
   const responseListener = useRef<Notifications.Subscription | null>(null);
@@ -33,13 +33,13 @@ export default function RootLayout() {
       Notifications.addNotificationReceivedListener((notification) => {
         console.log('New notification', notification.request.content.body || 'You have a new notification');
         
-        Alert.alert('New notification', notification.request.content.body || 'You have a new notification');
+        alert(notification.request.content.body || 'You have a new notification');
       });
 
     // Khi user bấm vào notification
     responseListener.current =
       Notifications.addNotificationResponseReceivedListener((response) => {
-        Alert.alert('Notification opened', 'You just tapped a notification');
+        alert('Notification opened');
         const data = response.notification.request.content.data as any;
 
         if (data?.habitId) {
@@ -58,9 +58,12 @@ export default function RootLayout() {
   }, []);
 
   return (
+    <>
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
     </Stack>
+    <Toast />
+    </>
   );
 }

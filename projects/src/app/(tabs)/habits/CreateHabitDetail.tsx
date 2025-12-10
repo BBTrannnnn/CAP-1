@@ -417,6 +417,19 @@ export default function CreateHabitDetail() {
             ))}
           </View>
 
+          
+        </View>
+
+        {/* Tên + mô tả */}
+        <View style={sx(styles.card, styles.section)}>
+          <Text style={styles.sectionTitle}>Tên thói quen</Text>
+          <TextInput
+            style={styles.input}
+            value={habitName}
+            onChangeText={setHabitName}
+            placeholder="VD: Uống 2L nước"
+            placeholderTextColor="#94a3b8"
+          />
           {trackingMode === 'count' && (
             <View style={{ marginTop: 12, gap: 8 }}>
               <Text style={styles.label}>Mục tiêu # Count</Text>
@@ -439,18 +452,6 @@ export default function CreateHabitDetail() {
               </View>
             </View>
           )}
-        </View>
-
-        {/* Tên + mô tả */}
-        <View style={sx(styles.card, styles.section)}>
-          <Text style={styles.sectionTitle}>Tên thói quen</Text>
-          <TextInput
-            style={styles.input}
-            value={habitName}
-            onChangeText={setHabitName}
-            placeholder="VD: Uống 2L nước"
-            placeholderTextColor="#94a3b8"
-          />
         </View>
 
         {/* Thời gian */}

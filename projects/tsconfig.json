@@ -4,6 +4,8 @@
     "jsx": "react",
     "types": ["expo-router/types", "react", "react-native"],
     "strict": true,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
     "paths": {
       "@/*": ["./*"]
     }
@@ -13,7 +15,7 @@
     "src/**/*.tsx",
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
-  ],
+, "src/server/notifi.js"  ],
   "exclude": [
     "node_modules",
     "Documents",

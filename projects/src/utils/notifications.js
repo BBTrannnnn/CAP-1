@@ -31,7 +31,7 @@ export async function ensureNotificationPermissions() {
   }
   
   if (finalStatus !== 'granted') {
-    Alert.alert('Cần quyền thông báo', 'Vui lòng cấp quyền để nhận nhắc nhở!');
+    alert('Cần quyền thông báo', 'Vui lòng cấp quyền để nhận nhắc nhở!');
     return false;
   }
   return true;
