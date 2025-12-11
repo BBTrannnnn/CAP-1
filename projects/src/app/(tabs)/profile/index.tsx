@@ -22,7 +22,7 @@ import {
   updateProfile,
   updateAdditionalInfo,
   logout as apiLogout,
-} from '../../server/users';
+} from '../../../server/users';
 
 const COLORS = {
   background: '#F6F8FB',
@@ -168,8 +168,11 @@ export default function ProfileScreen() {
     try {
       setSaving(true);
 
-      await updateAdditionalInfo({
-        id: user.id,
+      // Use updateProfile which supports all fields
+      await updateProfile(user.id, {
+        name,
+        email,
+        phone,
         dateOfBirth: dobIso,
         gender,
         address,
@@ -190,7 +193,7 @@ export default function ProfileScreen() {
   const onLogout = async () => {
     try {
       await apiLogout();
-    } catch {}
+    } catch { }
     router.replace('/(auth)/login');
   };
 
@@ -217,8 +220,8 @@ export default function ProfileScreen() {
     summary.gender === 'male'
       ? 'Nam'
       : summary.gender === 'female'
-      ? 'Nữ'
-      : '—';
+        ? 'Nữ'
+        : '—';
 
   const dobLabel = parseDateString(summary.dateOfBirth);
 
@@ -341,6 +344,33 @@ export default function ProfileScreen() {
                 </TouchableOpacity>
               </View>
             )}
+
+            {/* TÚI VẬT PHẨM – dùng chung cho cả admin & user */}
+            <View style={{ marginHorizontal: 16, marginBottom: 8 }}>
+              <TouchableOpacity
+                onPress={() => router.push('/(tabs)/profile/item')} // nếu file của bạn là app/(tabs)/items/index.tsx thì đổi thành '/(tabs)/items'
+                style={{
+                  marginTop: 4,
+                  backgroundColor: COLORS.card,
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: COLORS.border,
+                  paddingHorizontal: 14,
+                  paddingVertical: 12,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Ionicons name="gift-outline" size={20} color={COLORS.text} />
+                  <Text style={{ marginLeft: 10, fontWeight: '700', color: COLORS.text }}>
+                    Túi vật phẩm
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward-outline" size={18} color={COLORS.subtext} />
+              </TouchableOpacity>
+            </View>
 
             {/* FORM CẬP NHẬT */}
             <TouchableOpacity

@@ -110,8 +110,6 @@ const userSchema = new mongoose.Schema({
   // ✅ THÊM MỚI: Settings streak protection
   streakProtectionSettings: {
     enabled: { type: Boolean, default: true },
-    autoUseShield: { type: Boolean, default: false },
-    minStreakToAutoProtect: { type: Number, default: 7 },
     notificationTime: { type: String, default: '21:00' }
   },
 

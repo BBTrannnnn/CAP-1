@@ -8,11 +8,22 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // =======================================
 // BASE URL (tự động detect theo platform)
 // =======================================
-let BASE_URL = 'http://localhost:5000';
+let BASE_URL = 'http://192.168.1.7:5000';
 
 export function setBaseUrl(url) {
   BASE_URL = url;
   console.log('[API BASE]', BASE_URL);
+  BASE_URL = url;
+  console.log('[API BASE]', BASE_URL);
+}
+
+export function getFullImageUrl(path) {
+  if (!path) return undefined;
+  if (path.startsWith('http')) return path;
+  // Remove leading slash if BASE_URL ends with one, or vice versa to ensure single slash
+  // But here BASE_URL doesn't have trailing slash usually.
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  return `${BASE_URL}${cleanPath}`;
 }
 
 // =======================================
@@ -38,6 +49,22 @@ export async function clearToken() {
 // =======================================
 // Lõi gọi API – KHÔNG được đổi nữa
 // =======================================
+/**
+* Gọi API backend chung cho toàn app.
+*
+* @param {string} path - Đường dẫn API, ví dụ: "/api/posts"
+* @param {{
+*   method?: string,
+*   body?: any,
+*   auth?: boolean
+* }} [options] - Tùy chọn khi gọi API
+*
+* method: "GET" | "POST" | "PUT" | "DELETE"
+* body: dữ liệu JSON gửi lên (sẽ được JSON.stringify)
+* auth: nếu true → tự thêm Authorization: Bearer <token>
+*
+* @returns {Promise<any>} JSON response từ server
+*/
 export async function apiRequest(path, { method = 'GET', body, auth = false } = {}) {
   const headers = { 'Content-Type': 'application/json' };
 
@@ -51,7 +78,7 @@ export async function apiRequest(path, { method = 'GET', body, auth = false } = 
           maskedBody[k] = '***';
         }
       });
-    } catch {}
+    } catch { }
   }
 
   console.groupCollapsed?.(label);
@@ -73,13 +100,20 @@ export async function apiRequest(path, { method = 'GET', body, auth = false } = 
       body: body ? JSON.stringify(body) : undefined,
     });
 
-    const text = await res.text();
-    let json;
-    try {
-      json = text ? JSON.parse(text) : null;
-    } catch (e) {
-      console.warn('Cannot parse JSON, raw text:', text);
-      throw new Error(`Invalid JSON from server: ${e.message}`);
+    const contentType = res.headers.get('content-type') || '';
+    let json = null;
+
+    if (contentType.includes('application/json')) {
+      const text = await res.text();
+      try {
+        json = text ? JSON.parse(text) : null;
+      } catch (e) {
+        console.warn('Cannot parse JSON, raw text:', text);
+        throw new Error(`Invalid JSON from server: ${e.message}`);
+      }
+    } else {
+      const text = await res.text();
+      throw new Error(`Invalid JSON from server: ${text ? String(text).slice(0, 100) : 'Empty response'}`);
     }
 
     console.log('response status:', res.status);
@@ -159,21 +193,21 @@ export async function isLoggedIn() {
 //  QUÊN MẬT KHẨU
 // =======================================
 export async function forgotPassword(email) {
-  return apiRequest('/api/users/forgot-password', {
+  return apiRequest('/api/users/forgotpassword', {
     method: 'POST',
     body: { email },
   });
 }
 
 export async function verifyOTP({ email, otp }) {
-  return apiRequest('/api/users/verify-otp', {
+  return apiRequest('/api/users/verifyOTP', {
     method: 'POST',
     body: { email, otp },
   });
 }
 
 export async function resetPassword({ email, password, confirmPassword }) {
-  return apiRequest('/api/users/reset-password', {
+  return apiRequest('/api/users/resetpassword', {
     method: 'POST',
     body: { email, password, confirmPassword },
   });
@@ -202,9 +236,41 @@ export async function updateProfile(userId, payload) {
   });
 }
 
+// Get user's friends list
+export async function getUserFriends(userId, page = 1, limit = 20) {
+  return apiRequest(`/api/social/friends/${userId}?page=${page}&limit=${limit}`, {
+    auth: true,
+  });
+}
+
+// Get friend requests
+export async function getFriendRequests() {
+  return apiRequest('/api/social/friends-requests?type=received', {
+    auth: true,
+  });
+}
+
+// Accept friend request
+export async function acceptFriendRequest(friendId) {
+  return apiRequest('/api/social/friends/accept', {
+    method: 'POST',
+    auth: true,
+    body: { friendId },
+  });
+}
+
+// Reject friend request
+export async function rejectFriendRequest(friendId) {
+  return apiRequest('/api/social/friends/reject', {
+    method: 'POST',
+    auth: true,
+    body: { friendId },
+  });
+}
+
 // Cập nhật dateOfBirth / gender / address
 export async function updateAdditionalInfo({ id, dateOfBirth, gender, address }) {
-  return apiRequest(`/api/users/${id}/addinfor`, {
+  return apiRequest(`/api/users/${id}`, {
     method: 'PUT',
     auth: true,
     body: {
@@ -221,7 +287,7 @@ export async function updateAdditionalInfo({ id, dateOfBirth, gender, address })
 
 // Lấy danh sách user (có phân trang)
 export async function getAllUsers({ page = 1, limit = 20 } = {}) {
-  return apiRequest(`/api/users?page=${page}&limit=${limit}`, {
+  return apiRequest(`/api/admin/users?page=${page}&limit=${limit}`, {
     auth: true,
   });
 }
@@ -247,7 +313,7 @@ export async function adminCreateUser(payload) {
 
 // Admin đổi vai trò user
 export async function updateUserRoleApi(userId, role) {
-  return apiRequest(`/api/users/${userId}/role`, {
+  return apiRequest(`/api/admin/users/${userId}/role`, {
     method: 'PATCH',
     auth: true,
     body: { role },
@@ -271,4 +337,265 @@ export function buildQuery(obj = {}) {
     .map((k) => `${esc(k)}=${esc(obj[k])}`)
     .join('&');
   return q ? `?${q}` : '';
+}
+// ================================
+// SOCIAL & COMMUNITY API LAYER
+// Dùng chung apiRequest / buildQuery
+// ================================
+
+// ---------- POSTS ----------
+
+// GET /api/posts/feed?page=1&limit=10
+export async function getFeedPosts(params = {}) {
+  const query = buildQuery(params);
+  return apiRequest(`/api/posts/feed${query}`, {
+    method: 'GET',
+    auth: true,
+  });
+}
+
+// POST /api/posts
+export async function createPostApi(payload) {
+  // payload: { content, images?, visibility? }
+  return apiRequest('/api/posts', {
+    method: 'POST',
+    auth: true,
+    body: payload,
+  });
+}
+
+// GET /api/posts/user/:userId
+export async function getUserPosts(userId, params = {}) {
+  const query = buildQuery(params);
+  return apiRequest(`/api/posts/user/${userId}${query}`, {
+    method: 'GET',
+    auth: true,
+  });
+}
+
+// GET /api/posts/:postId
+export async function getPostDetail(postId) {
+  return apiRequest(`/api/posts/${postId}`, {
+    method: 'GET',
+    auth: true,
+  });
+}
+
+// PUT /api/posts/:postId
+export async function updatePost(postId, payload) {
+  return apiRequest(`/api/posts/${postId}`, {
+    method: 'PUT',
+    auth: true,
+    body: payload,
+  });
+}
+
+// DELETE /api/posts/:postId
+export async function deletePost(postId) {
+  return apiRequest(`/api/posts/${postId}`, {
+    method: 'DELETE',
+    auth: true,
+  });
+}
+
+// POST /api/posts/:postId/like
+export async function togglePostLike(postId) {
+  return apiRequest(`/api/posts/${postId}/like`, {
+    method: 'POST',
+    auth: true,
+  });
+}
+
+// GET /api/posts/:postId/likes?page=&limit=
+export async function getPostLikes(postId, params = {}) {
+  const query = buildQuery(params);
+  return apiRequest(`/api/posts/${postId}/likes${query}`, {
+    method: 'GET',
+    auth: true,
+  });
+}
+
+// POST /api/posts/:postId/share
+export async function sharePost(postId, payload) {
+  // payload: { shareCaption?, visibility? }
+  return apiRequest(`/api/posts/${postId}/share`, {
+    method: 'POST',
+    auth: true,
+    body: payload,
+  });
+}
+
+// Lấy trending hashtags
+export async function getTrendingHashtags(limit = 10, days = 7) {
+  return apiRequest(`/api/posts/trending/hashtags?limit=${limit}&days=${days}`, {
+    method: 'GET',
+    auth: true,
+  });
+}
+
+// Lấy bài viết theo hashtag
+export async function getPostsByHashtag(tag, page = 1, limit = 20) {
+  return apiRequest(`/api/posts/hashtag/${encodeURIComponent(tag)}?page=${page}&limit=${limit}`, {
+    method: 'GET',
+    auth: true,
+  });
+}
+
+// ---------- COMMENTS ----------
+
+// POST /api/comments  (comment hoặc reply)
+export async function createCommentApi(payload) {
+  // payload: { postId, content, parentCommentId? }
+  return apiRequest('/api/comments', {
+    method: 'POST',
+    auth: true,
+    body: payload,
+  });
+}
+
+// GET /api/comments/post/:postId?page=&limit=&sort=
+export async function getPostComments(postId, params = {}) {
+  const query = buildQuery(params);
+  return apiRequest(`/api/comments/post/${postId}${query}`, {
+    method: 'GET',
+    auth: true,
+  });
+}
+
+// GET /api/comments/:commentId/replies?page=&limit=
+export async function getCommentReplies(commentId, params = {}) {
+  const query = buildQuery(params);
+  return apiRequest(`/api/comments/${commentId}/replies${query}`, {
+    method: 'GET',
+    auth: true,
+  });
+}
+
+// PUT /api/comments/:commentId
+export async function updateComment(commentId, content) {
+  return apiRequest(`/api/comments/${commentId}`, {
+    method: 'PUT',
+    auth: true,
+    body: { content },
+  });
+}
+
+// DELETE /api/comments/:commentId
+export async function deleteComment(commentId) {
+  return apiRequest(`/api/comments/${commentId}`, {
+    method: 'DELETE',
+    auth: true,
+  });
+}
+
+// POST /api/comments/:commentId/like
+export async function toggleCommentLike(commentId) {
+  return apiRequest(`/api/comments/${commentId}/like`, {
+    method: 'POST',
+    auth: true,
+  });
+}
+
+// GET /api/comments/:commentId/likes?page=&limit=
+export async function getCommentLikes(commentId, params = {}) {
+  const query = buildQuery(params);
+  return apiRequest(`/api/comments/${commentId}/likes${query}`, {
+    method: 'GET',
+    auth: true,
+  });
+}
+
+
+
+// ---------- SOCIAL (Friends & Block) ----------
+
+// POST /api/social/friends/request  { friendId }
+export async function sendFriendRequest(friendId) {
+  return apiRequest('/api/social/friends/request', {
+    method: 'POST',
+    auth: true,
+    body: { friendId },
+  });
+}
+
+// DELETE /api/social/friends/unfriend  { friendId } (body của DELETE)
+// kept as `unfriend` further below
+
+// GET /api/social/friends?page=&limit=
+export async function getMyFriends(page = 1, limit = 20) {
+  return apiRequest(`/api/social/friends?page=${page}&limit=${limit}`, {
+    method: 'GET',
+    auth: true,
+  });
+}
+
+// GET /api/social/friends/status/:userId
+export async function getFriendStatus(userId) {
+  return apiRequest(`/api/social/friends/status/${userId}`, {
+    method: 'GET',
+    auth: true,
+  });
+}
+
+// POST /api/social/block  { blockedUserId, reason? }
+export async function blockUser(blockedUserId, reason) {
+  return apiRequest('/api/social/block', {
+    method: 'POST',
+    auth: true,
+    body: { blockedUserId, reason },
+  });
+}
+
+// DELETE /api/social/unblock  { blockedUserId }
+export async function unblockUser(blockedUserId) {
+  return apiRequest('/api/social/unblock', {
+    method: 'DELETE',
+    auth: true,
+    body: { blockedUserId },
+  });
+}
+
+// Hủy kết bạn / hủy lời mời kết bạn
+export async function unfriend(friendId) {
+  return apiRequest('/api/social/friends/unfriend', {
+    method: 'DELETE',
+    auth: true,
+    body: { friendId },
+  });
+}
+
+// Lấy danh sách user đã chặn
+export async function getBlockedUsers(page = 1, limit = 20) {
+  return apiRequest(`/api/social/blocked?page=${page}&limit=${limit}`, {
+    method: 'GET',
+    auth: true,
+  });
+}
+
+// NOTE: `cancelFriendRequest` removed per requested API contract
+// ---------- PUBLIC PROFILE ----------
+
+// GET /api/users/public/:userId (không cần token)
+export async function getPublicProfile(userId) {
+  const res = await apiRequest(`/api/users/public/${userId}`, {
+    method: 'GET',
+    auth: true, // nếu public không cần token cũng không sao
+  });
+  return res.data;
+}
+// Lấy thông tin user đang đăng nhập (dùng token hiện tại)
+export async function getCurrentUser() {
+  const res = await apiRequest('/api/users/me', {
+    method: 'GET',
+    auth: true,
+  });
+  return res.data; // tùy BE, nếu BE trả { success, data } thì data là profile
+}
+// Lấy trang cá nhân cộng đồng của 1 user
+// GET /api/social/profile/:userId
+export async function getCommunityProfile(userId) {
+  return apiRequest(`/api/social/profile/${userId}`, {
+    method: 'GET',
+    auth: true,
+  });
 }

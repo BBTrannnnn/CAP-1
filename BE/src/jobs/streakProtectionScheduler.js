@@ -18,7 +18,7 @@ class StreakProtectionScheduler {
     this.isRunning = true;
     
     // Job 1: Check streak risks (21:00 daily)
-    this.streakCheckJob = cron.schedule('0 10 * * *', async () => {
+    this.streakCheckJob = cron.schedule('19 16 * * *', async () => {
       await streakProtectionService.checkAllHabitsStreakRisk();
     }, {
       scheduled: true,

@@ -1,10 +1,8 @@
 // app/(auth)/register.tsx
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Link, Stack, useRouter } from 'expo-router';
-import { TouchableOpacity } from 'react-native';
+import { View, Alert, Image } from 'react-native';
 import React, { useState } from 'react';
-import { Alert, Image, Platform } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import {
   Button,
   Card,
@@ -35,99 +33,121 @@ export default function Register() {
   const [agree, setAgree] = useState(false);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const [dateOfBirth, setDateOfBirth] = useState<Date | null>(null);
-  const [showDobPicker, setShowDobPicker] = useState(false);
+
+  // State cho ngày sinh (dạng chuỗi DD/MM/YYYY để hiển thị)
+  const [dobText, setDobText] = useState('');
+  
   const [gender, setGender] = useState<'male' | 'female' | ''>('');
-  const [address, setAddress] = useState(''); 
+  const [address, setAddress] = useState('');
+
+  // Hàm xử lý nhập ngày sinh: tự động thêm dấu /
+  const handleDobChange = (text: string) => {
+    // Chỉ cho phép nhập số
+    let cleaned = text.replace(/[^0-9]/g, '');
+
+    // Giới hạn tối đa 8 số (ddmmyyyy)
+    if (cleaned.length > 8) cleaned = cleaned.slice(0, 8);
+
+    // Format: DD/MM/YYYY
+    let formatted = cleaned;
+    if (cleaned.length >= 3 && cleaned.length <= 4) {
+      formatted = `${cleaned.slice(0, 2)}/${cleaned.slice(2)}`;
+    } else if (cleaned.length >= 5) {
+      formatted = `${cleaned.slice(0, 2)}/${cleaned.slice(2, 4)}/${cleaned.slice(4)}`;
+    }
+
+    setDobText(formatted);
+  };
+
+  // Hàm chuyển đổi chuỗi DD/MM/YYYY sang Date object (ISO format)
+  // Trả về null nếu ngày không hợp lệ
+  const parseDobToDate = (text: string): Date | null => {
+    // Regex kiểm tra sơ bộ định dạng d/m/y
+    const parts = text.split('/');
+    if (parts.length !== 3) return null;
+
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10);
+    const year = parseInt(parts[2], 10);
+
+    if (!day || !month || !year) return null;
+    if (month < 1 || month > 12) return null;
+    if (day < 1 || day > 31) return null;
+    if (year < 1900 || year > new Date().getFullYear()) return null;
+
+    // Tạo đối tượng Date (Lưu ý: tháng trong JS bắt đầu từ 0)
+    const dateObj = new Date(year, month - 1, day);
+    
+    // Kiểm tra lại xem ngày có hợp lệ không (ví dụ: 31/02 sẽ tự nhảy sang tháng 3)
+    if (
+      dateObj.getFullYear() !== year ||
+      dateObj.getMonth() !== month - 1 ||
+      dateObj.getDate() !== day
+    ) {
+      return null;
+    }
+
+    return dateObj;
+  };
 
   const formatDateIso = (d: Date) => {
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
-};
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
 
-const formatDateDMY = (d: Date) => {
-  const dd = String(d.getDate()).padStart(2, '0');
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const yyyy = d.getFullYear();
-  return `${dd}-${mm}-${yyyy}`;
-};
-
-
-    const validate = () => {
+  const validate = () => {
     if (__DEV__) console.log('[Register] Validating form...');
     if (!fullName.trim()) return 'Vui lòng nhập họ và tên';
     if (!email.trim()) return 'Vui lòng nhập email';
     const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
     if (!emailOk) return 'Email không hợp lệ';
     if (!phone.trim()) return 'Vui lòng nhập số điện thoại';
-    if (!dateOfBirth) return 'Vui lòng chọn ngày sinh';
+    
+    // Validate ngày sinh
+    if (!dobText) return 'Vui lòng nhập ngày sinh';
+    const dobDate = parseDobToDate(dobText);
+    if (!dobDate) return 'Ngày sinh không hợp lệ (DD/MM/YYYY)';
+
     if (!gender) return 'Vui lòng chọn giới tính';
     if (!address.trim()) return 'Vui lòng nhập địa chỉ';
 
     if (pw.length < 6) return 'Mật khẩu tối thiểu 6 ký tự';
     if (pw !== confirmPw) return 'Mật khẩu xác nhận không khớp';
     if (!agree) return 'Bạn cần đồng ý với điều khoản để tiếp tục';
+    
     return '';
   };
 
   const onRegister = async () => {
     const msg = validate();
     if (msg) {
-      if (__DEV__) console.warn('[Register] Validate failed:', msg);
       Alert.alert('Thiếu thông tin', msg);
       return;
     }
 
-    // Chuẩn bị payload (mask mật khẩu khi log)
+    const dobDate = parseDobToDate(dobText); // Chắc chắn có giá trị vì đã validate
+
     const payload = {
       name: fullName.trim(),
       email: email.trim(),
       phone: phone.trim(),
       password: pw,
       confirmPassword: confirmPw,
-      dateOfBirth: formatDateIso(dateOfBirth as Date),
-      gender,  
+      dateOfBirth: formatDateIso(dobDate!),
+      gender,
       address: address.trim(),
     };
 
-    if (__DEV__) {
-      console.log('[Register] Submitting payload:', {
-        ...payload,
-        password: '***',
-        confirmPassword: '***',
-      });
-    }
-
     setLoading(true);
     try {
-      console.time?.('[Register] apiRegister');
       const res = await apiRegister(payload);
-      console.timeEnd?.('[Register] apiRegister');
-
-      if (__DEV__) {
-        console.log('[Register] API success:', res);
-      }
-
-      // Ưu tiên message từ API
-      const apiMessage =
-        res?.message ||
-        res?.data?.message ||
-        'Tạo tài khoản thành công. Vui lòng đăng nhập.';
-
+      const apiMessage = res?.message || res?.data?.message || 'Tạo tài khoản thành công.';
       Alert.alert('Đăng ký thành công', apiMessage);
       router.replace("/(auth)/login");
     } catch (err: any) {
-      if (__DEV__) {
-        console.error('[Register] API error:', err?.status, err?.data || err);
-      }
-      const e =
-        err?.data?.message ||
-        err?.response?.data?.message ||
-        err?.message ||
-        'Đăng ký thất bại. Vui lòng thử lại.';
-
+      const e = err?.data?.message || err?.response?.data?.message || err?.message || 'Đăng ký thất bại.';
       Alert.alert('Đăng ký thất bại', String(e));
     } finally {
       setLoading(false);
@@ -156,328 +176,95 @@ const formatDateDMY = (d: Date) => {
               </Text>
 
               {/* Full name */}
-              <Label fontSize={14} fontWeight="500" color="#585858" marginBottom={8}>
-                Họ và tên
-              </Label>
-              <XStack
-                alignItems="center"
-                height={56}
-                borderRadius={12}
-                borderWidth={1}
-                backgroundColor="#F8F8F8"
-                borderColor="#E4E4E4"
-                paddingHorizontal={12}
-                marginBottom={16}
-              >
+              <Label fontSize={14} fontWeight="500" color="#585858" marginBottom={8}>Họ và tên</Label>
+              <XStack alignItems="center" height={56} borderRadius={12} borderWidth={1} backgroundColor="#F8F8F8" borderColor="#E4E4E4" paddingHorizontal={12} marginBottom={16}>
                 <MaterialCommunityIcons name="account-outline" size={18} color="#8C8C8C" />
-                <Input
-                  flex={1}
-                  height={56}
-                  fontSize={16}
-                  placeholder="Nhập họ và tên"
-                  value={fullName}
-                  onChangeText={(v) => {
-                    setFullName(v);
-                    if (__DEV__) console.log('[Register] fullName changed:', v);
-                  }}
-                  autoCapitalize="words"
-                  backgroundColor="transparent"
-                  borderWidth={0}
-                  marginLeft={8}
-                />
+                <Input flex={1} height={56} fontSize={16} placeholder="Nhập họ và tên" value={fullName} onChangeText={setFullName} autoCapitalize="words" backgroundColor="transparent" borderWidth={0} marginLeft={8} />
               </XStack>
 
               {/* Email */}
-              <Label fontSize={14} fontWeight="500" color="#585858" marginBottom={8}>
-                Email
-              </Label>
-              <XStack
-                alignItems="center"
-                height={56}
-                borderRadius={12}
-                borderWidth={1}
-                backgroundColor="#F8F8F8"
-                borderColor="#E4E4E4"
-                paddingHorizontal={12}
-                marginBottom={16}
-              >
+              <Label fontSize={14} fontWeight="500" color="#585858" marginBottom={8}>Email</Label>
+              <XStack alignItems="center" height={56} borderRadius={12} borderWidth={1} backgroundColor="#F8F8F8" borderColor="#E4E4E4" paddingHorizontal={12} marginBottom={16}>
                 <MaterialCommunityIcons name="email-outline" size={18} color="#8C8C8C" />
-                <Input
-                  flex={1}
-                  height={56}
-                  fontSize={16}
-                  placeholder="Nhập email"
-                  value={email}
-                  onChangeText={(v) => {
-                    setEmail(v);
-                    if (__DEV__) console.log('[Register] email changed:', v);
-                  }}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  keyboardType="email-address"
-                  backgroundColor="transparent"
-                  borderWidth={0}
-                  marginLeft={8}
-                />
+                <Input flex={1} height={56} fontSize={16} placeholder="Nhập email" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" backgroundColor="transparent" borderWidth={0} marginLeft={8} />
               </XStack>
 
               {/* Phone */}
-              <Label fontSize={14} fontWeight="500" color="#585858" marginBottom={8}>
-                Số điện thoại
-              </Label>
-              <XStack
-                alignItems="center"
-                height={56}
-                borderRadius={12}
-                borderWidth={1}
-                backgroundColor="#F8F8F8"
-                borderColor="#E4E4E4"
-                paddingHorizontal={12}
-                marginBottom={16}
-              >
+              <Label fontSize={14} fontWeight="500" color="#585858" marginBottom={8}>Số điện thoại</Label>
+              <XStack alignItems="center" height={56} borderRadius={12} borderWidth={1} backgroundColor="#F8F8F8" borderColor="#E4E4E4" paddingHorizontal={12} marginBottom={16}>
                 <MaterialCommunityIcons name="phone-outline" size={18} color="#8C8C8C" />
+                <Input flex={1} height={56} fontSize={16} placeholder="Nhập số điện thoại" value={phone} onChangeText={setPhone} keyboardType="phone-pad" backgroundColor="transparent" borderWidth={0} marginLeft={8} />
+              </XStack>
+
+              {/* Date of birth - NHẬP TAY DD/MM/YYYY */}
+              <Label fontSize={14} fontWeight="500" color="#585858" marginBottom={8}>Ngày sinh</Label>
+              <XStack alignItems="center" height={56} borderRadius={12} borderWidth={1} backgroundColor="#F8F8F8" borderColor="#E4E4E4" paddingHorizontal={12} marginBottom={16}>
+                <MaterialCommunityIcons name="calendar-month-outline" size={18} color="#8C8C8C" />
                 <Input
                   flex={1}
                   height={56}
                   fontSize={16}
-                  placeholder="Nhập số điện thoại"
-                  value={phone}
-                  onChangeText={(v) => {
-                    setPhone(v);
-                    if (__DEV__) console.log('[Register] phone changed:', v);
-                  }}
-                  keyboardType="phone-pad"
+                  placeholder="DD/MM/YYYY (Ví dụ: 25/12/2000)"
+                  value={dobText}
+                  onChangeText={handleDobChange}
+                  keyboardType="numeric" // Chỉ hiện bàn phím số trên điện thoại
                   backgroundColor="transparent"
                   borderWidth={0}
                   marginLeft={8}
+                  maxLength={10} // Giới hạn độ dài chuỗi
                 />
               </XStack>
-              
-              {/* Date of birth */}
-              <Label fontSize={14} fontWeight="500" color="#585858" marginBottom={8}>
-                Ngày sinh
-              </Label>
-
-              <XStack
-                alignItems="center"
-                height={56}
-                borderRadius={12}
-                borderWidth={1}
-                backgroundColor="#F8F8F8"
-                borderColor="#E4E4E4"
-                paddingHorizontal={12}
-                marginBottom={16}
-              >
-                <MaterialCommunityIcons name="calendar-month-outline" size={18} color="#8C8C8C" />
-
-                <TouchableOpacity
-                  style={{ flex: 1 }}
-                  onPress={() => setShowDobPicker(true)}
-                >
-                  <Text
-                    style={{
-                      height: 56,
-                      textAlignVertical: "center",
-                      paddingLeft: 8,
-                      fontSize: 16,
-                      color: dateOfBirth ? "#000" : "#8C8C8C",
-                    }}
-                  >
-                    {dateOfBirth ? formatDateDMY(dateOfBirth) : "Chọn ngày sinh"}
-                  </Text>
-                </TouchableOpacity>
-              </XStack>
-
-              {showDobPicker && (
-                <DateTimePicker
-                  value={dateOfBirth || new Date()}
-                  mode="date"
-                  display={Platform.OS === "ios" ? "spinner" : "default"}
-                  maximumDate={new Date()}
-                  onChange={(event, selectedDate) => {
-                    setShowDobPicker(false);
-                    if (selectedDate) {
-                      setDateOfBirth(selectedDate);
-                    }
-                  }}
-                />
-              )}
 
               {/* Gender */}
-              <Label fontSize={14} fontWeight="500" color="#585858" marginBottom={8}>
-                Giới tính
-              </Label>
+              <Label fontSize={14} fontWeight="500" color="#585858" marginBottom={8}>Giới tính</Label>
               <XStack space="$2" marginBottom={16}>
-                <Button
-                  flex={1}
-                  height={42}
-                  borderRadius={999}
-                  backgroundColor={gender === 'male' ? '#085C9C' : '#F0F0F0'}
-                  onPress={() => setGender('male')}
-                >
-                  <Text color={gender === 'male' ? 'white' : '#333'} fontWeight="600">
-                    Nam
-                  </Text>
+                <Button flex={1} height={42} borderRadius={999} backgroundColor={gender === 'male' ? '#085C9C' : '#F0F0F0'} onPress={() => setGender('male')}>
+                  <Text color={gender === 'male' ? 'white' : '#333'} fontWeight="600">Nam</Text>
                 </Button>
-
-                <Button
-                  flex={1}
-                  height={42}
-                  borderRadius={999}
-                  backgroundColor={gender === 'female' ? '#085C9C' : '#F0F0F0'}
-                  onPress={() => setGender('female')}
-                >
-                  <Text color={gender === 'female' ? 'white' : '#333'} fontWeight="600">
-                    Nữ
-                  </Text>
+                <Button flex={1} height={42} borderRadius={999} backgroundColor={gender === 'female' ? '#085C9C' : '#F0F0F0'} onPress={() => setGender('female')}>
+                  <Text color={gender === 'female' ? 'white' : '#333'} fontWeight="600">Nữ</Text>
                 </Button>
               </XStack>
 
               {/* Address */}
-              <Label fontSize={14} fontWeight="500" color="#585858" marginBottom={8}>
-                Địa chỉ
-              </Label>
-              <XStack
-                alignItems="center"
-                borderRadius={12}
-                borderWidth={1}
-                backgroundColor="#F8F8F8"
-                borderColor="#E4E4E4"
-                paddingHorizontal={12}
-                marginBottom={16}
-              >
+              <Label fontSize={14} fontWeight="500" color="#585858" marginBottom={8}>Địa chỉ</Label>
+              <XStack alignItems="center" borderRadius={12} borderWidth={1} backgroundColor="#F8F8F8" borderColor="#E4E4E4" paddingHorizontal={12} marginBottom={16}>
                 <MaterialCommunityIcons name="map-marker-outline" size={18} color="#8C8C8C" />
-                <Input
-                  flex={1}
-                  height={56}
-                  fontSize={16}
-                  placeholder="Nhập địa chỉ của bạn"
-                  value={address}
-                  onChangeText={(v) => {
-                    setAddress(v);
-                    if (__DEV__) console.log('[Register] address changed:', v);
-                  }}
-                  backgroundColor="transparent"
-                  borderWidth={0}
-                  marginLeft={8}
-                  multiline
-                />
+                <Input flex={1} height={56} fontSize={16} placeholder="Nhập địa chỉ" value={address} onChangeText={setAddress} backgroundColor="transparent" borderWidth={0} marginLeft={8} multiline />
               </XStack>
 
-              {/* Password */}
-              <Label fontSize={14} fontWeight="500" color="#585858" marginBottom={8}>
-                Mật khẩu
-              </Label>
-              <Input
-                height={56}
-                fontSize={16}
-                placeholder="Nhập mật khẩu"
-                secureTextEntry
-                value={pw}
-                onChangeText={(v) => {
-                  setPw(v);
-                  if (__DEV__) console.log('[Register] password changed: ***');
-                }}
-                borderRadius={12}
-                borderWidth={1}
-                backgroundColor="#F8F8F8"
-                borderColor="#E4E4E4"
-                paddingHorizontal={12}
-                marginBottom={16}
-              />
-
-              {/* Confirm Password */}
-              <Label fontSize={14} fontWeight="500" color="#585858" marginBottom={8}>
-                Xác nhận mật khẩu
-              </Label>
-              <Input
-                height={56}
-                fontSize={16}
-                placeholder="Nhập lại mật khẩu"
-                secureTextEntry
-                value={confirmPw}
-                onChangeText={(v) => {
-                  setConfirmPw(v);
-                  if (__DEV__) console.log('[Register] confirmPassword changed: ***');
-                }}
-                borderRadius={12}
-                borderWidth={1}
-                backgroundColor="#F8F8F8"
-                borderColor="#E4E4E4"
-                paddingHorizontal={12}
-                marginBottom={16}
-              />
+              {/* Passwords */}
+              <Label fontSize={14} fontWeight="500" color="#585858" marginBottom={8}>Mật khẩu</Label>
+              <Input height={56} fontSize={16} placeholder="Nhập mật khẩu" secureTextEntry value={pw} onChangeText={setPw} borderRadius={12} borderWidth={1} backgroundColor="#F8F8F8" borderColor="#E4E4E4" paddingHorizontal={12} marginBottom={16} />
+              <Label fontSize={14} fontWeight="500" color="#585858" marginBottom={8}>Xác nhận mật khẩu</Label>
+              <Input height={56} fontSize={16} placeholder="Nhập lại mật khẩu" secureTextEntry value={confirmPw} onChangeText={setConfirmPw} borderRadius={12} borderWidth={1} backgroundColor="#F8F8F8" borderColor="#E4E4E4" paddingHorizontal={12} marginBottom={16} />
 
               {/* Agree terms */}
               <XStack alignItems="center" marginBottom={20} space="$3">
-                <Checkbox
-                  id="agree"
-                  size="$3"
-                  checked={agree}
-                  onCheckedChange={(val) => {
-                    const b = !!val;
-                    setAgree(b);
-                    if (__DEV__) console.log('[Register] agree toggled:', b);
-                  }}
-                  backgroundColor={agree ? '#085C9C' : '#FFFFFF'}
-                  borderColor={agree ? '#085C9C' : '#E4E4E4'}
-                  borderWidth={1}
-                  borderRadius={6}
-                  pressStyle={{ opacity: 0.85 }}
-                  focusStyle={{ outlineWidth: 2, outlineColor: '#085C9C' }}
-                  hitSlop={8}
-                >
-                  <Checkbox.Indicator>
-                    <Check size={14} color="#FFFFFF" strokeWidth={3} />
-                  </Checkbox.Indicator>
+                <Checkbox id="agree" size="$3" checked={agree} onCheckedChange={(val) => setAgree(!!val)} backgroundColor={agree ? '#085C9C' : '#FFFFFF'} borderColor={agree ? '#085C9C' : '#E4E4E4'} borderWidth={1} borderRadius={6}>
+                  <Checkbox.Indicator><Check size={14} color="#FFFFFF" strokeWidth={3} /></Checkbox.Indicator>
                 </Checkbox>
-
-                <Label
-                  htmlFor="agree"
-                  fontSize={13}
-                  color="#585858"
-                  onPress={() => setAgree((v) => !v)}
-                >
-                  Tôi đồng ý với <Text style={{ color: '#085C9C' }}>Điều khoản</Text> &{' '}
-                  <Text style={{ color: '#085C9C' }}>Chính sách bảo mật</Text>
+                <Label htmlFor="agree" fontSize={13} color="#585858" onPress={() => setAgree((v) => !v)}>
+                  Tôi đồng ý với <Text style={{ color: '#085C9C' }}>Điều khoản</Text> & <Text style={{ color: '#085C9C' }}>Chính sách bảo mật</Text>
                 </Label>
               </XStack>
 
-              {/* Register button */}
-              <Button
-                height={56}
-                borderRadius={12}
-                backgroundColor="#085C9C"
-                pressStyle={{ backgroundColor: '#2870A8' }}
-                hoverStyle={{ backgroundColor: '#2870A8' }}
-                onPress={onRegister}
-                disabled={loading}
-              >
+              {/* Register Button */}
+              <Button height={56} borderRadius={12} backgroundColor="#085C9C" onPress={onRegister} disabled={loading}>
                 <XStack alignItems="center" justifyContent="center" space={8}>
                   {loading ? <Spinner size="small" /> : null}
-                  <Text fontSize={16} fontWeight="600" color="white">
-                    {loading ? 'Đang tạo tài khoản...' : 'Đăng ký'}
-                  </Text>
+                  <Text fontSize={16} fontWeight="600" color="white">{loading ? 'Đang tạo tài khoản...' : 'Đăng ký'}</Text>
                 </XStack>
               </Button>
 
-              {/* Separator */}
               <XStack alignItems="center" marginVertical={12}>
                 <Separator flex={1} backgroundColor="#E0E6EE" />
-                <Text fontSize={12} color="#585858" style={{ marginHorizontal: 12 }}>
-                  Hoặc
-                </Text>
+                <Text fontSize={12} color="#585858" style={{ marginHorizontal: 12 }}>Hoặc</Text>
                 <Separator flex={1} backgroundColor="#E0E6EE" />
               </XStack>
 
-              {/* Link back to login */}
               <Text textAlign="center" marginTop={12} color="#585858" fontSize={14}>
-                Đã có tài khoản?{' '}
-                <Link href="/(auth)/login" asChild>
-                  <Text fontWeight="600" color="#085C9C">
-                    Đăng nhập
-                  </Text>
-                </Link>
+                Đã có tài khoản? <Link href="/(auth)/login" asChild><Text fontWeight="600" color="#085C9C">Đăng nhập</Text></Link>
               </Text>
             </YStack>
           </Card>

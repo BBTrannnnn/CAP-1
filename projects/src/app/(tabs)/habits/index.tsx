@@ -51,6 +51,8 @@ import {
   // tracking habit check-mode
   getHabitTrackings as apiGetHabitTrackings,
 } from '../../../server/habits';
+import { Input } from 'tamagui';
+import api from '../../../server/notifi'
 
 /* ========================================================= */
 /* TYPES                                                     */
@@ -257,7 +259,7 @@ const HorizontalCalendar: React.FC<HorizontalCalendarProps> = ({
           setDayStatusMap(statusMap);
         }
       } catch (err) {
-        console.error('[HorizontalCalendar] weekly report error:', err);
+        //console.error('[HorizontalCalendar] weekly report error:', err);
         if (!cancelled) {
           setError('Không tải được dữ liệu lịch.');
           setDayStatusMap({});
@@ -341,7 +343,7 @@ const HorizontalCalendar: React.FC<HorizontalCalendarProps> = ({
 //         setDayStatusMap(statusMap);
 //       }
 //     } catch (err) {
-//       console.error('[HorizontalCalendar] weekly report error:', err);
+//       //console.error('[HorizontalCalendar] weekly report error:', err);
 //       if (!cancelled) {
 //         setError('Không tải được dữ liệu lịch.');
 //         setDayStatusMap({});
@@ -384,11 +386,21 @@ const HorizontalCalendar: React.FC<HorizontalCalendarProps> = ({
   };
 
   const handleDatePress = (date: Date) => {
-    const normalized = new Date(date);
-    normalized.setHours(0, 0, 0, 0);
-    setSelectedDate(normalized);
-    onDateSelect?.(normalized);
-  };
+  const normalized = new Date(date);
+  normalized.setHours(0, 0, 0, 0);
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // 🚨 Thêm kiểm tra để ngăn chọn ngày trong tương lai
+  if (normalized.getTime() > today.getTime()) {
+    Alert.alert('Không thể theo dõi', 'Bạn không thể ghi nhận thói quen cho ngày trong tương lai.');
+    return;
+  }
+  
+  setSelectedDate(normalized);
+  onDateSelect?.(normalized);
+};
 
   const goToToday = () => {
     const today = new Date();
@@ -627,6 +639,8 @@ export default function FlowStateHabits() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmName, setConfirmName] = useState('');
   const [confirmId, setConfirmId] = useState<number | null>(null);
+  const [typeForm, setTypeForm] = useState<string>('');
+
 
   const hhmmNow = () => {
     const d = new Date();
@@ -634,7 +648,13 @@ export default function FlowStateHabits() {
     const m = String(d.getMinutes()).padStart(2, '0');
     return `${h}:${m}`;
   };
-
+ // onChangeTime(e.target.value,newCountForm.start)
+ const onChangeTime = (timeValue: string, fieldType: 'start' | 'end') => {
+  setNewCountForm(prev => ({ 
+    ...prev, 
+    [fieldType]: timeValue 
+  }));
+}
   const categoryToTag = (cat?: string): 'Mindful' | 'Energy' | 'Sleep' => {
     const c = String(cat || '').toLowerCase();
     if (c === 'mindful') return 'Mindful';
@@ -907,7 +927,7 @@ export default function FlowStateHabits() {
           }
         }
       } catch (err) {
-        console.error('[habits.index] load error:', err);
+        //console.error('[habits.index] load error:', err);
         if (!cancelled) {
           setHabitList([]);
           setOverview(null);
@@ -985,9 +1005,67 @@ export default function FlowStateHabits() {
     });
   };
 
+ // Thay thế toàn bộ hàm saveNewCountEntry (khoảng dòng 1058 đến 1092)
   const saveNewCountEntry = () => {
     if (!newCountForm.habitId) return;
     const habitId = newCountForm.habitId;
+
+    const now = new Date();
+
+    // 1. Lấy thông tin ngày giờ theo UTC (Giờ của Server)
+    const utcY = now.getUTCFullYear();
+    const utcM = String(now.getUTCMonth() + 1).padStart(2, '0');
+    const utcD = String(now.getUTCDate()).padStart(2, '0');
+    const utcDateStr = `${utcY}-${utcM}-${utcD}`; // Ví dụ: 2025-12-08
+
+    const utcH = String(now.getUTCHours()).padStart(2, '0');
+    const utcMin = String(now.getUTCMinutes()).padStart(2, '0');
+    const utcTimeStr = `${utcH}:${utcMin}`; // Ví dụ: 17:30
+
+    // 2. Lấy ngày đang chọn trên giao diện (Local time)
+    const selectedDateStr = getCurrentDateStr(); // Ví dụ: 2025-12-09
+    const localTodayStr = formatDateYMD(now);
+
+    // --- LOGIC XỬ LÝ DATE ---
+    let finalDateToSend = selectedDateStr;
+    let finalTimeToSend = newCountForm.start;
+
+    // Nếu người dùng chọn ngày tương lai so với lịch máy -> Chặn luôn
+    if (selectedDateStr > localTodayStr) {
+      Alert.alert('Lỗi', 'Không thể nhập cho ngày tương lai.');
+      return;
+    }
+
+    // NẾU ĐANG NHẬP CHO "HÔM NAY" (Của máy bạn)
+    if (selectedDateStr === localTodayStr) {
+        // Kiểm tra xem Local Date có lớn hơn UTC Date không?
+        // (Ví dụ: VN là ngày 9, UTC vẫn là ngày 8)
+        if (selectedDateStr > utcDateStr) {
+            //console.log(`[Timezone Fix] Local (${selectedDateStr}) > UTC (${utcDateStr}). Sending UTC instead.`);
+            // BẮT BUỘC gửi ngày UTC để Server không báo lỗi Future Time
+            finalDateToSend = utcDateStr;
+            
+            // Nếu đổi ngày sang UTC, thì giờ cũng phải đổi sang UTC tương ứng
+            // Trừ khi người dùng cố tình nhập giờ tay, lúc đó ta chấp nhận rủi ro hoặc ép về UTC
+            if (!newCountForm.start) {
+                finalTimeToSend = utcTimeStr;
+            } else {
+                // Nếu user nhập tay, ta vẫn ưu tiên dùng UTC Time hiện tại để an toàn nhất
+                // vì giờ nhập tay theo giờ VN (ví dụ 00:30) lắp vào ngày UTC (hôm qua) sẽ ra sai lệch logic
+                finalTimeToSend = utcTimeStr; 
+            }
+        } 
+        // Trường hợp ngày khớp nhau (VN ngày 8, UTC ngày 8)
+        else {
+             if (!finalTimeToSend) {
+                 // Nếu không nhập giờ, lấy giờ UTC cho chắc ăn
+                 finalTimeToSend = utcTimeStr;
+             }
+        }
+    }
+
+    // Fallback cuối cùng: Đảm bảo không bao giờ gửi startTime rỗng
+    if (!finalTimeToSend) finalTimeToSend = utcTimeStr;
 
     (async () => {
       try {
@@ -998,10 +1076,12 @@ export default function FlowStateHabits() {
         }
 
         const qty = newCountForm.qty > 0 ? newCountForm.qty : 1;
+        
+        // Gửi payload đã được "biến hình" sang UTC nếu cần thiết
         const body: any = {
           quantity: qty,
-          date: getCurrentDateStr(),
-          startTime: newCountForm.start || hhmmNow(),
+          date: finalDateToSend, 
+          startTime: finalTimeToSend,
         };
 
         if (newCountForm.end) body.endTime = newCountForm.end;
@@ -1010,6 +1090,7 @@ export default function FlowStateHabits() {
           body.mood = newCountForm.mood === 'neutral' ? 'okay' : newCountForm.mood;
         }
 
+        //console.log('[Debug] Sending Body:', body);
         await apiAddHabitSubTracking(bid, body);
 
         setNewCountForm({
@@ -1021,11 +1102,10 @@ export default function FlowStateHabits() {
           mood: undefined,
         });
 
-        // refetch theo ngày hiện tại
         refreshAll();
       } catch (err: any) {
-        console.error('[habits.index] add subtrack (new form) error:', err);
-        Alert.alert('Lỗi', err?.message || 'Không thêm được lần đếm');
+        //console.error('[habits.index] add subtrack error:', err);
+        Alert.alert('Lỗi Server', err?.message || 'Không thể lưu.');
       }
     })();
   };
@@ -1041,7 +1121,7 @@ export default function FlowStateHabits() {
           refreshAll();
         }
       } catch (err) {
-        console.error('[habits.index] delete subtrack error:', err);
+        //console.error('[habits.index] delete subtrack error:', err);
       }
     })();
   };
@@ -1055,7 +1135,7 @@ export default function FlowStateHabits() {
           refreshAll();
         }
       } catch (err) {
-        console.error('[habits.index] clear day error:', err);
+        //console.error('[habits.index] clear day error:', err);
       } finally {
         setCountEntries((prev) => ({ ...prev, [habitId]: [] }));
         setCountViewOpen((v) => ({ ...v, [habitId]: false }));
@@ -1106,7 +1186,7 @@ export default function FlowStateHabits() {
         }
         refreshAll();
       } catch (err) {
-        console.error('[habits.index] save subtrack error:', err);
+        //console.error('[habits.index] save subtrack error:', err);
       } finally {
         setEditingEntry(null);
       }
@@ -1167,7 +1247,7 @@ export default function FlowStateHabits() {
         await apiTrackHabit(bid, payload);
         refreshAll();
       } catch (err) {
-        console.error('[habits.index] track error:', err);
+        //console.error('[habits.index] track error:', err);
       }
     })();
   };
@@ -1209,7 +1289,7 @@ export default function FlowStateHabits() {
         await apiTrackHabit(bid, payload);
         refreshAll();
       } catch (err) {
-        console.error('[habits.index] syncHabitMeta error:', err);
+        //console.error('[habits.index] syncHabitMeta error:', err);
       }
     })();
   };
@@ -1217,7 +1297,7 @@ export default function FlowStateHabits() {
   const openEditModal = (h: Habit) => {
     const backendId = n2b[h.id];
     if (!backendId) {
-      console.warn('[habits.index] Missing backend id for habit', h);
+      //console.warn('[habits.index] Missing backend id for habit', h);
       return;
     }
     router.push({
@@ -1269,7 +1349,7 @@ export default function FlowStateHabits() {
           refreshAll();
         }
       } catch (err) {
-        console.error('[habits.index] update error:', err);
+        //console.error('[habits.index] update error:', err);
       } finally {
         closeEditModal();
       }
@@ -1283,7 +1363,7 @@ export default function FlowStateHabits() {
         if (bid) await apiDeleteHabit(bid);
         refreshAll();
       } catch (err) {
-        console.error('[habits.index] delete error:', err);
+        //console.error('[habits.index] delete error:', err);
       } finally {
         if (activeMenu === id) setActiveMenu(null);
         closeConfirm();
@@ -1310,7 +1390,8 @@ export default function FlowStateHabits() {
   const progressPercent =
     totalHabits > 0 ? Math.round((completedCount / totalHabits) * 100) : 0;
 
-  const openDetail = (h: Habit) => {
+  const openDetail = (h: Habit,type:string) => {
+    setTypeForm(type)
     setDetailHabitId(h.id);
     setDetailOpen(true);
   };
@@ -1347,7 +1428,7 @@ export default function FlowStateHabits() {
 
         refreshAll();
       } catch (err) {
-        console.error('[habits.index] saveCountModal error:', err);
+        //console.error('[habits.index] saveCountModal error:', err);
       }
     })();
   };
@@ -1559,28 +1640,33 @@ export default function FlowStateHabits() {
                         </TouchableOpacity>
                       </View>
 
-                      {/* Progress header */}
-                      <View style={styles.habitProgressHeader}>
-                        <Text style={styles.habitProgressLabel}>Tiến độ</Text>
-                        <Text style={styles.habitProgressValue}>
-                          {meta
-                            ? `${currentVal ?? 0}/${meta.goal} ${meta.unit}`
-                            : `${currentDays}/${goalDays} ngày`}
-                        </Text>
-                      </View>
+                      {meta ? (
+                        <>
+                          {/* Progress header */}
+                          <View style={styles.habitProgressHeader}>
+                            <Text style={styles.habitProgressLabel}>Tiến độ</Text>
+                            <Text style={styles.habitProgressValue}>
+                              {`${currentVal ?? 0}/${meta.goal} ${meta.unit}`}
+                            </Text>
+                          </View>
 
-                      {/* Progress bar */}
-                      <View style={styles.habitProgressBarOuter}>
-                        <View
-                          style={[
-                            styles.habitProgressBarInner,
-                            {
-                              width: `${itemPercent}%`,
-                              backgroundColor: progressColor,
-                            },
-                          ]}
-                        />
-                      </View>
+                          {/* Progress bar */}
+                          <View style={styles.habitProgressBarOuter}>
+                            <View
+                              style={[
+                                styles.habitProgressBarInner,
+                                {
+                                  width: `${itemPercent}%`,
+                                  backgroundColor: progressColor,
+                                },
+                              ]}
+                            />
+                          </View>
+                        </>
+                      ) : (
+                        /* Nếu là thói quen thường (abc, tập yoga check-box) thì thêm khoảng trống nhỏ cho đẹp */
+                        <View style={{ marginBottom: 4 }} />
+                      )}
                     </View>
                   </TouchableOpacity>
 
@@ -1611,7 +1697,7 @@ export default function FlowStateHabits() {
                         <Trash2 size={14} color="#dc2626" />
                         <Text style={styles.actionButtonRedText}>Xóa ngày</Text>
                       </TouchableOpacity>
-                      <TouchableOpacity
+                      {/* <TouchableOpacity
                         onPress={() => openEditModal(habit)}
                         style={[
                           styles.actionButton,
@@ -1620,7 +1706,7 @@ export default function FlowStateHabits() {
                       >
                         <Pencil size={14} color="#b45309" />
                         <Text style={styles.actionButtonAmberText}>Sửa</Text>
-                      </TouchableOpacity>
+                      </TouchableOpacity> */}
                     </View>
                   )}
 
@@ -1648,7 +1734,7 @@ export default function FlowStateHabits() {
                         {/* start */}
                         <View style={styles.formField}>
                           <Text style={styles.formLabel}>Bắt đầu *</Text>
-                          <TextInput
+                          {/* <TextInput
                             placeholder="HH:MM"
                             value={newCountForm.start}
                             onChangeText={(text) =>
@@ -1658,13 +1744,19 @@ export default function FlowStateHabits() {
                               }))
                             }
                             style={styles.input}
-                          />
+                          /> */}
+                          <input
+        type="time"
+        value={newCountForm.start}
+        onChange={(e) => onChangeTime(e.target.value,"start")}
+        style={styles.inputTime}
+      />
                         </View>
 
                         {/* end */}
                         <View style={styles.formField}>
                           <Text style={styles.formLabel}>Kết thúc (tùy chọn)</Text>
-                          <TextInput
+                          {/* <TextInput
                             placeholder="HH:MM"
                             value={newCountForm.end}
                             onChangeText={(text) =>
@@ -1674,7 +1766,13 @@ export default function FlowStateHabits() {
                               }))
                             }
                             style={styles.input}
-                          />
+                          /> */}
+                          <input
+        type="time"
+        value={newCountForm.end}
+        onChange={(e) => onChangeTime(e.target.value,"end")}
+        style={styles.inputTime}
+      />
                         </View>
                       </View>
 
@@ -1939,7 +2037,7 @@ export default function FlowStateHabits() {
                   {!isCountHabit && activeRow === habit.id && (
                     <View style={styles.actionRow}>
                       <TouchableOpacity
-                        onPress={() => openDetail(habit)}
+                        onPress={() => openDetail(habit,"Xong")}
                         style={[styles.actionButton, styles.actionButtonBlueSoft]}
                       >
                         <Eye size={14} color="#1e40af" />
@@ -1948,7 +2046,8 @@ export default function FlowStateHabits() {
                         </Text>
                       </TouchableOpacity>
                       <TouchableOpacity
-                        onPress={() => openEditModal(habit)}
+                      onPress={() => openDetail(habit,"Lưu")}
+                        //onPress={() => openEditModal(habit)}
                         style={[
                           styles.actionButton,
                           styles.actionButtonAmberSoft,
@@ -2320,7 +2419,7 @@ export default function FlowStateHabits() {
                         }}
                         style={styles.formSaveButton}
                       >
-                        <Text style={styles.formSaveText}>Xong</Text>
+                        <Text style={styles.formSaveText}>{typeForm}</Text>
                       </TouchableOpacity>
                     </View>
                   </>
@@ -2421,6 +2520,22 @@ export default function FlowStateHabits() {
 /* ========================================================= */
 
 const styles = StyleSheet.create({
+  inputTime: {
+    width: "calc(100% - 20px)",
+    height : "36.36px",
+    borderLeftWidth: "1px",
+    borderRightWidth: "1px",
+    borderStyle: "solid",
+    borderTopWidth: "1px",
+    borderBottomWidth: "1px",
+    borderColor: "rgba(203, 213, 225, 1.00)",
+    borderRadius: 10,
+    outline: "none",
+    background : "none",
+    paddingLeft : "10px",
+    paddingRight : "10px",
+    color : "rgba(15, 23, 42, 1.00)"
+  },
   page: {
     flex: 1,
     backgroundColor: '#eef2ff',

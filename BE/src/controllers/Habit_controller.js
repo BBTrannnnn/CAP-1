@@ -1748,15 +1748,11 @@ export async function updateHabitStats(habitId, userId) {
       trackingMap.set(key, t);
     });
 
-    // Streak protection
-    const now = new Date();
-    const isProtectedToday =
-      habit.streakProtection?.isProtected &&
-      habit.streakProtection?.protectedUntil > now;
-
+    // ❌ ĐÃ BỎ: Kiểm tra isProtectedToday vì không còn auto-protect
+    // Freeze vẫn giữ để tính streak đúng
     const isFrozen =
       habit.streakProtection?.isFrozen &&
-      habit.streakProtection?.frozenEndDate > now;
+      habit.streakProtection?.frozenEndDate > new Date();
 
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
@@ -1773,21 +1769,21 @@ export async function updateHabitStats(habitId, userId) {
 
       const isCompleted = tracking && tracking.status === 'completed';
       const isFrozenDay = tracking && tracking.status === 'frozen';
+      
+      // ✅ CHỈ CÒN: Shield được dùng thủ công (isProtected = true trong tracking)
       const isShieldProtected = tracking && 
                                 tracking.status === 'failed' && 
                                 tracking.isProtected === true;
 
+      // Kiểm tra ngày có trong frozen period không
       const isInFrozenPeriod = isFrozen &&
         habit.streakProtection?.frozenStartDate &&
         habit.streakProtection?.frozenEndDate &&
         checkDate >= habit.streakProtection.frozenStartDate &&
         checkDate <= habit.streakProtection.frozenEndDate;
 
-      const isToday = dateKey === todayKey;
-
-      const countAsCompleted = isCompleted ||
-        isShieldProtected ||
-        (isToday && isProtectedToday);
+      // ✅ ĐIỀU KIỆN ĐẾM STREAK: completed HOẶC shield protected
+      const countAsCompleted = isCompleted || isShieldProtected;
 
       if (countAsCompleted) {
         currentStreak++;
@@ -1796,15 +1792,18 @@ export async function updateHabitStats(habitId, userId) {
         continue;
       }
 
+      // Nếu gặp frozen, skip qua (không đếm, không break)
       if (isFrozenDay || isInFrozenPeriod) {
         if (hasStartedStreak) {
           checkDate.setDate(checkDate.getDate() - 1);
           continue;
         } else {
+          // Chưa bắt đầu streak thì break
           break;
         }
       }
 
+      // Gặp failed không protected → break
       break;
     }
 
