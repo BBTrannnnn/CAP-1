@@ -9,20 +9,20 @@ import { OAuth2Client } from "google-auth-library";
 import sendMail from '../utils/sendMail.js';
 import crypto from 'crypto';
 
-// Admin: cập nhật vai trò user (user <-> admin)
+// Admin: cập nhật vai trò user (user/moderator/admin) + trust score
 const updateUserRole = asyncHandler(async (req, res) => {
   const targetUserId = req.params.id;
-  const { role } = req.body;
+  const { role, trustScore } = req.body;
 
   // Validate ObjectId
   if (!targetUserId.match(/^[0-9a-fA-F]{24}$/)) {
     return res.status(400).json({ success: false, message: 'Định dạng user ID không hợp lệ' });
   }
 
-  // Validate role
-  const allowedRoles = ['user', 'admin'];
+  // Validate role (thêm moderator)
+  const allowedRoles = ['user', 'moderator', 'admin'];
   if (!role || !allowedRoles.includes(role)) {
-    return res.status(400).json({ success: false, message: 'Giá trị role không hợp lệ (chỉ chấp nhận: user, admin)' });
+    return res.status(400).json({ success: false, message: 'Giá trị role không hợp lệ (chỉ chấp nhận: user, moderator, admin)' });
   }
 
   const targetUser = await User.findById(targetUserId);
@@ -44,17 +44,27 @@ const updateUserRole = asyncHandler(async (req, res) => {
   }
 
   targetUser.role = role;
+  
+  // Update trust score nếu có
+  if (trustScore !== undefined) {
+    if (trustScore < 0 || trustScore > 100) {
+      return res.status(400).json({ success: false, message: 'Trust score phải từ 0-100' });
+    }
+    targetUser.trustScore = trustScore;
+  }
+  
   await targetUser.save({ validateModifiedOnly: true });
 
   return res.status(200).json({
     success: true,
-    message: 'Cập nhật vai trò thành công',
+    message: `Cập nhật vai trò thành ${role} thành công`,
     data: {
       id: targetUser._id,
       name: targetUser.name,
       email: targetUser.email,
       phone: targetUser.phone,
       role: targetUser.role,
+      trustScore: targetUser.trustScore,
       isActive: targetUser.isActive,
       createdAt: targetUser.createdAt,
       updatedAt: targetUser.updatedAt,

@@ -1,6 +1,8 @@
 import Comment from '../models/Comment.js';
 import Post from '../models/Post.js';
 import Like from '../models/Like.js';
+import { processModerationAsync } from '../../middlewares/moderationMiddleware.js';
+import { canBypassModeration } from '../../middlewares/requireModerator.js';
 import mongoose from 'mongoose';
 
 // ========== COMMENT CRUD ==========
@@ -42,11 +44,16 @@ export const createComment = async (req, res, next) => {
             await parentComment.save();
         }
 
+        // Xác định trạng thái kiểm duyệt dựa trên role
+        const moderationStatus = canBypassModeration(req.user) ? 'approved' : 'pending';
+
         const comment = await Comment.create({
             postId,
             userId,
             content: content.trim(),
-            parentCommentId: parentCommentId || null
+            parentCommentId: parentCommentId || null,
+            moderationStatus,
+            autoApproved: canBypassModeration(req.user)
         });
 
         // Tăng comment count của post
@@ -55,9 +62,18 @@ export const createComment = async (req, res, next) => {
 
         await comment.populate('userId', 'name avatar badge');
 
+        // Xử lý kiểm duyệt bất đồng bộ nếu không bypass
+        if (!canBypassModeration(req.user)) {
+            setImmediate(() => {
+                processModerationAsync('comment', comment._id, userId).catch(err => {
+                    console.error('Background moderation error:', err);
+                });
+            });
+        }
+
         res.status(201).json({
             success: true,
-            message: 'Đã thêm bình luận',
+            message: moderationStatus === 'pending' ? 'Bình luận đang được kiểm duyệt...' : 'Đã thêm bình luận',
             data: comment
         });
     } catch (error) {

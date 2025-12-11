@@ -1,5 +1,8 @@
 import Dream from '../models/Dream.js';
 import User from '../models/User.js';
+import Post from '../models/Post.js';
+import Comment from '../models/Comment.js';
+import ModerationLog from '../models/ModerationLog.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -174,6 +177,129 @@ export const getTrainingQueue = async (req, res, next) => {
           category: cat,
           count: byCategory[cat].length
         }))
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ========== MODERATION DASHBOARD ==========
+
+// GET MODERATION STATS
+export const getModerationStats = async (req, res, next) => {
+  try {
+    const { period = 'today' } = req.query;
+    
+    // Calculate date range
+    let startDate;
+    switch (period) {
+      case 'today':
+        startDate = new Date(new Date().setHours(0, 0, 0, 0));
+        break;
+      case 'week':
+        startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case 'month':
+        startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        startDate = new Date(new Date().setHours(0, 0, 0, 0));
+    }
+
+    // Get moderation stats from logs
+    const stats = await ModerationLog.getStats(startDate, new Date());
+
+    // Get pending counts
+    const pendingPosts = await Post.countDocuments({ moderationStatus: 'pending' });
+    const pendingComments = await Comment.countDocuments({ moderationStatus: 'pending' });
+
+    // Get rejected content today
+    const rejectedToday = await ModerationLog.countDocuments({
+      action: { $in: ['auto_rejected', 'moderator_rejected'] },
+      createdAt: { $gte: startDate }
+    });
+
+    // Get top violators
+    const topViolators = await ModerationLog.getTopViolators(10, 30);
+
+    // Get banned users count
+    const bannedUsers = await User.countDocuments({ isBanned: true });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        period,
+        stats: {
+          autoApproved: stats.auto_approved || 0,
+          autoRejected: stats.auto_rejected || 0,
+          pendingReview: stats.pending_review || 0,
+          moderatorApproved: stats.moderator_approved || 0,
+          moderatorRejected: stats.moderator_rejected || 0,
+          appealsSubmitted: stats.appeal_submitted || 0,
+          appealsApproved: stats.appeal_approved || 0,
+          appealsRejected: stats.appeal_rejected || 0
+        },
+        pending: {
+          posts: pendingPosts,
+          comments: pendingComments,
+          total: pendingPosts + pendingComments
+        },
+        rejectedToday,
+        topViolators,
+        bannedUsers
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// GET MODERATION OVERVIEW (for dashboard charts)
+export const getModerationOverview = async (req, res, next) => {
+  try {
+    const last7Days = [];
+    const today = new Date();
+    
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      date.setHours(0, 0, 0, 0);
+      
+      const nextDate = new Date(date);
+      nextDate.setDate(nextDate.getDate() + 1);
+      
+      const dayStats = await ModerationLog.aggregate([
+        {
+          $match: {
+            createdAt: { $gte: date, $lt: nextDate }
+          }
+        },
+        {
+          $group: {
+            _id: '$action',
+            count: { $sum: 1 }
+          }
+        }
+      ]);
+      
+      const statsObj = dayStats.reduce((acc, item) => {
+        acc[item._id] = item.count;
+        return acc;
+      }, {});
+      
+      last7Days.push({
+        date: date.toLocaleDateString('vi-VN'),
+        approved: (statsObj.auto_approved || 0) + (statsObj.moderator_approved || 0),
+        rejected: (statsObj.auto_rejected || 0) + (statsObj.moderator_rejected || 0),
+        pending: statsObj.pending_review || 0
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        last7Days
       }
     });
   } catch (error) {

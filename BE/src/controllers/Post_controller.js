@@ -3,6 +3,8 @@ import Like from '../models/Like.js';
 import Comment from '../models/Comment.js';
 import Friend from '../models/Friend.js';
 import BlockedUser from '../models/BlockedUser.js';
+import { processModerationAsync } from '../../middlewares/moderationMiddleware.js';
+import { canBypassModeration } from '../../middlewares/requireModerator.js';
 import mongoose from 'mongoose';
 
 // ========== POST CRUD ==========
@@ -20,19 +22,34 @@ export const createPost = async (req, res, next) => {
             });
         }
 
+        // Determine initial moderation status
+        const moderationStatus = canBypassModeration(req.user) ? 'approved' : 'pending';
+
         const post = await Post.create({
             userId,
             content: content.trim(),
             images: images || [],
-            visibility: visibility || 'public'
+            visibility: visibility || 'public',
+            moderationStatus,
+            autoApproved: canBypassModeration(req.user)
         });
 
         // Populate user info
         await post.populate('userId', 'name avatar badge');
 
+        // Start async moderation check (if not admin/moderator)
+        if (!canBypassModeration(req.user)) {
+            // Run in background
+            setImmediate(() => {
+                processModerationAsync('post', post._id, userId, images);
+            });
+        }
+
         res.status(201).json({
             success: true,
-            message: 'Tạo bài viết thành công',
+            message: moderationStatus === 'pending' 
+                ? 'Bài viết đang được kiểm duyệt...' 
+                : 'Tạo bài viết thành công',
             data: post
         });
     } catch (error) {
