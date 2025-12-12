@@ -1,27 +1,38 @@
-// file: utils/notifications.js
 import * as Notifications from 'expo-notifications';
+import * as Device from 'expo-device';
+import Constants from 'expo-constants';
 import { Platform, Alert } from 'react-native';
 
-// 1. Cấu hình: App vẫn hiện thông báo khi đang mở
+// ✅ 1. Cấu hình notification
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
     shouldPlaySound: true,
-    shouldSetBadge: false,
+    shouldSetBadge: true,
   }),
 });
 
-// 2. Hàm xin quyền thông báo
-export async function ensureNotificationPermissions() {
+// ✅ 2. Đăng ký FCM Token (QUAN TRỌNG!)
+export async function registerForPushNotifications(authToken) {
+  let token;
+
+  // Android: Tạo notification channel
   if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('default', {
-      name: 'default',
+    await Notifications.setNotificationChannelAsync('habit_reminders', {
+      name: 'Habit Reminders',
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: '#FF231F7C',
     });
   }
 
+  // Kiểm tra thiết bị thật
+  if (!Device.isDevice) {
+    Alert.alert('Lỗi', 'Push notification chỉ hoạt động trên thiết bị thật!');
+    return null;
+  }
+
+  // Xin quyền
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
   let finalStatus = existingStatus;
   
@@ -31,77 +42,74 @@ export async function ensureNotificationPermissions() {
   }
   
   if (finalStatus !== 'granted') {
-    alert('Cần quyền thông báo', 'Vui lòng cấp quyền để nhận nhắc nhở!');
-    return false;
+    Alert.alert('Cần quyền', 'Vui lòng cấp quyền thông báo trong Settings!');
+    return null;
   }
-  return true;
-}
 
-/**
- * 3. Hẹn giờ thông báo lặp lại theo ngày trong tuần
- * @param {string} title - Tiêu đề thông báo
- * @param {string} body - Nội dung
- * @param {number} hour - Giờ (0-23)
- * @param {number} minute - Phút (0-59)
- * @param {number[]} weekdays - Mảng các ngày [1=CN, 2=T2, ..., 7=T7]. Nếu rỗng là chỉ báo 1 lần hôm nay/mai.
- */
-export async function scheduleReminder(title, body, hour, minute, weekdays = []) {
-  const hasPermission = await ensureNotificationPermissions();
-  if (!hasPermission) return null;
-
-  // Trường hợp 1: Lặp lại các ngày cụ thể (T2, T3...)
-  if (weekdays.length > 0) {
-    const notificationIds = [];
+  try {
+    // ✅ LẤY EXPO PUSH TOKEN (FCM)
+    const projectId = Constants.expoConfig?.extra?.eas?.projectId;
     
-    for (const day of weekdays) {
-      const id = await Notifications.scheduleNotificationAsync({
-        content: {
-          title: title,
-          body: body,
-          sound: 'default',
-        },
-        trigger: {
-          hour: hour,
-          minute: minute,
-          weekday: day, // 1: Chủ Nhật, 2: Thứ 2, ...
-          repeats: true,
-        },
-      });
-      notificationIds.push(id);
+    if (!projectId) {
+      console.error('❌ Thiếu projectId trong app.json!');
+      Alert.alert('Lỗi cấu hình', 'Vui lòng chạy: eas build --configure');
+      return null;
     }
-    return notificationIds; // Trả về mảng ID để sau này xóa
-  } 
-  
-  // Trường hợp 2: Báo một lần (Hẹn giờ ngày mai nếu giờ đã qua)
-  else {
-    const id = await Notifications.scheduleNotificationAsync({
-      content: {
-        title: title,
-        body: body,
-        sound: 'default',
+
+    token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+    console.log('✅ FCM Token:', token);
+
+    // ✅ GỬI TOKEN LÊN BACKEND
+    const response = await fetch('https://your-api.onrender.com/api/fcm/register', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`
       },
-      trigger: {
-        hour: hour,
-        minute: minute,
-        repeats: false, // Không lặp
-      },
+      body: JSON.stringify({
+        token: token,
+        device: Platform.OS,
+        deviceId: Constants.deviceId
+      })
     });
-    return [id];
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('✅ Token đã đăng ký:', data);
+    
+    return token;
+
+  } catch (error) {
+    console.error('❌ Lỗi đăng ký token:', error);
+    Alert.alert('Lỗi', `Không thể đăng ký thông báo: ${error.message}`);
+    return null;
   }
 }
 
-// 4. Hủy thông báo (Khi xóa nhắc nhở hoặc tắt switch)
-export async function cancelReminder(notificationIds) {
-  if (!notificationIds) return;
-  
-  const ids = Array.isArray(notificationIds) ? notificationIds : [notificationIds];
-  for (const id of ids) {
-    await Notifications.cancelScheduledNotificationAsync(id);
+// ✅ 3. Hủy đăng ký khi logout
+export async function unregisterPushNotifications(authToken, fcmToken) {
+  if (!fcmToken) return;
+
+  try {
+    await fetch('https://your-api.onrender.com/api/fcm/unregister', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`
+      },
+      body: JSON.stringify({ token: fcmToken })
+    });
+    console.log('✅ Token đã hủy');
+  } catch (error) {
+    console.error('❌ Lỗi hủy token:', error);
   }
-  console.log('Đã hủy các thông báo:', ids);
 }
 
-// 5. Hủy tất cả (Dùng khi logout)
-export async function cancelAllReminders() {
+// ✅ 4. Hủy tất cả local notifications
+export async function cancelAllLocalNotifications() {
   await Notifications.cancelAllScheduledNotificationsAsync();
+  console.log('✅ Đã hủy tất cả local notifications');
 }
