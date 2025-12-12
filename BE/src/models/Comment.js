@@ -42,6 +42,31 @@ const commentSchema = new mongoose.Schema({
     isActive: {
         type: Boolean,
         default: true
+    },
+    
+    // ========== CONTENT MODERATION ==========
+    moderationStatus: {
+        type: String,
+        enum: ['pending', 'approved', 'rejected'],
+        default: 'pending',
+        index: true
+    },
+    moderationScore: {
+        profanity: { type: Number, min: 0, max: 100 }
+    },
+    moderationReason: {
+        type: String
+    },
+    reviewedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    },
+    reviewedAt: {
+        type: Date
+    },
+    autoApproved: {
+        type: Boolean,
+        default: false
     }
 }, {
     timestamps: true

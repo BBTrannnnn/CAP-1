@@ -2,7 +2,7 @@ import express from 'express';
 import {
   getSystemDashboard,
   getRecentDreams,
-  getTrainingQueue,
+  getTrainingQueue
 } from '../controllers/Admin_controller.js';
 import {
   getAllUsers,
@@ -30,7 +30,8 @@ router.get('/users/dashboard', getDashboard);
 router.get('/users', getAllUsers);
 router.patch(
   '/users/:id/role',
-  body('role').isIn(['user', 'admin']).withMessage('role phải là "user" hoặc "admin"'),
+  body('role').isIn(['user', 'moderator', 'admin']).withMessage('role phải là "user", "moderator" hoặc "admin"'),
+  body('trustScore').optional().isInt({ min: 0, max: 100 }).withMessage('trustScore phải từ 0-100'),
   validateRequest,
   updateUserRole
 );

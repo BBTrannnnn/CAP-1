@@ -1,5 +1,7 @@
 import express from 'express';
 import authenticateToken from '../../middlewares/auth.js';
+import { postRateLimit, moderatePost } from '../../middlewares/moderationMiddleware.js';
+import { canBypassModeration } from '../../middlewares/requireModerator.js';
 import {
     createPost,
     getFeed,
@@ -29,8 +31,14 @@ router.get('/hashtag/:hashtag', authenticateToken, getPostsByHashtag);
 
 // ========== POST CRUD ==========
 
-// Tạo bài viết mới
-router.post('/', authenticateToken, createPost);
+// Tạo bài viết mới (with moderation)
+router.post('/', authenticateToken, postRateLimit, (req, res, next) => {
+    // Skip moderation for admin/moderator
+    if (canBypassModeration(req.user)) {
+        return next();
+    }
+    return moderatePost(req, res, next);
+}, createPost);
 
 // Lấy bài viết của 1 user cụ thể
 router.get('/user/:userId', authenticateToken, getUserPosts);

@@ -1,5 +1,7 @@
 import express from 'express';
 import authenticateToken from '../../middlewares/auth.js';
+import { commentRateLimit, moderateComment } from '../../middlewares/moderationMiddleware.js';
+import { canBypassModeration } from '../../middlewares/requireModerator.js';
 import {
     createComment,
     getComments,
@@ -14,8 +16,14 @@ const router = express.Router();
 
 // ========== COMMENT CRUD ==========
 
-// Tạo comment mới (hoặc reply)
-router.post('/', authenticateToken, createComment);
+// Tạo comment mới (hoặc reply) with moderation
+router.post('/', authenticateToken, commentRateLimit, (req, res, next) => {
+    // Skip moderation for admin/moderator
+    if (canBypassModeration(req.user)) {
+        return next();
+    }
+    return moderateComment(req, res, next);
+}, createComment);
 
 // Lấy comments của 1 bài viết
 router.get('/post/:postId', authenticateToken, getComments);

@@ -35,7 +35,7 @@ const userSchema = new mongoose.Schema({
     },
     confirmPassword:{
         type:String,
-        required: [true, 'Vui lòng xác nhận mật khẩu'],
+        required: [function() { return this.isNew; }, 'Vui lòng xác nhận mật khẩu'],
         minLength:[6,'Mật khẩu của bạn phải có ít nhất 6 ký tự'],
         validate:{
             validator:function(value){
@@ -113,11 +113,54 @@ const userSchema = new mongoose.Schema({
     notificationTime: { type: String, default: '21:00' }
   },
 
-    role: { type: String, enum: ['user', 'admin'], default: 'user' },
+    role: { 
+        type: String, 
+        enum: ['user', 'moderator', 'admin'], 
+        default: 'user' 
+    },
     isActive: {
         type: Boolean,
         default: true
     },
+    
+    // ========== MODERATION & TRUST SYSTEM ==========
+    trustScore: {
+        type: Number,
+        default: 70,
+        min: 0,
+        max: 100
+    },
+    violations: {
+        type: Number,
+        default: 0
+    },
+    reportCount: {
+        type: Number,
+        default: 0
+    },
+    isBanned: {
+        type: Boolean,
+        default: false
+    },
+    bannedUntil: {
+        type: Date
+    },
+    bannedReason: {
+        type: String
+    },
+    moderationHistory: [{
+        type: {
+            type: String,
+            enum: ['violation_severe', 'violation_moderate', 'profanity', 'nsfw', 'spam', 'url', 'reported', 'approved', 'rejected']
+        },
+        content: String,
+        score: Number,
+        action: String,
+        timestamp: {
+            type: Date,
+            default: Date.now
+        }
+    }],
     resetOTP: { type: String },
     resetOTPExpires: { type: Number },
     isOTPVerified: { type: Boolean, default: false },

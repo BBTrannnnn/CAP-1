@@ -68,6 +68,32 @@ const postSchema = new mongoose.Schema({
     isReported: {
         type: Boolean,
         default: false
+    },
+    
+    // ========== CONTENT MODERATION ==========
+    moderationStatus: {
+        type: String,
+        enum: ['pending', 'approved', 'rejected'],
+        default: 'pending',
+        index: true
+    },
+    moderationScore: {
+        profanity: { type: Number, min: 0, max: 100 },
+        nsfw: { type: Number, min: 0, max: 1 }
+    },
+    moderationReason: {
+        type: String
+    },
+    reviewedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    },
+    reviewedAt: {
+        type: Date
+    },
+    autoApproved: {
+        type: Boolean,
+        default: false
     }
 }, {
     timestamps: true

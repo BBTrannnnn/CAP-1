@@ -28,6 +28,8 @@ import adminRoutes from './routes/Admin-routes.js';
 import socialRoutes from './routes/Social-routes.js';
 import postRoutes from './routes/Post-routes.js';
 import commentRoutes from './routes/Comment-routes.js';
+import moderationRoutes from './routes/Moderation-routes.js';
+import { loadNSFWModel } from './services/contentModerator.js';
 
 // Load environment variables
 dotenv.config();
@@ -56,6 +58,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/social', socialRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/comments', commentRoutes);
+app.use('/api/moderation', moderationRoutes); // Content moderation endpoints
 
 // Error handler
 app.use(errorHandler);
@@ -63,9 +66,12 @@ app.use(errorHandler);
 // Connect to MongoDB và start server
 const PORT = process.env.PORT || 5000;
 
-// ✅ THAY ĐỔI Ở ĐÂY - Dùng connectDB() thay vì mongoose.connect()
-connectDB().then(() => {
+// THAY ĐỔI Ở ĐÂY - Dùng connectDB() thay vì mongoose.connect()
+connectDB().then(async () => {
   console.log('✅ Database connection successful');
+  
+  // Khởi tạo image moderation model
+  await loadNSFWModel();
   
   // Khởi động reminder scheduler
   reminderScheduler.start();
@@ -85,7 +91,7 @@ connectDB().then(() => {
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
-  console.log('🛑 SIGTERM signal received');
+  console.log(' SIGTERM signal received');
   console.log('Stopping reminder scheduler...');
   reminderScheduler.stop();
   
@@ -96,7 +102,7 @@ process.on('SIGTERM', () => {
 });
 
 process.on('SIGINT', () => {
-  console.log('🛑 SIGINT signal received');
+  console.log(' SIGINT signal received');
   console.log('Stopping reminder scheduler...');
   reminderScheduler.stop();
   
