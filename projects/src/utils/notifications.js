@@ -1,9 +1,13 @@
+// utils/notifications.js
+// ✅ Dùng functions từ server/notifications.js (FILE RIÊNG)
+
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { Platform, Alert } from 'react-native';
+import { registerFCMToken, unregisterFCMToken } from '../server/notifi.js'; // ✅ FILE RIÊNG
 
-// ✅ 1. Cấu hình notification
+// Cấu hình notification behavior
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
@@ -12,8 +16,10 @@ Notifications.setNotificationHandler({
   }),
 });
 
-// ✅ 2. Đăng ký FCM Token (QUAN TRỌNG!)
-export async function registerForPushNotifications(authToken) {
+/**
+ * Đăng ký FCM Token
+ */
+export async function registerForPushNotifications() {
   let token;
 
   // Android: Tạo notification channel
@@ -28,7 +34,7 @@ export async function registerForPushNotifications(authToken) {
 
   // Kiểm tra thiết bị thật
   if (!Device.isDevice) {
-    Alert.alert('Lỗi', 'Push notification chỉ hoạt động trên thiết bị thật!');
+    console.warn('⚠️ Push notification chỉ hoạt động trên thiết bị thật!');
     return null;
   }
 
@@ -47,69 +53,62 @@ export async function registerForPushNotifications(authToken) {
   }
 
   try {
-    // ✅ LẤY EXPO PUSH TOKEN (FCM)
+    // ✅ Lấy Project ID từ app.json
     const projectId = Constants.expoConfig?.extra?.eas?.projectId;
     
     if (!projectId) {
-      console.error('❌ Thiếu projectId trong app.json!');
-      Alert.alert('Lỗi cấu hình', 'Vui lòng chạy: eas build --configure');
-      return null;
+      console.warn('⚠️ Thiếu projectId trong app.json');
+      console.warn('   → Chạy: eas build:configure');
     }
 
-    token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+    // ✅ Lấy Expo Push Token (FCM)
+    const tokenData = await Notifications.getExpoPushTokenAsync(
+      projectId ? { projectId } : undefined
+    );
+    token = tokenData.data;
+    
     console.log('✅ FCM Token:', token);
 
-    // ✅ GỬI TOKEN LÊN BACKEND
-    const response = await fetch('https://your-api.onrender.com/api/fcm/register', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authToken}`
-      },
-      body: JSON.stringify({
-        token: token,
-        device: Platform.OS,
-        deviceId: Constants.deviceId
-      })
-    });
+    // ✅ Gửi token lên backend (dùng function từ notifications.js)
+    const response = await registerFCMToken(
+      token,
+      Platform.OS,
+      Constants.deviceId || 'unknown'
+    );
     
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    const data = await response.json();
-    console.log('✅ Token đã đăng ký:', data);
-    
+    console.log('✅ Token đã đăng ký:', response);
     return token;
 
   } catch (error) {
-    console.error('❌ Lỗi đăng ký token:', error);
-    Alert.alert('Lỗi', `Không thể đăng ký thông báo: ${error.message}`);
+    console.error('❌ Lỗi đăng ký token:', error.message);
+    
+    // Log chi tiết để debug
+    if (error.message.includes('404')) {
+      Alert.alert(
+        'Lỗi Backend',
+        'Route /api/fcm/register không tồn tại. Kiểm tra backend!'
+      );
+    } else if (error.message.includes('No auth token')) {
+      console.log('⚠️ Chưa đăng nhập, bỏ qua đăng ký FCM');
+    } else {
+      Alert.alert('Lỗi', error.message);
+    }
+    
     return null;
   }
 }
 
-// ✅ 3. Hủy đăng ký khi logout
+/**
+ * Hủy đăng ký FCM Token khi logout
+ */
 export async function unregisterPushNotifications(authToken, fcmToken) {
   if (!fcmToken) return;
 
   try {
-    await fetch('https://your-api.onrender.com/api/fcm/unregister', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authToken}`
-      },
-      body: JSON.stringify({ token: fcmToken })
-    });
-    console.log('✅ Token đã hủy');
+    // ✅ Dùng function từ notifications.js
+    const response = await unregisterFCMToken(fcmToken);
+    console.log('✅ Token đã hủy:', response);
   } catch (error) {
-    console.error('❌ Lỗi hủy token:', error);
+    console.error('❌ Lỗi hủy token:', error.message);
   }
-}
-
-// ✅ 4. Hủy tất cả local notifications
-export async function cancelAllLocalNotifications() {
-  await Notifications.cancelAllScheduledNotificationsAsync();
-  console.log('✅ Đã hủy tất cả local notifications');
 }

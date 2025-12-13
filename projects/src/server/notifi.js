@@ -1,100 +1,52 @@
-// Global Axios instance with automatic error handling
-import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getBaseUrl } from './users';
-import { showErrorToast } from './toastConfig';
+// server/notifications.js
+// API wrapper cho Push Notifications (FCM)
+// Giống style habits.js và users.js
 
-// Auto-detect host for emulator / web preview
-function inferBaseUrl() {
-  // Ưu tiên cấu hình từ users.js (setBaseUrl) để thống nhất host
-  const configured = getBaseUrl?.();
-  if (configured) {
-    const trimmed = configured.endsWith('/')
-      ? configured.slice(0, -1)
-      : configured;
-    return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`;
-  }
+import { apiRequest } from './users';
 
-  if (typeof window !== 'undefined' && window.location?.hostname) {
-    return `http://${window.location.hostname}:5000/api`;
-  }
+/* ------------------------------------------------------------------ */
+/* FCM TOKEN MANAGEMENT                                               */
+/* ------------------------------------------------------------------ */
 
-  // React Native môi trường mobile sẽ rơi vào fetch layer, nhưng giữ fallback
-  return 'http://192.168.1.155:5000/api';
+/**
+ * Đăng ký FCM token lên backend
+ * @param {string} token - Expo Push Token
+ * @param {string} device - 'ios' hoặc 'android'
+ * @param {string} deviceId - Unique device ID
+ */
+export function registerFCMToken(token, device, deviceId) {
+  return apiRequest('/api/fcm/register', {
+    method: 'POST',
+    body: { token, device, deviceId },
+    auth: true,
+  });
 }
 
-const api = axios.create({
-  baseURL: inferBaseUrl(),
-  timeout: 15000,
-});
+/**
+ * Hủy đăng ký FCM token (khi logout)
+ * @param {string} token - Expo Push Token cần xóa
+ */
+export function unregisterFCMToken(token) {
+  return apiRequest('/api/fcm/unregister', {
+    method: 'POST',
+    body: { token },
+    auth: true,
+  });
+}
 
-// Attach token if available
-api.interceptors.request.use(
-  async (config) => {
-    try {
-      const token = await AsyncStorage.getItem('accessToken');
-      if (token) {
-        config.headers = {
-          ...config.headers,
-          Authorization: `Bearer ${token}`,
-        };
-      }
-    } catch (e) {
-      console.log('[API] cannot read token', e);
-    }
-    return config;
-  },
-  (error) => Promise.reject(error),
-);
+/**
+ * Lấy danh sách devices đã đăng ký
+ */
+export function getRegisteredDevices() {
+  return apiRequest('/api/fcm/devices', { auth: true });
+}
 
-const getServerMessage = (error) =>
-  error?.response?.data?.message ||
-  error?.response?.data?.error ||
-  error?.message;
-
-// Auto-handle errors
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    console.log(
-      '[API ERROR]',
-      error?.message,
-      'status:',
-      error?.response?.status,
-      'code:',
-      error?.code,
-      'base:',
-      api.defaults.baseURL,
-    );
-
-    if (!error.response) {
-      showErrorToast(
-        'Lỗi mạng',
-        `Không thể kết nối đến ${api.defaults.baseURL}. Vui lòng kiểm tra Internet/BASE_URL.`,
-      );
-    } else {
-      const status = error.response.status;
-      const serverMessage = getServerMessage(error);
-
-      if (status >= 500) {
-        showErrorToast('Lỗi hệ thống', 'Máy chủ gặp sự cố. Vui lòng thử lại sau.');
-      } else if (status === 404) {
-        showErrorToast('Không tìm thấy', 'Tài nguyên không tồn tại (404).');
-      } else if (status === 401) {
-        showErrorToast(
-          'Phiên đăng nhập hết hạn',
-          'Vui lòng đăng nhập lại để tiếp tục.',
-        );
-      } else {
-        showErrorToast(
-          'Đã xảy ra lỗi',
-          serverMessage || `Mã lỗi ${status}. Vui lòng thử lại.`,
-        );
-      }
-    }
-
-    return Promise.reject(error);
-  },
-);
-
-export default api;
+/**
+ * Gửi test notification đến chính mình
+ */
+export function sendTestNotification() {
+  return apiRequest('/api/test/test-push', {
+    method: 'POST',
+    auth: true,
+  });
+}

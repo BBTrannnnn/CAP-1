@@ -1,0 +1,22 @@
+[
+  {
+    "text": "Mơ thấy 1 chú cá chép vàng",
+    "category": "happy"
+  },
+  {
+    "text": "Mơ thấy trúng số",
+    "category": "neutral"
+  },
+  {
+    "text": "Mơ thấy 1 con quạ lớn",
+    "category": "neutral"
+  },
+  {
+    "text": "Mơ thấy ai đó đang lại gần",
+    "category": "confusion"
+  },
+  {
+    "text": "Mơ thấy ai đó đã chết",
+    "category": "fear"
+  }
+]

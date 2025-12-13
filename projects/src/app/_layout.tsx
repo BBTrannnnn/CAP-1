@@ -1,3 +1,6 @@
+// app/_layout.js
+// ✅ SIMPLIFIED: Không cần truyền authToken nữa
+
 import React, { useEffect, useRef, useState } from 'react';
 import { config } from '../../tamagui.config';
 import { TamaguiProvider } from '@tamagui/core';
@@ -45,14 +48,16 @@ export default function RootLayout() {
 
   async function setupNotifications() {
     try {
-      const authToken = await AsyncStorage.getItem('authToken');
-
+      // ✅ Kiểm tra xem đã login chưa
+      const authToken = await AsyncStorage.getItem('accessToken');
+      
       if (!authToken) {
         console.log('⚠️ Chưa đăng nhập → bỏ qua đăng ký FCM');
         return;
       }
 
-      const token = await registerForPushNotifications(authToken);
+      // ✅ Đăng ký FCM (không cần truyền authToken vì apiRequest tự lấy)
+      const token = await registerForPushNotifications();
 
       if (token) {
         setFcmToken(token);
@@ -68,11 +73,20 @@ export default function RootLayout() {
     notificationListener.current =
       Notifications.addNotificationReceivedListener((notification) => {
         console.log('📩 Notification nhận:', notification);
+        const { title, body } = notification.request.content;
+        console.log(`   ${title}: ${body}`);
       });
 
     responseListener.current =
       Notifications.addNotificationResponseReceivedListener((response) => {
-        console.log('👆 User click notification:', response);
+        console.log('👆 User click notification');
+        const data = response.notification.request.content.data;
+        
+        if (data?.habitId) {
+          console.log('   → Navigate đến habit:', data.habitId);
+          // TODO: Implement navigation
+          // router.push(`/habits/${data.habitId}`);
+        }
       });
   }
 
@@ -90,17 +104,18 @@ export default function RootLayout() {
   );
 }
 
-// Export logout cho màn Setting
+// ✅ Export logout cho màn Setting
 export async function handleLogout() {
   try {
-    const authToken = await AsyncStorage.getItem('authToken');
     const fcmToken = await AsyncStorage.getItem('fcmToken');
 
-    if (authToken && fcmToken) {
-      await unregisterPushNotifications(authToken, fcmToken);
+    // ✅ Hủy FCM token (không cần authToken vì apiRequest tự lấy)
+    if (fcmToken) {
+      await unregisterPushNotifications(null, fcmToken);
     }
 
-    await AsyncStorage.multiRemove(['authToken', 'fcmToken']);
+    // ✅ Xóa tất cả tokens
+    await AsyncStorage.multiRemove(['accessToken', 'auth_token', 'fcmToken']);
     console.log('✅ Đã logout và xóa FCM token');
   } catch (err) {
     console.error('❌ Lỗi logout:', err);
