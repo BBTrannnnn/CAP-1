@@ -279,6 +279,7 @@ export const moderateComment = async (req, res, next) => {
  */
 export async function processModerationAsync(contentType, contentId, userId, images = []) {
     try {
+        console.log(`🔍 [Layer 2] Processing ${contentType} ${contentId}...`);
         const user = await import('../src/models/User.js').then(m => m.default.findById(userId));
         if (!user) return;
 
@@ -292,8 +293,10 @@ export async function processModerationAsync(contentType, contentId, userId, ima
 
         // Check images with NSFW.js (this takes 1-3 seconds)
         if (images && images.length > 0) {
+            console.log(`🖼️  [Layer 2] Checking ${images.length} images for ${contentType} ${contentId}...`);
             const imageUrls = images.map(img => img.url || img);
             moderationResults.imageCheck = await checkImagesNSFW(imageUrls);
+            console.log(`🖼️  [Layer 2] Image check result:`, moderationResults.imageCheck);
 
             if (moderationResults.imageCheck.blocked) {
                 // Image failed - reject content

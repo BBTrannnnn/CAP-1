@@ -12,7 +12,7 @@ import mongoose from 'mongoose';
 // Tạo bài viết mới
 export const createPost = async (req, res, next) => {
     try {
-        const userId = req.user.id;
+        const userId = req.user._id;
         const { content, images, visibility } = req.body;
 
         if (!content || content.trim().length === 0) {
@@ -40,8 +40,11 @@ export const createPost = async (req, res, next) => {
         // Start async moderation check (if not admin/moderator)
         if (!canBypassModeration(req.user)) {
             // Run in background
+            console.log(`🔍 Starting Layer 2 moderation for post ${post._id}`);
             setImmediate(() => {
-                processModerationAsync('post', post._id, userId, images);
+                processModerationAsync('post', post._id, userId, images).catch(err => {
+                    console.error(` Layer 2 moderation failed for post ${post._id}:`, err);
+                });
             });
         }
 
@@ -60,7 +63,7 @@ export const createPost = async (req, res, next) => {
 // Lấy feed (bài viết của bạn bè và của mình)
 export const getFeed = async (req, res, next) => {
     try {
-        const userId = req.user.id;
+        const userId = req.user._id;
         const { page = 1, limit = 10, visibility = 'all' } = req.query;
 
         // Lấy danh sách bạn bè
@@ -81,6 +84,10 @@ export const getFeed = async (req, res, next) => {
         // Query posts
         let query = {
             isActive: true,
+            $or: [
+                { moderationStatus: 'approved' }, // Bài đã duyệt
+                { userId: userId, moderationStatus: 'pending' } // Bài pending của chính mình
+            ],
             userId: { $nin: blockedUserIds } // Loại bỏ người đã chặn
         };
 
@@ -138,7 +145,7 @@ export const getFeed = async (req, res, next) => {
 // Lấy bài viết của 1 user cụ thể
 export const getUserPosts = async (req, res, next) => {
     try {
-        const currentUserId = req.user.id;
+        const currentUserId = req.user._id;
         const { userId } = req.params;
         const { page = 1, limit = 10 } = req.query;
 
@@ -169,8 +176,20 @@ export const getUserPosts = async (req, res, next) => {
             isActive: true
         };
 
+        // Lọc moderationStatus
+        if (currentUserId.toString() === userId.toString()) {
+            // Nếu xem profile chính mình → hiển thị cả pending
+            query.$or = [
+                { moderationStatus: 'approved' },
+                { moderationStatus: 'pending' }
+            ];
+        } else {
+            // Nếu xem người khác → chỉ approved
+            query.moderationStatus = 'approved';
+        }
+
         // Nếu không phải bạn bè, chỉ xem public
-        if (!areFriends && currentUserId !== userId) {
+        if (!areFriends && currentUserId.toString() !== userId.toString()) {
             query.visibility = 'public';
         } else if (areFriends) {
             query.visibility = { $in: ['public', 'friends'] };
@@ -541,7 +560,8 @@ export const getPostsByHashtag = async (req, res, next) => {
         const posts = await Post.find({
             hashtags: hashtag.toLowerCase(),
             isActive: true,
-            visibility: 'public'
+            visibility: 'public',
+            moderationStatus: 'approved' // CHỈ HIỂN THỊ BÀI ĐÃ DUYỆT
         })
         .populate('userId', 'name avatar badge')
         .sort({ createdAt: -1 })
@@ -561,7 +581,8 @@ export const getPostsByHashtag = async (req, res, next) => {
         const total = await Post.countDocuments({
             hashtags: hashtag.toLowerCase(),
             isActive: true,
-            visibility: 'public'
+            visibility: 'public',
+            moderationStatus: 'approved'
         });
 
         res.status(200).json({

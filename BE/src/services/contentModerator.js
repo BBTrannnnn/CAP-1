@@ -13,7 +13,9 @@ const SEVERE_PROFANITY_PATTERNS = [
     /c[ặaáàảãạ\*\.\s]*c\s*[^a-z]/gi,                           // cặc, c*c
     /l[ồoóòỏõọ\*\.\s]*n\s*[^a-z]/gi,                           // lồn, l*n
     /bu[ồoóòỏõọ\*\.\s]*i\s*[^a-z]/gi,                          // buồi
-    /đ[ĩiíìỉ\*\.\s]*\s*đ[iíìỉĩ\*\.\s]*[êế]m/gi,               // đĩ điếm
+    /\bcon\s*đ[ĩiíìỉ\*\.\s]*\b/gi,                              // con đĩ
+    /\b[đd][ĩiíìỉĩ\*\.\s]*\s*[đd][iíìỉĩ\*\.\s]*[êếệ]m\b/gi,   // đĩ điếm
+    /\bđ[ĩiíìỉĩ\*\.\s]*(?=\s|$)/gi,                            // đĩ (đứng riêng)
     /m[ẹeéèẻẽ\*\.\s]*\s*m[áàảãạ\*\.\s]*y/gi,                  // mẹ mày
     /đ[ụuúùủũ\*\.\s]*\s*m[áàảãạ\*\.\s]*[^a-z]/gi,             // địt má
     /v[cklồ]\s*l[^a-z]/gi,                                      // vcl, vkl
@@ -347,7 +349,7 @@ async function checkImageWithSightengine(imageUrl) {
     const API_SECRET = process.env.SIGHTENGINE_SECRET || null;
 
     if (!API_USER || !API_SECRET) {
-        console.log('ℹ️  Sightengine API not configured, skipping external check');
+        console.log(' Sightengine API not configured, skipping external check');
         return null;
     }
 

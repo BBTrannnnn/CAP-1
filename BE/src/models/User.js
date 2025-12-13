@@ -178,6 +178,7 @@ userSchema.pre('save',async function(next){
     this.confirmPassword = undefined;// Ẩn xác nhận mật khẩu
     next();
 });
+
 // So sánh mật khẩu
 userSchema.methods.comparePassword = async function(candidatePassword) {
     return await bcrypt.compare(candidatePassword, this.password);

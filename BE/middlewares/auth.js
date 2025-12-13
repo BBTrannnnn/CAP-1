@@ -35,6 +35,7 @@ const authenticateToken = async (req, res, next) => {
 
   // Gắn trực tiếp user doc vào req để các controller (sleep, profile) có thể thao tác (populate/save)
     req.user = user;
+    req.user.id = user._id.toString();
     next();
   } catch (error) {
     if (error.name === 'JsonWebTokenError') {

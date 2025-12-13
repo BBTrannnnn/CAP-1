@@ -26,23 +26,39 @@ function ensure() {
   }
 }
 
+// Helper: Sleep for ms
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 // messages: [{ role: 'system'|'user'|'assistant', content: string }]
 export async function chat(messages, opts = {}) {
   ensure();
   const model = opts.model || DEFAULT_MODEL;
-  try {
-    const res = await client.chat.completions.create({
-      model,
-      messages,
-      temperature: opts.temperature ?? 0.7,
-      max_tokens: opts.max_tokens ?? 500,
-    });
-    const text = res?.choices?.[0]?.message?.content?.trim() || '';
-    return { text, raw: res };
-  } catch (e) {
-    const err = new Error(e?.message || 'LLM chat error');
-    err.statusCode = e?.status || 500;
-    throw err;
+  const maxRetries = opts.maxRetries || 2; // Retry up to 2 times for rate limits
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const res = await client.chat.completions.create({
+        model,
+        messages,
+        temperature: opts.temperature ?? 0.7,
+        max_tokens: opts.max_tokens ?? 500,
+      });
+      const text = res?.choices?.[0]?.message?.content?.trim() || '';
+      return { text, raw: res };
+    } catch (e) {
+      // If rate limit (429) and still have retries, wait and retry
+      if (e?.status === 429 && attempt < maxRetries) {
+        const waitTime = Math.pow(2, attempt) * 1000; // 1s, 2s exponential backoff
+        console.log(`[LLM] Rate limit hit, retrying in ${waitTime}ms (attempt ${attempt + 1}/${maxRetries})`);
+        await sleep(waitTime);
+        continue; // Retry
+      }
+      
+      // Otherwise, throw error
+      const err = new Error(e?.message || 'LLM chat error');
+      err.statusCode = e?.status || 500;
+      throw err;
+    }
   }
 }
 
