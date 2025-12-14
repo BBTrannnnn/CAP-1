@@ -159,20 +159,20 @@ router.get('/reminders/today', getTodayReminders);
 
 
 // ==================== Goals ====================
-// Get all goals for a habit
-router.get('/:habitId/goals', getHabitGoals);
-// Add a goal to a habit
-router.post('/:habitId/goals', addHabitGoal);
-// Update a habit goal
-router.put('/:habitId/goals/:goalId', updateHabitGoal);
-// Complete a habit goal
-router.post('/:habitId/goals/:goalId/complete', completeHabitGoal);
-// Delete a habit goal
-router.delete('/:habitId/goals/:goalId', deleteHabitGoal);
-// Get user's goals overview
+
 router.get('/goals/overview', getUserGoalsOverview);
-// Sync habit goals (e.g., after bulk updates)
 router.post('/goals/sync', syncHabitGoals);
+
+// SAU ĐÓ MỚI ĐẾN DYNAMIC ROUTES
+router.get('/:habitId/goals', getHabitGoals);
+// Add new goal to a habit
+router.post('/:habitId/goals', addHabitGoal);
+// Update habit goal
+router.put('/:habitId/goals/:goalId', updateHabitGoal);
+// Mark goal as completed
+router.post('/:habitId/goals/:goalId/complete', completeHabitGoal);
+// Delete habit goal
+router.delete('/:habitId/goals/:goalId', deleteHabitGoal);
 
 
 

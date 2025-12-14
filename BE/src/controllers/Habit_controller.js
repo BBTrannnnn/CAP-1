@@ -3313,7 +3313,6 @@ const addHabitGoal = asyncHandler(async (req, res) => {
     });
   }
 
-
   const validTypes = ['total_completions', 'streak', 'weekly_target', 'monthly_target', 'custom'];
   if (!validTypes.includes(type)) {
     return res.status(400).json({
@@ -3321,7 +3320,6 @@ const addHabitGoal = asyncHandler(async (req, res) => {
       message: `Goal type must be one of: ${validTypes.join(', ')}`
     });
   }
-
 
   if (target < 1) {
     return res.status(400).json({
@@ -3337,7 +3335,12 @@ const addHabitGoal = asyncHandler(async (req, res) => {
   }
 
   // Check goal limit
-  const activeCount = await HabitGoal.countDocuments({ habitId, userId, isCompleted: false });
+  const activeCount = await HabitGoal.countDocuments({ 
+    habitId, 
+    userId, 
+    isCompleted: false 
+  });
+  
   if (activeCount >= 5) {
     return res.status(400).json({
       success: false,
@@ -3345,7 +3348,7 @@ const addHabitGoal = asyncHandler(async (req, res) => {
     });
   }
 
-  // Compute initial "current" value
+  // Compute initial "current" value based on goal type
   let current = 0;
   switch (type) {
     case 'total_completions':
@@ -3354,7 +3357,9 @@ const addHabitGoal = asyncHandler(async (req, res) => {
     case 'streak':
       current = habit.currentStreak || 0;
       break;
-
+    case 'weekly_target':
+    case 'monthly_target':
+    case 'custom':
     default:
       current = 0;
   }
@@ -3379,7 +3384,6 @@ const addHabitGoal = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Update habit goal
 const updateHabitGoal = asyncHandler(async (req, res) => {
   const { habitId, goalId } = req.params;
   const userId = req.user.id;
@@ -3390,21 +3394,24 @@ const updateHabitGoal = asyncHandler(async (req, res) => {
     return res.status(404).json({ success: false, message: 'Goal not found' });
   }
 
-
-  if (goal.isCompleted && !updates.isCompleted) {
+  // Prevent modifying completed goals
+  if (goal.isCompleted) {
     return res.status(400).json({
       success: false,
-      message: 'Cannot modify completed goal'
+      message: 'Cannot modify a completed goal'
     });
   }
 
+  // Update allowed fields
   const allowed = ['target', 'unit', 'description', 'deadline', 'reward', 'current'];
-  allowed.forEach(f => {
-    if (updates[f] !== undefined) goal[f] = updates[f];
+  allowed.forEach(field => {
+    if (updates[field] !== undefined) {
+      goal[field] = updates[field];
+    }
   });
 
-
-  if (updates.current !== undefined && updates.current >= goal.target && !goal.isCompleted) {
+  // Check if goal is now completed
+  if (goal.current >= goal.target && !goal.isCompleted) {
     goal.isCompleted = true;
     goal.completedAt = new Date();
   }
@@ -3419,11 +3426,11 @@ const updateHabitGoal = asyncHandler(async (req, res) => {
 });
 
 
-// @desc    Delete habit goal
 const deleteHabitGoal = asyncHandler(async (req, res) => {
   const { habitId, goalId } = req.params;
   const userId = req.user.id;
 
+  // Verify habit exists
   const habit = await Habit.findOne({ _id: habitId, userId, isActive: true });
   if (!habit) {
     return res.status(404).json({
@@ -3432,7 +3439,8 @@ const deleteHabitGoal = asyncHandler(async (req, res) => {
     });
   }
 
-  const goal = habit.goals.id(goalId);
+  // Find and delete goal
+  const goal = await HabitGoal.findOne({ _id: goalId, habitId, userId });
   if (!goal) {
     return res.status(404).json({
       success: false,
@@ -3440,14 +3448,14 @@ const deleteHabitGoal = asyncHandler(async (req, res) => {
     });
   }
 
-  goal.remove();
-  await habit.save();
+  await goal.deleteOne();
 
   res.json({
     success: true,
     message: 'Goal deleted successfully'
   });
 });
+
 
 const completeHabitGoal = asyncHandler(async (req, res) => {
   const { habitId, goalId } = req.params;
@@ -3478,13 +3486,18 @@ const completeHabitGoal = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Get all goals for a habit
+
 const getHabitGoals = asyncHandler(async (req, res) => {
   const { habitId } = req.params;
   const userId = req.user.id;
   const { status } = req.query; // 'active', 'completed', 'all'
 
-  const habit = await Habit.findOne({ _id: habitId, userId }, 'name goals currentStreak totalCompletions');
+  // Verify habit exists and get current stats
+  const habit = await Habit.findOne(
+    { _id: habitId, userId }, 
+    'name currentStreak totalCompletions'
+  );
+  
   if (!habit) {
     return res.status(404).json({
       success: false,
@@ -3492,17 +3505,20 @@ const getHabitGoals = asyncHandler(async (req, res) => {
     });
   }
 
-  let goals = habit.goals || [];
-
-  // Filter by status
+  // Build query
+  let query = { habitId, userId };
+  
   if (status === 'active') {
-    goals = goals.filter(g => !g.isCompleted);
+    query.isCompleted = false;
   } else if (status === 'completed') {
-    goals = goals.filter(g => g.isCompleted);
+    query.isCompleted = true;
   }
 
-  // Calculate progress for each goal
-  const goalsWithProgress = goals.map(goal => {
+  // Get goals
+  const goals = await HabitGoal.find(query).sort({ createdAt: -1 });
+
+  // Calculate progress for each goal and auto-complete if needed
+  const goalsWithProgress = await Promise.all(goals.map(async (goal) => {
     let currentValue = goal.current;
 
     // Update current value based on goal type
@@ -3513,6 +3529,15 @@ const getHabitGoals = asyncHandler(async (req, res) => {
       case 'streak':
         currentValue = habit.currentStreak || 0;
         break;
+      // For weekly_target, monthly_target, custom - use stored current value
+    }
+
+    // Auto-complete goal if target is reached
+    if (currentValue >= goal.target && !goal.isCompleted) {
+      goal.isCompleted = true;
+      goal.completedAt = new Date();
+      goal.current = currentValue;
+      await goal.save();
     }
 
     const progress = Math.min((currentValue / goal.target) * 100, 100);
@@ -3523,7 +3548,7 @@ const getHabitGoals = asyncHandler(async (req, res) => {
       progress: Math.round(progress),
       remaining: Math.max(goal.target - currentValue, 0)
     };
-  });
+  }));
 
   res.json({
     success: true,
@@ -3538,133 +3563,166 @@ const getHabitGoals = asyncHandler(async (req, res) => {
 // @desc    Get all goals overview for user
 const getUserGoalsOverview = asyncHandler(async (req, res) => {
   const userId = req.user.id;
+  const { status } = req.query; // 'active', 'completed', 'all'
 
-  const habits = await Habit.find({
-    userId,
-    isActive: true
-  }).select('name icon color goals currentStreak totalCompletions');
+  // Build query
+  let query = { userId };
+  
+  if (status === 'active') {
+    query.isCompleted = false;
+  } else if (status === 'completed') {
+    query.isCompleted = true;
+  }
 
-  const allGoals = [];
-  let totalActive = 0;
-  let totalCompleted = 0;
+  // Get all goals for user
+  const goals = await HabitGoal.find(query)
+    .populate('habitId', 'name icon currentStreak totalCompletions')
+    .sort({ createdAt: -1 });
 
-  habits.forEach(habit => {
-    if (habit.goals && habit.goals.length > 0) {
-      habit.goals.forEach(goal => {
-        let currentValue = goal.current;
+  // Get all user's habits for stats calculation
+  const habits = await Habit.find({ userId, isActive: true });
 
-        // Update based on goal type
-        switch (goal.type) {
-          case 'total_completions':
-            currentValue = habit.totalCompletions || 0;
-            break;
-          case 'streak':
-            currentValue = habit.currentStreak || 0;
-            break;
-        }
-
-        const progress = Math.min((currentValue / goal.target) * 100, 100);
-
-        allGoals.push({
-          goalId: goal._id,
-          habitId: habit._id,
-          habitName: habit.name,
-          habitIcon: habit.icon,
-          habitColor: habit.color,
-          type: goal.type,
-          target: goal.target,
-          current: currentValue,
-          progress: Math.round(progress),
-          unit: goal.unit,
-          description: goal.description,
-          deadline: goal.deadline,
-          isCompleted: goal.isCompleted,
-          completedAt: goal.completedAt,
-          reward: goal.reward
-        });
-
-        if (goal.isCompleted) {
-          totalCompleted++;
-        } else {
-          totalActive++;
-        }
-      });
+  // Calculate progress for each goal and auto-complete if needed
+  const goalsWithProgress = await Promise.all(goals.map(async (goal) => {
+    if (!goal.habitId) {
+      return null; // Skip if habit was deleted
     }
-  });
 
-  // Sort: incomplete goals first, then by progress
-  allGoals.sort((a, b) => {
-    if (a.isCompleted !== b.isCompleted) {
-      return a.isCompleted ? 1 : -1;
+    let currentValue = goal.current;
+    const habit = goal.habitId;
+
+    // Update current value based on goal type
+    switch (goal.type) {
+      case 'total_completions':
+        currentValue = habit.totalCompletions || 0;
+        break;
+      case 'streak':
+        currentValue = habit.currentStreak || 0;
+        break;
     }
-    return b.progress - a.progress;
-  });
+
+    // Auto-complete goal if target is reached
+    if (currentValue >= goal.target && !goal.isCompleted) {
+      goal.isCompleted = true;
+      goal.completedAt = new Date();
+      goal.current = currentValue;
+      await goal.save();
+    }
+
+    const progress = Math.min((currentValue / goal.target) * 100, 100);
+
+    return {
+      ...goal.toObject(),
+      current: currentValue,
+      progress: Math.round(progress),
+      remaining: Math.max(goal.target - currentValue, 0),
+      habitName: habit.name,
+      habitIcon: habit.icon
+    };
+  }));
+  
+  const filteredGoals = goalsWithProgress.filter(Boolean); // Remove null values
+
+  // Calculate statistics
+  const totalGoals = filteredGoals.length;
+  const activeGoals = filteredGoals.filter(g => !g.isCompleted).length;
+  const completedGoals = filteredGoals.filter(g => g.isCompleted).length;
+  const completionRate = totalGoals > 0 ? Math.round((completedGoals / totalGoals) * 100) : 0;
+
+  // Goals expiring soon (within 7 days)
+  const now = new Date();
+  const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const expiringSoon = filteredGoals.filter(g => 
+    !g.isCompleted && 
+    g.deadline && 
+    new Date(g.deadline) <= sevenDaysFromNow &&
+    new Date(g.deadline) >= now
+  );
 
   res.json({
     success: true,
-    overview: {
-      totalGoals: allGoals.length,
-      activeGoals: totalActive,
-      completedGoals: totalCompleted,
-      completionRate: allGoals.length > 0 ? Math.round((totalCompleted / allGoals.length) * 100) : 0
+    stats: {
+      totalGoals,
+      activeGoals,
+      completedGoals,
+      completionRate,
+      expiringSoonCount: expiringSoon.length
     },
-    goals: allGoals
+    goals: filteredGoals,
+    expiringSoon
   });
 });
 
-// @desc    Update goals progress (called by system or manually)
+
+// @desc    Sync habit goals (update current values)
+// @route   POST /api/habits/goals/sync
+// @access  Private
 const syncHabitGoals = asyncHandler(async (req, res) => {
-  const { habitId } = req.params;
   const userId = req.user.id;
 
-  const habit = await Habit.findOne({ _id: habitId, userId, isActive: true });
-  if (!habit) {
-    return res.status(404).json({
-      success: false,
-      message: 'Habit not found'
-    });
-  }
+  // Get all active goals for user
+  const goals = await HabitGoal.find({ userId, isCompleted: false });
 
-  let updated = 0;
-  let completed = 0;
+  // Get all user's habits
+  const habits = await Habit.find({ userId, isActive: true });
 
-  habit.goals.forEach(goal => {
-    if (!goal.isCompleted) {
-      let newCurrent = goal.current;
-
-      switch (goal.type) {
-        case 'total_completions':
-          newCurrent = habit.totalCompletions || 0;
-          break;
-        case 'streak':
-          newCurrent = habit.currentStreak || 0;
-          break;
-      }
-
-      if (newCurrent !== goal.current) {
-        goal.current = newCurrent;
-        updated++;
-
-        // Auto-complete if target reached
-        if (newCurrent >= goal.target && !goal.isCompleted) {
-          goal.isCompleted = true;
-          goal.completedAt = new Date();
-          completed++;
-        }
-      }
-    }
+  // Create a map for quick lookup
+  const habitMap = {};
+  habits.forEach(habit => {
+    habitMap[habit._id.toString()] = habit;
   });
 
-  if (updated > 0) {
-    await habit.save();
+  let updatedCount = 0;
+  let completedCount = 0;
+
+  // Update each goal
+  for (const goal of goals) {
+    const habit = habitMap[goal.habitId.toString()];
+    if (!habit) continue; // Skip if habit doesn't exist
+
+    let newCurrentValue = goal.current;
+    let hasChanged = false;
+
+    // Update current value based on goal type
+    switch (goal.type) {
+      case 'total_completions':
+        newCurrentValue = habit.totalCompletions || 0;
+        if (newCurrentValue !== goal.current) {
+          goal.current = newCurrentValue;
+          hasChanged = true;
+        }
+        break;
+      case 'streak':
+        newCurrentValue = habit.currentStreak || 0;
+        if (newCurrentValue !== goal.current) {
+          goal.current = newCurrentValue;
+          hasChanged = true;
+        }
+        break;
+    }
+
+    // Check if goal should be marked as completed
+    if (goal.current >= goal.target && !goal.isCompleted) {
+      goal.isCompleted = true;
+      goal.completedAt = new Date();
+      hasChanged = true;
+      completedCount++;
+    }
+
+    if (hasChanged) {
+      await goal.save();
+      updatedCount++;
+    }
   }
 
   res.json({
     success: true,
-    message: `Synced ${updated} goals`,
-    updated,
-    completed,
-    goals: habit.goals
+    message: `Synced ${updatedCount} goals, ${completedCount} newly completed`,
+    stats: {
+      totalProcessed: goals.length,
+      updated: updatedCount,
+      completed: completedCount
+    }
   });
 });
 
