@@ -3299,7 +3299,7 @@ const deleteHabitReminder = asyncHandler(async (req, res) => {
 
 // ==================== GOALS OPERATIONS ====================
 
-// @desc    Add goal to habit
+
 const addHabitGoal = asyncHandler(async (req, res) => {
   const { habitId } = req.params;
   const userId = req.user.id;
@@ -3377,12 +3377,20 @@ const addHabitGoal = asyncHandler(async (req, res) => {
     reward: reward || ''
   });
 
+  // Auto-complete if already reached target
+  if (current >= target) {
+    goal.isCompleted = true;
+    goal.completedAt = new Date();
+    await goal.save();
+  }
+
   return res.status(201).json({
     success: true,
-    message: 'Goal added successfully',
+    message: goal.isCompleted ? 'Goal created and completed! 🎉' : 'Goal added successfully',
     goal
   });
 });
+
 
 const updateHabitGoal = asyncHandler(async (req, res) => {
   const { habitId, goalId } = req.params;
@@ -3402,7 +3410,7 @@ const updateHabitGoal = asyncHandler(async (req, res) => {
     });
   }
 
-  // Update allowed fields
+  // Update allowed fields (NOT including 'type' to prevent logic errors)
   const allowed = ['target', 'unit', 'description', 'deadline', 'reward', 'current'];
   allowed.forEach(field => {
     if (updates[field] !== undefined) {
@@ -3425,21 +3433,11 @@ const updateHabitGoal = asyncHandler(async (req, res) => {
   });
 });
 
-
 const deleteHabitGoal = asyncHandler(async (req, res) => {
   const { habitId, goalId } = req.params;
   const userId = req.user.id;
 
-  // Verify habit exists
-  const habit = await Habit.findOne({ _id: habitId, userId, isActive: true });
-  if (!habit) {
-    return res.status(404).json({
-      success: false,
-      message: 'Habit not found'
-    });
-  }
-
-  // Find and delete goal
+  // Find and delete goal (habitId + userId ensures ownership)
   const goal = await HabitGoal.findOne({ _id: goalId, habitId, userId });
   if (!goal) {
     return res.status(404).json({
@@ -3455,7 +3453,6 @@ const deleteHabitGoal = asyncHandler(async (req, res) => {
     message: 'Goal deleted successfully'
   });
 });
-
 
 const completeHabitGoal = asyncHandler(async (req, res) => {
   const { habitId, goalId } = req.params;
@@ -3550,20 +3547,21 @@ const getHabitGoals = asyncHandler(async (req, res) => {
     };
   }));
 
+  // FIX: Calculate stats from goalsWithProgress (updated data), not goals (old data)
   res.json({
     success: true,
     habitName: habit.name,
-    totalGoals: goals.length,
-    activeGoals: goals.filter(g => !g.isCompleted).length,
-    completedGoals: goals.filter(g => g.isCompleted).length,
+    totalGoals: goalsWithProgress.length,
+    activeGoals: goalsWithProgress.filter(g => !g.isCompleted).length,
+    completedGoals: goalsWithProgress.filter(g => g.isCompleted).length,
     goals: goalsWithProgress
   });
 });
 
-// @desc    Get all goals overview for user
+
 const getUserGoalsOverview = asyncHandler(async (req, res) => {
   const userId = req.user.id;
-  const { status } = req.query; // 'active', 'completed', 'all'
+  const { status } = req.query;
 
   // Build query
   let query = { userId };
@@ -3578,9 +3576,6 @@ const getUserGoalsOverview = asyncHandler(async (req, res) => {
   const goals = await HabitGoal.find(query)
     .populate('habitId', 'name icon currentStreak totalCompletions')
     .sort({ createdAt: -1 });
-
-  // Get all user's habits for stats calculation
-  const habits = await Habit.find({ userId, isActive: true });
 
   // Calculate progress for each goal and auto-complete if needed
   const goalsWithProgress = await Promise.all(goals.map(async (goal) => {
@@ -3621,9 +3616,9 @@ const getUserGoalsOverview = asyncHandler(async (req, res) => {
     };
   }));
   
-  const filteredGoals = goalsWithProgress.filter(Boolean); // Remove null values
+  const filteredGoals = goalsWithProgress.filter(Boolean);
 
-  // Calculate statistics
+  // Calculate statistics from filteredGoals (updated data)
   const totalGoals = filteredGoals.length;
   const activeGoals = filteredGoals.filter(g => !g.isCompleted).length;
   const completedGoals = filteredGoals.filter(g => g.isCompleted).length;
@@ -3654,9 +3649,6 @@ const getUserGoalsOverview = asyncHandler(async (req, res) => {
 });
 
 
-// @desc    Sync habit goals (update current values)
-// @route   POST /api/habits/goals/sync
-// @access  Private
 const syncHabitGoals = asyncHandler(async (req, res) => {
   const userId = req.user.id;
 
@@ -3678,7 +3670,7 @@ const syncHabitGoals = asyncHandler(async (req, res) => {
   // Update each goal
   for (const goal of goals) {
     const habit = habitMap[goal.habitId.toString()];
-    if (!habit) continue; // Skip if habit doesn't exist
+    if (!habit) continue;
 
     let newCurrentValue = goal.current;
     let hasChanged = false;
@@ -3726,7 +3718,6 @@ const syncHabitGoals = asyncHandler(async (req, res) => {
   });
 });
 
-// Export all functions
 
 export {
   getUserHabits,
