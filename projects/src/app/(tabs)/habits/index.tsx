@@ -53,6 +53,7 @@ import {
 } from '../../../server/habits';
 import { Input } from 'tamagui';
 import api from '../../../server/notifi'
+import {notifiToast} from '../../../server/runningTracker'
 
 /* ========================================================= */
 /* TYPES                                                     */
@@ -677,10 +678,12 @@ export default function FlowStateHabits() {
 
     (async () => {
       try {
+        
         const dateStr = getCurrentDateStr();
 
         // 1. Lấy danh sách habits
         const res: any = await apiGetHabits();
+        await notifiToast();
         const items: any[] = Array.isArray(res?.habits) ? res.habits : [];
 
         const newB2N: Record<string, number> = {};
@@ -2042,7 +2045,7 @@ export default function FlowStateHabits() {
                       >
                         <Eye size={14} color="#1e40af" />
                         <Text style={styles.actionButtonBlueText}>
-                          Đánh dấu / cập nhật
+                          Đánh dấu
                         </Text>
                       </TouchableOpacity>
                       <TouchableOpacity
@@ -2273,29 +2276,7 @@ export default function FlowStateHabits() {
                           Trạng thái *
                         </Text>
                         <View style={styles.rowWrap}>
-                          <TouchableOpacity
-                            style={[
-                              styles.statusBtn,
-                              status === 'in_progress' &&
-                                styles.statusBtnSelectedBlue,
-                            ]}
-                            onPress={() => handleStatusChange(h.id, 'in_progress')}
-                          >
-                            <TrendingUp
-                              size={16}
-                              color={
-                                status === 'in_progress' ? '#0284c7' : '#334155'
-                              }
-                            />
-                            <Text
-                              style={[
-                                styles.statusBtnText,
-                                status === 'in_progress' && { color: '#0284c7' },
-                              ]}
-                            >
-                              Đang làm
-                            </Text>
-                          </TouchableOpacity>
+                          
 
                           {(
                             [

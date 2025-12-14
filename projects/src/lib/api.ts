@@ -17,11 +17,11 @@ export async function clearToken() {
 
 /**
  * ⚠️ BASE URL BACKEND
- * - Bạn đang chạy BE trên máy với IP: 192.168.1.7, port 5000
+ * - Bạn đang chạy BE trên máy với IP: 192.168.1.155, port 5000
  * - Chạy trên máy thật / Expo Go đều dùng URL này
  * - Sau này đổi WiFi / IP thì chỉ cần sửa chỗ này.
  */
-const BASE = 'http://192.168.1.7:5000';
+const BASE = 'http://192.168.1.155:5000';
 
 if (__DEV__) {
   console.log('[API BASE]', BASE);

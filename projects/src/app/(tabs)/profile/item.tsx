@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,10 +6,21 @@ import {
   ScrollView,
   Modal,
   Alert,
+  ActivityIndicator,
+  TextInput,
 } from 'react-native';
 import { Stack } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+
+import {
+  getInventory,
+  useShield,
+  useFreeze,
+  useRevive,
+} from '../../../server/inventory';
+import { getHabits } from '../../../server/habits';
+import { Habit } from '../../../../types/habit';
 
 const COLORS = {
   background: '#F6F8FB',
@@ -21,20 +32,17 @@ const COLORS = {
   danger: '#DC2626',
 };
 
-type ItemType = 'shield' | 'freeze' | 'revive';
+type ItemType = 'streakShield' | 'freezeToken' | 'reviveToken';
 
 type HistoryItem = {
-  id: number;
-  habit: string;
-  type: ItemType;
-  date: string;
+  _id: string;
+  itemType: ItemType;
+  usedAt: string;
+  habitId?: string;
+  habitName?: string;
+  protectedDate?: string;
+  freezeDays?: number;
 };
-
-const HABIT_OPTIONS = [
-  { id: 'h1', name: 'Viết nhật ký' },
-  { id: 'h2', name: 'Tập thể dục' },
-  { id: 'h3', name: 'Đọc sách' },
-];
 
 function formatDateLabel(d: Date | null) {
   if (!d) return 'Chọn ngày';
@@ -53,16 +61,15 @@ function formatDateISO(d: Date) {
 
 export default function ItemsBagScreen() {
   const [items, setItems] = useState({
-    shield: 5,
-    freeze: 3,
-    revive: 2,
+    streakShields: 0,
+    freezeTokens: 0,
+    reviveTokens: 0,
   });
 
-  const [history, setHistory] = useState<HistoryItem[]>([
-    { id: 1, habit: 'Viết nhật ký', type: 'revive', date: '2025-12-05' },
-    { id: 2, habit: 'Tập thể dục', type: 'freeze', date: '2025-12-06' },
-    { id: 3, habit: 'Đọc sách', type: 'shield', date: '2025-12-05' },
-  ]);
+  const [habits, setHabits] = useState<Habit[]>([]);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedItem, setSelectedItem] = useState<ItemType | null>(null);
@@ -74,6 +81,55 @@ export default function ItemsBagScreen() {
 
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [freezeDays, setFreezeDays] = useState('1');
+
+  const fetchAllData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const [inventoryData, habitsResponse] = await Promise.all([
+        getInventory(),
+        getHabits(),
+      ]);
+
+      if (!habitsResponse || !habitsResponse.success) {
+        throw new Error(habitsResponse?.message || 'Lỗi khi tải danh sách habits');
+      }
+      const userHabits = habitsResponse.habits;
+      setHabits(userHabits);
+
+      if (inventoryData.success) {
+        setItems({
+          streakShields: inventoryData.inventory.streakShields || 0,
+          freezeTokens: inventoryData.inventory.freezeTokens || 0,
+          reviveTokens: inventoryData.inventory.reviveTokens || 0,
+        });
+        const historyWithHabitNames = inventoryData.usageHistory.map(
+          (h: HistoryItem) => {
+            const habit = userHabits.find(
+              (habit: Habit) => String(habit._id) === String(h.habitId)
+            );
+            return { ...h, habitName: habit?.name || 'Habit đã xóa' };
+          }
+        );
+        setHistory(historyWithHabitNames);
+      } else {
+        throw new Error(
+          inventoryData.message || 'Lỗi khi tải dữ liệu inventory'
+        );
+      }
+    } catch (err: any) {
+      setError(err.message || 'Đã có lỗi xảy ra.');
+      Alert.alert('Lỗi', err.message || 'Không thể kết nối tới server.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAllData();
+  }, [fetchAllData]);
 
   const openModal = (itemType: ItemType) => {
     setSelectedItem(itemType);
@@ -85,44 +141,73 @@ export default function ItemsBagScreen() {
     setSelectedHabitName('');
     setSelectedDate(null);
     setShowHabitList(false);
+    setFreezeDays('1');
   };
 
-  const handleConfirmUse = () => {
-    if (!selectedItem) return;
-
-    if (!selectedHabitId || !selectedDate) {
-      Alert.alert('Thiếu thông tin', 'Hãy chọn Habit và ngày trước khi dùng.');
+  const handleConfirmUse = async () => {
+    if (!selectedItem || !selectedHabitId) {
+      Alert.alert('Thiếu thông tin', 'Hãy chọn một Habit.');
       return;
     }
 
-    const habitName =
-      selectedHabitName ||
-      HABIT_OPTIONS.find(h => h.id === selectedHabitId)?.name ||
-      'Habit';
+    if (!selectedDate) {
+      Alert.alert('Thiếu thông tin', 'Hãy chọn ngày.');
+      return;
+    }
 
-    // Trừ số lượng item
-    setItems(prev => ({
-      ...prev,
-      [selectedItem]: Math.max(0, prev[selectedItem] - 1),
-    }));
+    try {
+      let response;
+      const habitId = selectedHabitId;
+      const date = formatDateISO(selectedDate);
 
-    // Thêm vào lịch sử
-    setHistory(prev => {
-      const nextId = prev.length > 0 ? prev[0].id + 1 : 1;
-      const newItem: HistoryItem = {
-        id: nextId,
-        habit: habitName,
-        type: selectedItem,
-        date: formatDateISO(selectedDate),
-      };
-      return [newItem, ...prev];
-    });
+      if (selectedItem === 'streakShield') {
+        response = await useShield({ habitId, date });
+      } else if (selectedItem === 'reviveToken') {
+        response = await useRevive({ habitId, date });
+      } else if (selectedItem === 'freezeToken') {
+        const days = parseInt(freezeDays, 10);
+        if (isNaN(days) || days < 1 || days > 30) {
+          Alert.alert(
+            'Số ngày không hợp lệ',
+            'Số ngày đóng băng phải là một số từ 1 đến 30.'
+          );
+          return;
+        }
+        response = await useFreeze({ habitId, date, days });
+      }
 
-    Alert.alert('Thành công', 'Đã sử dụng vật phẩm!');
-    setModalVisible(false);
-    resetSelection();
-    setSelectedItem(null);
+      if (response && response.success) {
+        Alert.alert('Thành công', response.message || 'Đã sử dụng vật phẩm!');
+        await fetchAllData(); // Refresh data
+        setModalVisible(false);
+        resetSelection();
+        setSelectedItem(null);
+      } else {
+        throw new Error(response?.message || 'Sử dụng vật phẩm thất bại.');
+      }
+    } catch (err: any) {
+      Alert.alert('Lỗi', err.message || 'Không thể thực hiện thao tác.');
+    }
   };
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text style={{ color: COLORS.danger, marginBottom: 20 }}>{error}</Text>
+        <TouchableOpacity onPress={() => fetchAllData()}>
+          <Text style={{ color: COLORS.primary }}>Thử lại</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <>
@@ -137,8 +222,8 @@ export default function ItemsBagScreen() {
           title="Streak Shield"
           subtitle="Bảo vệ streak 1 ngày cụ thể"
           color="#1E40AF"
-          available={items.shield}
-          onUse={() => openModal('shield')}
+          available={items.streakShields}
+          onUse={() => openModal('streakShield')}
         />
 
         {/* FREEZE */}
@@ -146,8 +231,8 @@ export default function ItemsBagScreen() {
           title="Freeze Token"
           subtitle="Đóng băng habit 1–30 ngày"
           color="#0E7490"
-          available={items.freeze}
-          onUse={() => openModal('freeze')}
+          available={items.freezeTokens}
+          onUse={() => openModal('freezeToken')}
         />
 
         {/* REVIVE */}
@@ -155,8 +240,8 @@ export default function ItemsBagScreen() {
           title="Revive Token"
           subtitle="Hồi sinh streak bị fail"
           color="#BE123C"
-          available={items.revive}
-          onUse={() => openModal('revive')}
+          available={items.reviveTokens}
+          onUse={() => openModal('reviveToken')}
         />
 
         {/* HISTORY */}
@@ -164,9 +249,9 @@ export default function ItemsBagScreen() {
           Lịch Sử Sử Dụng
         </Text>
 
-        {history.map(h => (
+        {history.map((h) => (
           <View
-            key={h.id}
+            key={h._id}
             style={{
               backgroundColor: COLORS.card,
               padding: 14,
@@ -177,14 +262,27 @@ export default function ItemsBagScreen() {
             }}
           >
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ fontWeight: '700' }}>{h.habit}</Text>
-              <Text style={{ color: COLORS.subtext }}>{h.date}</Text>
+              <Text style={{ fontWeight: '700' }}>{h.habitName}</Text>
+              <Text style={{ color: COLORS.subtext }}>
+                {new Date(h.usedAt).toLocaleDateString('vi-VN')}
+              </Text>
             </View>
 
             <Text style={{ marginTop: 4 }}>
-              {h.type === 'shield' && 'Sử dụng Shield'}
-              {h.type === 'freeze' && 'Đóng băng habit'}
-              {h.type === 'revive' && 'Hồi sinh streak'}
+              {h.itemType === 'streakShield' &&
+                `Sử dụng Shield cho ngày ${
+                  h.protectedDate
+                    ? new Date(h.protectedDate).toLocaleDateString('vi-VN')
+                    : ''
+                }`}
+              {h.itemType === 'freezeToken' &&
+                `Đóng băng habit ${h.freezeDays || ''} ngày`}
+              {h.itemType === 'reviveToken' &&
+                `Hồi sinh streak cho ngày ${
+                  h.protectedDate
+                    ? new Date(h.protectedDate).toLocaleDateString('vi-VN')
+                    : ''
+                }`}
             </Text>
           </View>
         ))}
@@ -214,9 +312,9 @@ export default function ItemsBagScreen() {
           >
             <Text style={{ fontWeight: '800', fontSize: 18, marginBottom: 10 }}>
               Sử Dụng{' '}
-              {selectedItem === 'shield'
+              {selectedItem === 'streakShield'
                 ? 'Streak Shield'
-                : selectedItem === 'freeze'
+                : selectedItem === 'freezeToken'
                   ? 'Freeze Token'
                   : 'Revive Token'}
             </Text>
@@ -262,13 +360,13 @@ export default function ItemsBagScreen() {
                 }}
               >
                 <ScrollView>
-                  {HABIT_OPTIONS.map((h) => {
-                    const active = h.id === selectedHabitId;
+                  {habits.map((h) => {
+                    const active = h._id === selectedHabitId;
                     return (
                       <TouchableOpacity
-                        key={h.id}
+                        key={h._id}
                         onPress={() => {
-                          setSelectedHabitId(h.id);
+                          setSelectedHabitId(h._id as string);
                           setSelectedHabitName(h.name);
                           setShowHabitList(false);
                         }}
@@ -302,23 +400,42 @@ export default function ItemsBagScreen() {
                 borderColor: COLORS.border,
                 padding: 12,
                 borderRadius: 12,
+                marginBottom: selectedItem === 'freezeToken' ? 12 : 0,
               }}
             >
               <Text style={{ color: selectedDate ? COLORS.text : COLORS.subtext }}>
-                {formatDateLabel(selectedDate)}
+                {selectedItem === 'freezeToken'
+                  ? `Ngày bắt đầu: ${formatDateLabel(selectedDate)}`
+                  : formatDateLabel(selectedDate)}
               </Text>
             </TouchableOpacity>
 
+            {/* Input số ngày đóng băng */}
+            {selectedItem === 'freezeToken' && (
+              <View style={{ marginTop: 12 }}>
+                <Text style={{ color: COLORS.subtext, marginBottom: 4 }}>
+                  Số ngày đóng băng (1-30):
+                </Text>
+                <TextInput
+                  style={{
+                    borderWidth: 1,
+                    borderColor: COLORS.border,
+                    padding: 12,
+                    borderRadius: 12,
+                    color: COLORS.text,
+                    fontWeight: '500',
+                  }}
+                  value={freezeDays}
+                  onChangeText={setFreezeDays}
+                  keyboardType="number-pad"
+                  maxLength={2}
+                />
+              </View>
+            )}
+
             {/* Nút xác nhận */}
             <TouchableOpacity
-              onPress={() => {
-                if (!selectedHabitId || !selectedDate) {
-                  Alert.alert('Thiếu thông tin', 'Hãy chọn Habit và ngày trước khi dùng.');
-                  return;
-                }
-                // TODO: logic thực sự (gửi API, cập nhật lịch sử, trừ số lượng...)
-                setModalVisible(false);
-              }}
+              onPress={handleConfirmUse}
               style={{
                 marginTop: 18,
                 backgroundColor: COLORS.primary,
@@ -331,7 +448,10 @@ export default function ItemsBagScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              onPress={() => setModalVisible(false)}
+              onPress={() => {
+                setModalVisible(false);
+                resetSelection();
+              }}
               style={{
                 marginTop: 10,
                 padding: 12,
@@ -392,7 +512,7 @@ function ItemCard({ title, subtitle, color, available, onUse }: ItemCardProps) {
           alignItems: 'center',
         }}
       >
-        <TouchableOpacity onPress={onUse}>
+        <TouchableOpacity onPress={onUse} disabled={available <= 0}>
           <Text style={{ color: '#FFF', fontWeight: '800' }}>Sử dụng</Text>
         </TouchableOpacity>
       </View>

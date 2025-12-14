@@ -1,5 +1,5 @@
 // app/(tabs)/habits/RunningHabitTracker.tsx
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
 import {
   SafeAreaView,
@@ -31,12 +31,17 @@ import {
   createHabitReminder,
   updateHabitReminder,
   deleteHabitReminder,
+  getHabitStats,
+} from '../../../server/habits';
+
+// ✅ GOALS: dùng đúng service server/goals.js
+import {
   getHabitGoals,
   createHabitGoal,
   updateHabitGoal,
   deleteHabitGoal,
-  getHabitStats,
-} from '../../../server/habits';
+  completeHabitGoal,
+} from '../../../server/goals';
 
 type Reminder = {
   id: string;
@@ -46,13 +51,32 @@ type Reminder = {
   note?: string;
 };
 
+type GoalType =
+  | 'total_completions'
+  | 'streak'
+  | 'weekly_target'
+  | 'monthly_target'
+  | 'custom';
+
 type Challenge = {
   id: string;
-  title: string;
-  goal: number;
+
+  // ✅ API fields (đầy đủ theo testcases)
+  type: GoalType;
+  target: number;
   current: number;
+  unit: string;
+  description: string;
+  deadline?: string; // YYYY-MM-DD
+  reward?: string;
+  isCompleted: boolean;
+  progress: number; // 0..100
+  remaining: number;
+  createdAt?: string; // YYYY-MM-DD
+  completedAt?: string; // YYYY-MM-DD
+
+  // UI-only
   icon: string;
-  note: string;
 };
 
 type HabitStats = {
@@ -68,6 +92,14 @@ const GOAL_EMOJIS = [
 
 const dayNames = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 
+const GOAL_TYPES: Array<{ value: GoalType; label: string; defaultUnit: string }> = [
+  { value: 'total_completions', label: 'Tổng lần', defaultUnit: 'lần' },
+  { value: 'streak', label: 'Streak', defaultUnit: 'ngày' },
+  { value: 'weekly_target', label: 'Tuần', defaultUnit: 'lần/tuần' },
+  { value: 'monthly_target', label: 'Tháng', defaultUnit: 'lần/tháng' },
+  { value: 'custom', label: 'Tuỳ chỉnh', defaultUnit: 'đơn vị' },
+];
+
 type ModalSheetProps = {
   visible: boolean;
   onClose: () => void;
@@ -76,12 +108,7 @@ type ModalSheetProps = {
 };
 
 const ModalSheet: React.FC<ModalSheetProps> = ({ visible, onClose, title, children }) => (
-  <Modal
-    visible={visible}
-    transparent
-    animationType="fade"
-    onRequestClose={onClose}
-  >
+  <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
     <Pressable style={styles.modalOverlay} onPress={onClose}>
       <Pressable style={styles.modal} onPress={(e) => e.stopPropagation()}>
         <View style={styles.modalHeader}>
@@ -98,6 +125,15 @@ const ModalSheet: React.FC<ModalSheetProps> = ({ visible, onClose, title, childr
     </Pressable>
   </Modal>
 );
+
+const toDateOnly = (iso?: string) => {
+  if (!iso) return '';
+  // ISO => YYYY-MM-DD
+  if (typeof iso === 'string' && iso.length >= 10) return iso.slice(0, 10);
+  return '';
+};
+
+const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
 
 const HabitTracker: React.FC = () => {
   const { habitId } = useLocalSearchParams<{ habitId?: string }>();
@@ -126,15 +162,25 @@ const HabitTracker: React.FC = () => {
   const [name, setName] = useState('');
   const [frequency, setFrequency] = useState('');
 
+  // ✅ GOAL MODAL STATE (đầy đủ field)
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [editingGoal, setEditingGoal] = useState<Challenge | null>(null);
+
   const [newGoal, setNewGoal] = useState<Challenge>({
     id: Date.now().toString(),
-    title: '',
-    goal: 30,
+    type: 'streak',
+    target: 30,
     current: 0,
-    icon: '🏃‍♂️',
-    note: '',
+    unit: 'ngày',
+    description: '',
+    deadline: '',
+    reward: '',
+    isCompleted: false,
+    progress: 0,
+    remaining: 30,
+    createdAt: '',
+    completedAt: '',
+    icon: '🎯',
   });
 
   // Custom confirm dialog
@@ -142,7 +188,7 @@ const HabitTracker: React.FC = () => {
   const [confirmMessage, setConfirmMessage] = useState('');
   const [confirmAction, setConfirmAction] = useState<(() => void) | null>(null);
 
-  // ====== HELPERS MAP DỮ LIỆU API → UI ======
+  // ====== HELPERS MAP API → UI ======
   const normalizeReminder = (r: any): Reminder => {
     const id = String(r.id ?? r._id ?? Date.now());
     const timeRaw: string = r.time ?? r.remindAt ?? '07:00';
@@ -161,7 +207,8 @@ const HabitTracker: React.FC = () => {
       }
     }
 
-    const enabled: boolean = r.enabled ?? r.isActive ?? r.soundEnabled ?? r.vibrationEnabled ?? true;
+    const enabled: boolean =
+      r.enabled ?? r.isActive ?? r.soundEnabled ?? r.vibrationEnabled ?? true;
     const note: string = r.note ?? r.description ?? r.message ?? '';
 
     return { id, time, days, enabled, note };
@@ -169,23 +216,64 @@ const HabitTracker: React.FC = () => {
 
   const normalizeGoal = (g: any): Challenge => {
     const id = String(g.id ?? g._id ?? Date.now());
-    const title: string = g.title ?? g.name ?? 'Mục tiêu';
-    const goal: number = Number(
-      g.goal ??
-      g.target ??
-      g.targetDays ??
-      30
-    ) || 0;
-    const current: number = Number(
-      g.current ??
-      g.progress ??
-      g.completedDays ??
-      0
-    ) || 0;
-    const icon: string = g.icon ?? '🎯';
-    const note: string = g.note ?? g.description ?? '';
 
-    return { id, title, goal, current, icon, note };
+    const type: GoalType = (g.type ?? 'streak') as GoalType;
+
+    const target = Number(g.target ?? 0) || 0;
+    const current = Number(g.current ?? 0) || 0;
+
+    const unit = String(g.unit ?? '').trim() || (
+      GOAL_TYPES.find(x => x.value === type)?.defaultUnit ?? 'lần'
+    );
+
+    const description = String(g.description ?? '').trim();
+    const deadline = toDateOnly(g.deadline);
+    const reward = String(g.reward ?? '').trim();
+
+    const isCompleted = Boolean(g.isCompleted ?? false);
+
+    // progress/remaining nếu API có thì dùng, không có thì tự tính
+    const progressFromApi = Number(g.progress);
+    const progress =
+      Number.isFinite(progressFromApi)
+        ? clamp(progressFromApi, 0, 100)
+        : (target > 0 ? clamp((current / target) * 100, 0, 100) : 0);
+
+    const remainingFromApi = Number(g.remaining);
+    const remaining =
+      Number.isFinite(remainingFromApi)
+        ? Math.max(remainingFromApi, 0)
+        : Math.max(target - current, 0);
+
+    const createdAt = toDateOnly(g.createdAt);
+    const completedAt = toDateOnly(g.completedAt);
+
+    const icon = g.icon ?? '🎯';
+
+    return {
+      id,
+      type,
+      target,
+      current,
+      unit,
+      description,
+      deadline,
+      reward,
+      isCompleted,
+      progress,
+      remaining,
+      createdAt,
+      completedAt,
+      icon,
+    };
+  };
+
+  const extractGoalsArray = (res: any): any[] => {
+    if (Array.isArray(res?.goals)) return res.goals;
+    if (Array.isArray(res?.data?.goals)) return res.data.goals;
+    if (Array.isArray(res?.data)) return res.data;
+    if (Array.isArray(res)) return res;
+    return [];
   };
 
   // ====== LOAD DATA TỪ API ======
@@ -198,9 +286,7 @@ const HabitTracker: React.FC = () => {
       try {
         const res: any = await getHabitReminders(habitId as string);
         const list: any[] = res?.reminders ?? res?.data ?? res ?? [];
-        if (!cancelled) {
-          setReminders(list.map(normalizeReminder));
-        }
+        if (!cancelled) setReminders(list.map(normalizeReminder));
       } catch (e) {
         console.error('[HabitTracker] getHabitReminders error:', e);
       }
@@ -209,10 +295,8 @@ const HabitTracker: React.FC = () => {
     const loadGoals = async () => {
       try {
         const res: any = await getHabitGoals(habitId as string, 'active');
-        const list: any[] = res?.goals ?? res?.data ?? res ?? [];
-        if (!cancelled) {
-          setChallenges(list.map(normalizeGoal));
-        }
+        const arr = extractGoalsArray(res);
+        if (!cancelled) setChallenges(arr.map(normalizeGoal));
       } catch (e) {
         console.error('[HabitTracker] getHabitGoals error:', e);
       }
@@ -249,7 +333,8 @@ const HabitTracker: React.FC = () => {
         const completed = Number(s?.completedCount ?? s?.completed ?? 0) || 0;
         const failed = Number(s?.failedCount ?? s?.failed ?? 0) || 0;
         const skipped = Number(s?.skippedCount ?? s?.skipped ?? 0) || 0;
-        const total = Number(s?.totalCount ?? s?.total ?? completed + failed + skipped) || 0;
+        const total =
+          Number(s?.totalCount ?? s?.total ?? completed + failed + skipped) || 0;
 
         const streaks = statsRoot.streaks ?? {};
         const currentStreak = Number(streaks.current ?? statsRoot.currentStreak ?? 0) || 0;
@@ -257,11 +342,8 @@ const HabitTracker: React.FC = () => {
           Number(streaks.best ?? statsRoot.longestStreak ?? currentStreak) || 0;
 
         let successRate = 0;
-        if (Number.isFinite(statsRoot.successRate)) {
-          successRate = Number(statsRoot.successRate);
-        } else if (total > 0) {
-          successRate = (completed / total) * 100;
-        }
+        if (Number.isFinite(statsRoot.successRate)) successRate = Number(statsRoot.successRate);
+        else if (total > 0) successRate = (completed / total) * 100;
 
         if (!cancelled) {
           setHabitStats({
@@ -292,9 +374,11 @@ const HabitTracker: React.FC = () => {
         getHabitGoals(habitId as string, 'active'),
         getHabitStats(habitId as string, {}),
       ]);
+
       const rlist: any[] = r?.reminders ?? r?.data ?? r ?? [];
       setReminders(rlist.map(normalizeReminder));
-      const glist: any[] = g?.goals ?? g?.data ?? g ?? [];
+
+      const glist = extractGoalsArray(g);
       setChallenges(glist.map(normalizeGoal));
 
       const statsRoot = s?.data ?? s ?? {};
@@ -320,11 +404,13 @@ const HabitTracker: React.FC = () => {
       const completed = Number(stats?.completedCount ?? stats?.completed ?? 0) || 0;
       const failed = Number(stats?.failedCount ?? stats?.failed ?? 0) || 0;
       const skipped = Number(stats?.skippedCount ?? stats?.skipped ?? 0) || 0;
-      const total = Number(stats?.totalCount ?? stats?.total ?? completed + failed + skipped) || 0;
+      const total =
+        Number(stats?.totalCount ?? stats?.total ?? completed + failed + skipped) || 0;
 
       const streaks = statsRoot.streaks ?? {};
       const currentStreak = Number(streaks.current ?? statsRoot.currentStreak ?? 0) || 0;
-      const bestStreak = Number(streaks.best ?? statsRoot.longestStreak ?? currentStreak) || 0;
+      const bestStreak =
+        Number(streaks.best ?? statsRoot.longestStreak ?? currentStreak) || 0;
 
       let successRate = 0;
       if (Number.isFinite(statsRoot.successRate)) successRate = Number(statsRoot.successRate);
@@ -354,13 +440,14 @@ const HabitTracker: React.FC = () => {
   const buildReminderPayload = (reminder: Reminder) => {
     const dayNumbers = Array.isArray(reminder.days)
       ? reminder.days.reduce<number[]>((acc, active, idx) => {
-          if (active) acc.push(idx === 6 ? 0 : idx + 1); // API expects 0=CN, 1=T2
+          if (active) acc.push(idx === 6 ? 0 : idx + 1);
           return acc;
         }, [])
       : [];
 
     const time = (reminder.time || '').slice(0, 5) || '07:00';
-    const message = reminder.note && reminder.note.trim().length > 0 ? reminder.note : 'đến giờ';
+    const message =
+      reminder.note && reminder.note.trim().length > 0 ? reminder.note : 'đến giờ';
 
     return {
       time,
@@ -396,7 +483,6 @@ const HabitTracker: React.FC = () => {
           await refetchAll();
         }
       } else {
-        // fallback local nếu chưa có habitId (giữ logic giống FE)
         if (editingReminder) {
           setReminders(prev =>
             prev.map(r => (r.id === editingReminder.id ? { ...newReminder } : r)),
@@ -431,26 +517,105 @@ const HabitTracker: React.FC = () => {
     }
   };
 
-  // ====== SAVE / DELETE GOAL (API) ======
+  // ====== GOALS PAYLOADS ======
+  const isValidDateInput = (s: string) => {
+    const t = (s || '').trim();
+    if (!t) return true; // optional
+    // YYYY-MM-DD
+    return /^\d{4}-\d{2}-\d{2}$/.test(t);
+  };
+
+  const buildCreateGoalPayload = (g: Challenge) => {
+    const target = Math.max(1, Number(g.target) || 1);
+    const payload: any = {
+      type: g.type,
+      target,
+    };
+
+    const unit = (g.unit || '').trim();
+    if (unit) payload.unit = unit;
+
+    const desc = (g.description || '').trim();
+    if (desc) payload.description = desc;
+
+    const deadline = (g.deadline || '').trim();
+    if (deadline && isValidDateInput(deadline)) payload.deadline = deadline;
+
+    const reward = (g.reward || '').trim();
+    if (reward) payload.reward = reward;
+
+    return payload;
+  };
+
+  const buildUpdateGoalPayload = (g: Challenge, original?: Challenge | null) => {
+    const payload: any = {};
+
+    // target/current
+    if (Number.isFinite(Number(g.target))) payload.target = Math.max(1, Number(g.target) || 1);
+    if (Number.isFinite(Number(g.current))) payload.current = Math.max(0, Number(g.current) || 0);
+
+    // description / reward / deadline / unit (unit update không nằm trong testcase nhưng thường backend sẽ accept)
+    const desc = (g.description || '').trim();
+    payload.description = desc;
+
+    const reward = (g.reward || '').trim();
+    payload.reward = reward;
+
+    const unit = (g.unit || '').trim();
+    if (unit) payload.unit = unit;
+
+    const deadline = (g.deadline || '').trim();
+    if (deadline === '') {
+      // nếu user xóa deadline -> gửi null để backend clear (tuỳ BE), nếu BE không hỗ trợ thì bỏ
+      payload.deadline = null;
+    } else if (isValidDateInput(deadline)) {
+      payload.deadline = deadline;
+    }
+
+    // nếu original có isCompleted=true thì backend sẽ reject update (theo testcase)
+    // FE không tự chặn, để backend trả message.
+
+    // loại bỏ field undefined
+    Object.keys(payload).forEach((k) => {
+      if (payload[k] === undefined) delete payload[k];
+    });
+
+    return payload;
+  };
+
+  // ====== SAVE / DELETE / COMPLETE GOAL (API) ======
   const resetGoalForm = () => {
     setEditingGoal(null);
     setNewGoal({
       id: Date.now().toString(),
-      title: '',
-      goal: 30,
+      type: 'streak',
+      target: 30,
       current: 0,
-      icon: '🏃‍♂️',
-      note: '',
+      unit: 'ngày',
+      description: '',
+      deadline: '',
+      reward: '',
+      isCompleted: false,
+      progress: 0,
+      remaining: 30,
+      createdAt: '',
+      completedAt: '',
+      icon: '🎯',
     });
   };
 
   const handleSaveGoal = async () => {
     try {
+      // validate deadline format (optional)
+      if (!isValidDateInput(newGoal.deadline || '')) {
+        console.error('[HabitTracker] invalid deadline format. Use YYYY-MM-DD');
+        return;
+      }
+
       if (!habitId) {
+        // fallback local (demo)
         if (editingGoal) {
-          setChallenges(prev =>
-            prev.map(c => (c.id === editingGoal.id ? { ...newGoal } : c)),
-          );
+          setChallenges(prev => prev.map(c => (c.id === editingGoal.id ? { ...newGoal } : c)));
         } else {
           setChallenges(prev => [...prev, { ...newGoal, id: Date.now().toString() }]);
         }
@@ -462,21 +627,11 @@ const HabitTracker: React.FC = () => {
       const isUpdate = !!editingGoal;
 
       if (isUpdate) {
-        const payload: any = {
-          target: Number(newGoal.goal) || undefined,
-          current: Number(newGoal.current) || undefined,
-          description: newGoal.title || undefined,
-          reward: newGoal.note || undefined,
-        };
+        const payload = buildUpdateGoalPayload(newGoal, editingGoal);
         await updateHabitGoal(habitId as string, editingGoal!.id, payload);
         await refetchAll();
       } else {
-        const payload: any = {
-          type: 'total_completions',
-          target: Math.max(1, Number(newGoal.goal) || 1),
-          description: newGoal.title || '',
-          reward: newGoal.note || '',
-        };
+        const payload = buildCreateGoalPayload(newGoal);
         await createHabitGoal(habitId as string, payload);
         await refetchAll();
       }
@@ -485,6 +640,16 @@ const HabitTracker: React.FC = () => {
     } finally {
       setShowGoalModal(false);
       resetGoalForm();
+    }
+  };
+
+  const handleCompleteGoal = async (goalId: string) => {
+    if (!habitId) return;
+    try {
+      await completeHabitGoal(habitId as string, goalId);
+      await refetchAll();
+    } catch (e) {
+      console.error('[HabitTracker] completeGoal error:', e);
     }
   };
 
@@ -528,16 +693,12 @@ const HabitTracker: React.FC = () => {
               </LinearGradient>
               <View>
                 <Text style={styles.timeText}>{r.time}</Text>
-                <Text
-                  style={[
-                    styles.statusText,
-                    r.enabled ? styles.statusOn : styles.statusOff,
-                  ]}
-                >
+                <Text style={[styles.statusText, r.enabled ? styles.statusOn : styles.statusOff]}>
                   {r.enabled ? 'Đang hoạt động' : 'Đã tạm dừng'}
                 </Text>
               </View>
             </View>
+
             <View style={styles.cardActions}>
               <TouchableOpacity
                 onPress={() => {
@@ -574,16 +735,8 @@ const HabitTracker: React.FC = () => {
               <Text style={styles.sectionLabel}>Lặp lại theo ngày</Text>
               <View style={styles.dayRow}>
                 {r.days.map((a, i) => (
-                  <View
-                    key={i}
-                    style={[styles.dayPill, a && styles.dayPillActive]}
-                  >
-                    <Text
-                      style={[
-                        styles.dayPillText,
-                        a && styles.dayPillTextActive,
-                      ]}
-                    >
+                  <View key={i} style={[styles.dayPill, a && styles.dayPillActive]}>
+                    <Text style={[styles.dayPillText, a && styles.dayPillTextActive]}>
                       {dayNames[i]}
                     </Text>
                   </View>
@@ -601,20 +754,10 @@ const HabitTracker: React.FC = () => {
               <Text style={styles.sectionLabel}>Trạng thái thông báo</Text>
               <Pressable
                 onPress={() => toggleReminderEnabled(r.id)}
-                style={[
-                  styles.toggle,
-                  r.enabled && styles.toggleOn,
-                ]}
+                style={[styles.toggle, r.enabled && styles.toggleOn]}
               >
-                <View
-                  style={[
-                    styles.toggleKnob,
-                    r.enabled && styles.toggleKnobOn,
-                  ]}
-                >
-                  {r.enabled && (
-                    <Check size={14} color="#7c3aed" strokeWidth={3} />
-                  )}
+                <View style={[styles.toggleKnob, r.enabled && styles.toggleKnobOn]}>
+                  {r.enabled && <Check size={14} color="#7c3aed" strokeWidth={3} />}
                 </View>
               </Pressable>
             </View>
@@ -624,21 +767,66 @@ const HabitTracker: React.FC = () => {
     </View>
   );
 
+  const GoalTypeBadge: React.FC<{ type: GoalType; completed: boolean }> = ({ type, completed }) => {
+    const label = GOAL_TYPES.find(x => x.value === type)?.label ?? type;
+    return (
+      <View style={[styles.badge, completed ? styles.badgeDone : styles.badgeActive]}>
+        <Text style={[styles.badgeText, completed ? styles.badgeTextDone : styles.badgeTextActive]}>
+          {completed ? `✅ ${label}` : `⏳ ${label}`}
+        </Text>
+      </View>
+    );
+  };
+
   const GoalList = () => (
     <View style={styles.list}>
       {challenges.map((c) => {
-        const progress = c.goal > 0 ? Math.max(0, Math.min(100, (c.current / c.goal) * 100)) : 0;
+        const progress = Number.isFinite(c.progress)
+          ? clamp(c.progress, 0, 100)
+          : (c.target > 0 ? clamp((c.current / c.target) * 100, 0, 100) : 0);
+
+        const subtitleParts = [
+          c.unit ? `Đơn vị: ${c.unit}` : '',
+          c.deadline ? `Hạn: ${c.deadline}` : '',
+          c.createdAt ? `Tạo: ${c.createdAt}` : '',
+          c.completedAt ? `Xong: ${c.completedAt}` : '',
+        ].filter(Boolean);
+
         return (
           <View key={c.id} style={[styles.card, styles.goalCard]}>
             <View style={styles.cardHead}>
               <View style={styles.cardLeft}>
                 <Text style={styles.emoji}>{c.icon}</Text>
-                <View>
-                  <Text style={styles.goalTitle}>{c.title}</Text>
-                  <Text style={styles.goalNote}>{c.note}</Text>
+                <View style={{ flexShrink: 1 }}>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                    <Text style={styles.goalTitle}>{c.description || 'Mục tiêu'}</Text>
+                    <GoalTypeBadge type={c.type} completed={c.isCompleted} />
+                  </View>
+
+                  {subtitleParts.length > 0 && (
+                    <Text style={styles.goalMeta}>{subtitleParts.join(' • ')}</Text>
+                  )}
+
+                  {!!c.reward && c.reward.trim().length > 0 && (
+                    <Text style={styles.goalNote}>🎁 {c.reward}</Text>
+                  )}
                 </View>
               </View>
+
               <View style={styles.cardActions}>
+                {!c.isCompleted && (
+                  <TouchableOpacity
+                    onPress={() =>
+                      openConfirm('Đánh dấu mục tiêu này là hoàn thành?', async () => {
+                        await handleCompleteGoal(c.id);
+                      })
+                    }
+                    style={[styles.iconAction, styles.iconActionEdit]}
+                  >
+                    <Check color="#16a34a" size={18} strokeWidth={3} />
+                  </TouchableOpacity>
+                )}
+
                 <TouchableOpacity
                   onPress={() => {
                     setEditingGoal(c);
@@ -649,12 +837,15 @@ const HabitTracker: React.FC = () => {
                 >
                   <Edit2 color="#d946ef" size={16} strokeWidth={2.5} />
                 </TouchableOpacity>
+
                 <TouchableOpacity
                   onPress={() =>
                     openConfirm('Bạn có muốn xóa mục tiêu này?', async () => {
                       if (habitId) {
                         try {
                           await deleteHabitGoal(habitId as string, c.id);
+                          await refetchAll();
+                          return;
                         } catch (e) {
                           console.error('[HabitTracker] deleteGoal error:', e);
                         }
@@ -674,18 +865,27 @@ const HabitTracker: React.FC = () => {
                 <Text style={styles.sectionLabel}>Tiến độ hoàn thành</Text>
                 <Text style={styles.progressPercent}>{Math.round(progress)}%</Text>
               </View>
+
               <View style={styles.progressBar}>
                 <LinearGradient
-                  colors={['#d946ef', '#ec4899', '#f43f5e']}
+                  colors={c.isCompleted ? ['#16a34a', '#22c55e', '#4ade80'] : ['#d946ef', '#ec4899', '#f43f5e']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={[styles.progressFill, { width: `${progress}%` }]}
                 />
               </View>
+
               <View style={styles.progressFoot}>
-                <Text style={styles.goalCompleted}>Đã hoàn thành</Text>
+                <Text style={styles.goalCompleted}>
+                  {c.isCompleted ? 'Đã hoàn thành' : 'Còn lại'}
+                </Text>
                 <Text style={styles.goalCount}>
-                  <Text style={styles.accent}>{c.current}</Text> / {c.goal} ngày
+                  <Text style={styles.accent}>{c.current}</Text> / {c.target} {c.unit || ''}
+                  {!c.isCompleted && (
+                    <Text style={{ color: '#64748b', fontWeight: '700' }}>
+                      {'  '}({c.remaining} còn lại)
+                    </Text>
+                  )}
                 </Text>
               </View>
             </View>
@@ -696,16 +896,17 @@ const HabitTracker: React.FC = () => {
   );
 
   // ====== UI ======
+  const goalTypeSelected = useMemo(() => {
+    return GOAL_TYPES.find(x => x.value === newGoal.type) ?? GOAL_TYPES[1];
+  }, [newGoal.type]);
+
   return (
     <SafeAreaView style={styles.page}>
       {/* Topbar */}
       <View style={styles.topbar}>
         <View style={styles.topbarInner}>
           <View style={styles.headerRow}>
-            <TouchableOpacity
-              onPress={() => router.push('/(tabs)/habits')}
-              style={styles.backBtn}
-            >
+            <TouchableOpacity onPress={() => router.push('/(tabs)/habits')} style={styles.backBtn}>
               <ChevronLeft size={18} strokeWidth={2.5} color="#475569" />
             </TouchableOpacity>
 
@@ -727,8 +928,7 @@ const HabitTracker: React.FC = () => {
           <View style={styles.tabs}>
             {(['info', 'reminders', 'goals'] as const).map((t) => {
               const isActive = activeTab === t;
-              const label =
-                t === 'info' ? 'Tổng quan' : t === 'reminders' ? 'Nhắc nhở' : 'Mục tiêu';
+              const label = t === 'info' ? 'Tổng quan' : t === 'reminders' ? 'Nhắc nhở' : 'Mục tiêu';
               return (
                 <TouchableOpacity
                   key={t}
@@ -746,16 +946,11 @@ const HabitTracker: React.FC = () => {
       </View>
 
       {/* Content */}
-      <ScrollView
-        style={styles.content}
-        contentContainerStyle={{ paddingBottom: 24 }}
-        keyboardShouldPersistTaps="handled"
-      >
+      <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 24 }} keyboardShouldPersistTaps="handled">
         {activeTab === 'info' && (
           <>
             <Text style={styles.sectionTitle}>Tổng quan</Text>
 
-            {/* Hero */}
             <LinearGradient
               colors={['#7c3aed', '#9333ea', '#d946ef']}
               start={{ x: 0, y: 0 }}
@@ -765,9 +960,7 @@ const HabitTracker: React.FC = () => {
               <View>
                 <Text style={styles.heroEyebrow}>THÓI QUEN {frequency}</Text>
                 <Text style={styles.heroTitle}>{name}</Text>
-                <Text style={styles.heroSubtitle}>
-                  Gieo nhịp từng bước - Kỷ luật {frequency}
-                </Text>
+                <Text style={styles.heroSubtitle}>Gieo nhịp từng bước - Kỷ luật {frequency}</Text>
 
                 <View style={styles.heroStats}>
                   <View style={styles.heroStatCard}>
@@ -789,10 +982,7 @@ const HabitTracker: React.FC = () => {
         {activeTab === 'reminders' && (
           <>
             <View style={styles.sectionHead}>
-              <TouchableOpacity
-                onPress={() => setActiveTab('info')}
-                style={styles.backInlineBtn}
-              >
+              <TouchableOpacity onPress={() => setActiveTab('info')} style={styles.backInlineBtn}>
                 <ChevronLeft size={18} strokeWidth={2.5} color="#475569" />
                 <Text style={styles.backInlineText}>Quay lại</Text>
               </TouchableOpacity>
@@ -818,10 +1008,7 @@ const HabitTracker: React.FC = () => {
         {activeTab === 'goals' && (
           <>
             <View style={styles.sectionHead}>
-              <TouchableOpacity
-                onPress={() => setActiveTab('info')}
-                style={styles.backInlineBtn}
-              >
+              <TouchableOpacity onPress={() => setActiveTab('info')} style={styles.backInlineBtn}>
                 <ChevronLeft size={18} strokeWidth={2.5} color="#475569" />
                 <Text style={styles.backInlineText}>Quay lại</Text>
               </TouchableOpacity>
@@ -840,7 +1027,13 @@ const HabitTracker: React.FC = () => {
               </TouchableOpacity>
             </View>
 
-            <GoalList />
+            {challenges.length === 0 ? (
+              <Text style={{ color: '#64748b', fontWeight: '700' }}>
+                Chưa có mục tiêu nào (hoặc chưa load được goals).
+              </Text>
+            ) : (
+              <GoalList />
+            )}
           </>
         )}
       </ScrollView>
@@ -879,17 +1072,9 @@ const HabitTracker: React.FC = () => {
                       ds[i] = !ds[i];
                       updateReminderField('days', ds);
                     }}
-                    style={[
-                      styles.daySquare,
-                      active && styles.daySquareActive,
-                    ]}
+                    style={[styles.daySquare, active && styles.daySquareActive]}
                   >
-                    <Text
-                      style={[
-                        styles.daySquareText,
-                        active && styles.daySquareTextActive,
-                      ]}
-                    >
+                    <Text style={[styles.daySquareText, active && styles.daySquareTextActive]}>
                       {d}
                     </Text>
                   </TouchableOpacity>
@@ -919,17 +1104,14 @@ const HabitTracker: React.FC = () => {
             >
               <Text style={styles.btnOutlineText}>Hủy bỏ</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              onPress={handleSaveReminder}
-              style={[styles.btnSolid, styles.btnSolidViolet]}
-            >
+            <TouchableOpacity onPress={handleSaveReminder} style={[styles.btnSolid, styles.btnSolidViolet]}>
               <Text style={styles.btnSolidText}>Lưu lại</Text>
             </TouchableOpacity>
           </View>
         </View>
       </ModalSheet>
 
-      {/* Goal Modal */}
+      {/* ✅ Goal Modal (FULL FIELDS) */}
       <ModalSheet
         visible={showGoalModal}
         onClose={() => {
@@ -940,13 +1122,40 @@ const HabitTracker: React.FC = () => {
       >
         <View style={styles.form}>
           <View>
-            <Text style={styles.label}>Tiêu đề</Text>
+            <Text style={styles.label}>Mô tả (description)</Text>
             <TextInput
-              value={newGoal.title}
-              onChangeText={(text) => updateGoalField('title', text)}
+              value={newGoal.description}
+              onChangeText={(text) => updateGoalField('description', text)}
               style={styles.input}
-              placeholder="VD: Thử thách 30 ngày"
+              placeholder="VD: Duy trì streak 30 ngày"
             />
+          </View>
+
+          <View>
+            <Text style={styles.label}>Loại mục tiêu (type)</Text>
+            <View style={styles.typeRow}>
+              {GOAL_TYPES.map((t) => {
+                const active = newGoal.type === t.value;
+                return (
+                  <TouchableOpacity
+                    key={t.value}
+                    onPress={() => {
+                      updateGoalField('type', t.value);
+                      // auto fill unit nếu user chưa nhập hoặc đang đúng default cũ
+                      const currentUnit = (newGoal.unit || '').trim();
+                      if (!currentUnit || currentUnit === goalTypeSelected.defaultUnit) {
+                        updateGoalField('unit', t.defaultUnit);
+                      }
+                    }}
+                    style={[styles.typeChip, active && styles.typeChipActive]}
+                  >
+                    <Text style={[styles.typeChipText, active && styles.typeChipTextActive]}>
+                      {t.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
 
           <View>
@@ -957,10 +1166,7 @@ const HabitTracker: React.FC = () => {
                 return (
                   <TouchableOpacity
                     key={emo}
-                    style={[
-                      styles.emojiCell,
-                      isSelected && styles.emojiCellSelected,
-                    ]}
+                    style={[styles.emojiCell, isSelected && styles.emojiCellSelected]}
                     onPress={() => updateGoalField('icon', emo)}
                   >
                     <Text style={styles.emojiCellText}>{emo}</Text>
@@ -972,36 +1178,53 @@ const HabitTracker: React.FC = () => {
 
           <View style={styles.formGrid}>
             <View>
-              <Text style={styles.label}>Mục tiêu (ngày)</Text>
+              <Text style={styles.label}>Target</Text>
               <TextInput
-                value={String(newGoal.goal)}
-                onChangeText={(text) =>
-                  updateGoalField('goal', parseInt(text || '0', 10) || 0)
-                }
+                value={String(newGoal.target)}
+                onChangeText={(text) => updateGoalField('target', parseInt(text || '0', 10) || 0)}
                 style={styles.input}
                 keyboardType="numeric"
               />
             </View>
             <View>
-              <Text style={styles.label}>Hiện tại</Text>
+              <Text style={styles.label}>Current</Text>
               <TextInput
                 value={String(newGoal.current)}
-                onChangeText={(text) =>
-                  updateGoalField('current', parseInt(text || '0', 10) || 0)
-                }
+                onChangeText={(text) => updateGoalField('current', parseInt(text || '0', 10) || 0)}
                 style={styles.input}
                 keyboardType="numeric"
               />
             </View>
           </View>
 
+          <View style={styles.formGrid}>
+            <View>
+              <Text style={styles.label}>Unit</Text>
+              <TextInput
+                value={newGoal.unit}
+                onChangeText={(text) => updateGoalField('unit', text)}
+                style={styles.input}
+                placeholder="VD: lần / ngày / lần/tuần"
+              />
+            </View>
+            <View>
+              <Text style={styles.label}>Deadline (YYYY-MM-DD)</Text>
+              <TextInput
+                value={newGoal.deadline || ''}
+                onChangeText={(text) => updateGoalField('deadline', text)}
+                style={styles.input}
+                placeholder="2025-01-31"
+              />
+            </View>
+          </View>
+
           <View>
-            <Text style={styles.label}>Ghi chú</Text>
+            <Text style={styles.label}>Reward (reward)</Text>
             <TextInput
-              value={newGoal.note || ''}
-              onChangeText={(text) => updateGoalField('note', text)}
+              value={newGoal.reward || ''}
+              onChangeText={(text) => updateGoalField('reward', text)}
               style={styles.textarea}
-              placeholder="Thêm mô tả cho mục tiêu của bạn..."
+              placeholder="VD: Mua sách mới"
               multiline
             />
           </View>
@@ -1016,10 +1239,7 @@ const HabitTracker: React.FC = () => {
             >
               <Text style={styles.btnOutlineText}>Hủy bỏ</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              onPress={handleSaveGoal}
-              style={[styles.btnSolid, styles.btnSolidPink]}
-            >
+            <TouchableOpacity onPress={handleSaveGoal} style={[styles.btnSolid, styles.btnSolidPink]}>
               <Text style={styles.btnSolidText}>Lưu lại</Text>
             </TouchableOpacity>
           </View>
@@ -1067,10 +1287,7 @@ const HabitTracker: React.FC = () => {
 export default HabitTracker;
 
 const styles = StyleSheet.create({
-  page: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-  },
+  page: { flex: 1, backgroundColor: '#f8fafc' },
 
   /* Topbar */
   topbar: {
@@ -1085,21 +1302,9 @@ const styles = StyleSheet.create({
     elevation: 2,
     zIndex: 40,
   },
-  topbarInner: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 10,
-  },
-  backBtn: {
-    marginRight: 8,
-    padding: 6,
-    borderRadius: 999,
-  },
+  topbarInner: { paddingHorizontal: 20, paddingVertical: 16 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10 },
+  backBtn: { marginRight: 8, padding: 6, borderRadius: 999 },
   appBadge: {
     width: 44,
     height: 44,
@@ -1112,16 +1317,8 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 4,
   },
-  appTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  appSubtitle: {
-    fontSize: 12,
-    color: '#64748b',
-    fontWeight: '600',
-  },
+  appTitle: { fontSize: 20, fontWeight: '700', color: '#111827' },
+  appSubtitle: { fontSize: 12, color: '#64748b', fontWeight: '600' },
 
   /* Tabs */
   tabs: {
@@ -1158,27 +1355,12 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
-  tabText: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#475569',
-  },
-  tabTextActive: {
-    color: '#fff',
-  },
+  tabText: { fontSize: 14, fontWeight: '800', color: '#475569' },
+  tabTextActive: { color: '#fff' },
 
   /* Content */
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 20,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#111827',
-    marginBottom: 12,
-  },
+  content: { flex: 1, paddingHorizontal: 20, paddingTop: 20 },
+  sectionTitle: { fontSize: 20, fontWeight: '800', color: '#111827', marginBottom: 12 },
 
   /* Hero */
   hero: {
@@ -1198,21 +1380,9 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginBottom: 4,
   },
-  heroTitle: {
-    color: '#fff',
-    fontSize: 26,
-    fontWeight: '800',
-    marginBottom: 6,
-  },
-  heroSubtitle: {
-    color: '#E9D5FF',
-    fontSize: 14,
-    marginBottom: 16,
-  },
-  heroStats: {
-    flexDirection: 'row',
-    gap: 12,
-  },
+  heroTitle: { color: '#fff', fontSize: 26, fontWeight: '800', marginBottom: 6 },
+  heroSubtitle: { color: '#E9D5FF', fontSize: 14, marginBottom: 16 },
+  heroStats: { flexDirection: 'row', gap: 12 },
   heroStatCard: {
     flex: 1,
     padding: 16,
@@ -1221,25 +1391,11 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.2)',
     backgroundColor: 'rgba(255,255,255,0.12)',
   },
-  heroStatLabel: {
-    color: '#DDD6FE',
-    fontSize: 12,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  heroStatValue: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '800',
-  },
+  heroStatLabel: { color: '#DDD6FE', fontSize: 12, fontWeight: '700', marginBottom: 4 },
+  heroStatValue: { color: '#fff', fontSize: 18, fontWeight: '800' },
 
   /* Stat cards */
-  statCards: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 4,
-    marginBottom: 10,
-  },
+  statCards: { flexDirection: 'row', gap: 12, marginTop: 4, marginBottom: 10 },
   statCard: {
     flex: 1,
     borderRadius: 16,
@@ -1254,51 +1410,18 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  statCardRose: {
-    backgroundColor: '#fff0f4',
-    borderColor: 'rgba(251,113,133,0.4)',
-  },
-  statCardAmber: {
-    backgroundColor: '#fff7ed',
-    borderColor: 'rgba(251,191,36,0.4)',
-  },
-  statCardTeal: {
-    backgroundColor: '#ecfeff',
-    borderColor: 'rgba(45,212,191,0.4)',
-  },
-  statCardCircle: {
-    position: 'absolute',
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    top: -16,
-    right: -16,
-  },
-  statCardCircleRose: {
-    backgroundColor: 'rgba(251,113,133,0.08)',
-  },
-  statCardCircleAmber: {
-    backgroundColor: 'rgba(245,158,11,0.08)',
-  },
-  statCardCircleTeal: {
-    backgroundColor: 'rgba(13,148,136,0.08)',
-  },
-  statNumber: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  statSub: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: 'rgba(71,85,105,0.8)',
-  },
+  statCardRose: { backgroundColor: '#fff0f4', borderColor: 'rgba(251,113,133,0.4)' },
+  statCardAmber: { backgroundColor: '#fff7ed', borderColor: 'rgba(251,191,36,0.4)' },
+  statCardTeal: { backgroundColor: '#ecfeff', borderColor: 'rgba(45,212,191,0.4)' },
+  statCardCircle: { position: 'absolute', width: 80, height: 80, borderRadius: 40, top: -16, right: -16 },
+  statCardCircleRose: { backgroundColor: 'rgba(251,113,133,0.08)' },
+  statCardCircleAmber: { backgroundColor: 'rgba(245,158,11,0.08)' },
+  statCardCircleTeal: { backgroundColor: 'rgba(13,148,136,0.08)' },
+  statNumber: { fontSize: 26, fontWeight: '800', color: '#111827', marginBottom: 4 },
+  statSub: { fontSize: 12, fontWeight: '600', color: 'rgba(71,85,105,0.8)' },
 
   /* List & cards */
-  list: {
-    gap: 12,
-  },
+  list: { gap: 12 },
   card: {
     borderRadius: 16,
     padding: 18,
@@ -1313,69 +1436,20 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   goalCard: {},
-  cardHead: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
-  },
-  cardLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    flexShrink: 1,
-  },
-  iconBox: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  timeText: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#111827',
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '700',
-    marginTop: 2,
-  },
-  statusOn: {
-    color: '#7c3aed',
-  },
-  statusOff: {
-    color: '#94a3b8',
-  },
-  cardActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  iconAction: {
-    padding: 8,
-    borderRadius: 10,
-  },
-  iconActionEdit: {
-    backgroundColor: 'transparent',
-  },
-  iconActionDelete: {
-    backgroundColor: 'transparent',
-  },
-  cardBody: {
-    gap: 12,
-  },
-  sectionLabel: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#64748b',
-    marginBottom: 6,
-  },
-  dayRow: {
-    flexDirection: 'row',
-    gap: 6,
-  },
+  cardHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
+  cardLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flexShrink: 1 },
+  iconBox: { width: 48, height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  timeText: { fontSize: 22, fontWeight: '800', color: '#111827' },
+  statusText: { fontSize: 12, fontWeight: '700', marginTop: 2 },
+  statusOn: { color: '#7c3aed' },
+  statusOff: { color: '#94a3b8' },
+  cardActions: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  iconAction: { padding: 8, borderRadius: 10 },
+  iconActionEdit: { backgroundColor: 'transparent' },
+  iconActionDelete: { backgroundColor: 'transparent' },
+  cardBody: { gap: 12 },
+  sectionLabel: { fontSize: 12, fontWeight: '800', color: '#64748b', marginBottom: 6 },
+  dayRow: { flexDirection: 'row', gap: 6 },
   dayPill: {
     flex: 1,
     height: 36,
@@ -1395,14 +1469,8 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  dayPillText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#94a3b8',
-  },
-  dayPillTextActive: {
-    color: '#fff',
-  },
+  dayPillText: { fontSize: 12, fontWeight: '800', color: '#94a3b8' },
+  dayPillTextActive: { color: '#fff' },
   cardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1413,17 +1481,8 @@ const styles = StyleSheet.create({
   },
 
   /* Toggle */
-  toggle: {
-    width: 56,
-    height: 28,
-    borderRadius: 999,
-    backgroundColor: '#cbd5e1',
-    padding: 2,
-    justifyContent: 'center',
-  },
-  toggleOn: {
-    backgroundColor: '#7c3aed',
-  },
+  toggle: { width: 56, height: 28, borderRadius: 999, backgroundColor: '#cbd5e1', padding: 2, justifyContent: 'center' },
+  toggleOn: { backgroundColor: '#7c3aed' },
   toggleKnob: {
     width: 24,
     height: 24,
@@ -1437,103 +1496,41 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 2,
   },
-  toggleKnobOn: {
-    alignSelf: 'flex-end',
-  },
+  toggleKnobOn: { alignSelf: 'flex-end' },
 
   /* Goals */
-  emoji: {
-    fontSize: 32,
-  },
-  goalTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#111827',
-    marginBottom: 2,
-  },
-  goalNote: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  progressHead: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  progressPercent: {
-    fontWeight: '800',
-    fontSize: 13,
-    color: '#ec4899',
-  },
-  progressBar: {
-    height: 10,
-    borderRadius: 999,
-    backgroundColor: '#f1f5f9',
-    overflow: 'hidden',
-    marginTop: 6,
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 999,
-  },
-  progressFoot: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 4,
-  },
-  goalCompleted: {
-    fontSize: 12,
-    color: '#64748b',
-  },
-  goalCount: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#111827',
-  },
-  accent: {
-    color: '#d946ef',
-  },
+  emoji: { fontSize: 32 },
+  goalTitle: { fontSize: 16, fontWeight: '800', color: '#111827', marginBottom: 2, flexShrink: 1 },
+  goalNote: { fontSize: 14, fontWeight: '600', color: '#111827' },
+  goalMeta: { fontSize: 12, fontWeight: '700', color: '#64748b', marginTop: 2 },
+
+  progressHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  progressPercent: { fontWeight: '800', fontSize: 13, color: '#ec4899' },
+  progressBar: { height: 10, borderRadius: 999, backgroundColor: '#f1f5f9', overflow: 'hidden', marginTop: 6 },
+  progressFill: { height: '100%', borderRadius: 999 },
+  progressFoot: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 4 },
+  goalCompleted: { fontSize: 12, color: '#64748b' },
+  goalCount: { fontSize: 12, fontWeight: '800', color: '#111827' },
+  accent: { color: '#d946ef' },
+
+  /* Badges */
+  badge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, borderWidth: 1 },
+  badgeActive: { backgroundColor: '#fff7ed', borderColor: 'rgba(245,158,11,0.35)' },
+  badgeDone: { backgroundColor: '#ecfdf5', borderColor: 'rgba(34,197,94,0.35)' },
+  badgeText: { fontSize: 12, fontWeight: '900' },
+  badgeTextActive: { color: '#b45309' },
+  badgeTextDone: { color: '#15803d' },
 
   /* Section head */
-  sectionHead: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  backInlineBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  backInlineText: {
-    color: '#475569',
-    fontWeight: '600',
-  },
-  iconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconBtnViolet: {
-    backgroundColor: '#7c3aed',
-  },
-  iconBtnPink: {
-    backgroundColor: '#d946ef',
-  },
+  sectionHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  backInlineBtn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  backInlineText: { color: '#475569', fontWeight: '600' },
+  iconBtn: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  iconBtnViolet: { backgroundColor: '#7c3aed' },
+  iconBtnPink: { backgroundColor: '#d946ef' },
 
   /* Modal */
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(15,23,42,0.4)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-  },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.4)', alignItems: 'center', justifyContent: 'center', padding: 16 },
   modal: {
     width: '100%',
     maxWidth: 720,
@@ -1547,37 +1544,14 @@ const styles = StyleSheet.create({
     shadowRadius: 30,
     elevation: 6,
   },
-  modalHeader: {
-    paddingHorizontal: 24,
-    paddingVertical: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#111827',
-  },
-  modalBody: {
-    paddingHorizontal: 24,
-    paddingVertical: 18,
-  },
-  confirmMessage: {
-    fontSize: 16,
-    color: '#334155',
-    marginBottom: 12,
-  },
+  modalHeader: { paddingHorizontal: 24, paddingVertical: 20, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+  modalTitle: { fontSize: 20, fontWeight: '800', color: '#111827' },
+  modalBody: { paddingHorizontal: 24, paddingVertical: 18 },
+  confirmMessage: { fontSize: 16, color: '#334155', marginBottom: 12 },
 
   /* Form */
-  form: {
-    gap: 16,
-  },
-  label: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#334155',
-    marginBottom: 8,
-  },
+  form: { gap: 16 },
+  label: { fontSize: 13, fontWeight: '800', color: '#334155', marginBottom: 8 },
   input: {
     width: '100%',
     paddingHorizontal: 16,
@@ -1597,19 +1571,12 @@ const styles = StyleSheet.create({
     borderColor: '#e2e8f0',
     borderRadius: 12,
     fontWeight: '600',
-    minHeight: 100,
+    minHeight: 90,
     textAlignVertical: 'top',
     color: '#0f172a',
   },
-  formGrid: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  formActions: {
-    flexDirection: 'row',
-    gap: 12,
-    paddingTop: 12,
-  },
+  formGrid: { flexDirection: 'row', gap: 12 },
+  formActions: { flexDirection: 'row', gap: 12, paddingTop: 12 },
   btnOutline: {
     flex: 1,
     paddingVertical: 12,
@@ -1621,10 +1588,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  btnOutlineText: {
-    fontWeight: '800',
-    color: '#334155',
-  },
+  btnOutlineText: { fontWeight: '800', color: '#334155' },
   btnSolid: {
     flex: 1,
     paddingVertical: 12,
@@ -1638,23 +1602,12 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 3,
   },
-  btnSolidViolet: {
-    backgroundColor: '#7c3aed',
-  },
-  btnSolidPink: {
-    backgroundColor: '#d946ef',
-  },
-  btnSolidText: {
-    fontWeight: '800',
-    color: '#fff',
-  },
+  btnSolidViolet: { backgroundColor: '#7c3aed' },
+  btnSolidPink: { backgroundColor: '#d946ef' },
+  btnSolidText: { fontWeight: '800', color: '#fff' },
 
   /* Emoji grid */
-  emojiGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
+  emojiGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   emojiCell: {
     width: '13%',
     aspectRatio: 1,
@@ -1673,16 +1626,10 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 2,
   },
-  emojiCellText: {
-    fontSize: 22,
-  },
+  emojiCellText: { fontSize: 22 },
 
   /* Day picker in modal */
-  dayGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
+  dayGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   daySquare: {
     minWidth: 44,
     paddingVertical: 8,
@@ -1694,16 +1641,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  daySquareActive: {
+  daySquareActive: { backgroundColor: '#7c3aed', borderColor: 'transparent' },
+  daySquareText: { fontSize: 12, fontWeight: '800', color: '#94a3b8' },
+  daySquareTextActive: { color: '#fff' },
+
+  /* Goal type chips */
+  typeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  typeChip: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    backgroundColor: '#f1f5f9',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  typeChipActive: {
     backgroundColor: '#7c3aed',
     borderColor: 'transparent',
+    shadowColor: '#7c3aed',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 2,
   },
-  daySquareText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#94a3b8',
-  },
-  daySquareTextActive: {
-    color: '#fff',
-  },
+  typeChipText: { fontSize: 12, fontWeight: '900', color: '#475569' },
+  typeChipTextActive: { color: '#fff' },
 });
