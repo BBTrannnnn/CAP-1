@@ -1,6 +1,7 @@
 import Comment from '../models/Comment.js';
 import Post from '../models/Post.js';
 import Like from '../models/Like.js';
+import Report from '../models/Report.js';
 import { processModerationAsync } from '../../middlewares/moderationMiddleware.js';
 import { canBypassModeration } from '../../middlewares/requireModerator.js';
 import mongoose from 'mongoose';
@@ -355,6 +356,101 @@ export const getCommentLikes = async (req, res, next) => {
                     total,
                     pages: Math.ceil(total / limit)
                 }
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// ========== REPORT COMMENT ==========
+
+// Báo cáo comment vi phạm
+export const reportComment = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+        const { commentId } = req.params;
+        const { reason, description } = req.body;
+
+        // Validate reason
+        const validReasons = ['spam', 'harassment', 'hate_speech', 'violence', 'nsfw', 'misinformation', 'scam', 'copyright', 'other'];
+        if (!reason || !validReasons.includes(reason)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Vui lòng chọn lý do báo cáo hợp lệ'
+            });
+        }
+
+        // Kiểm tra comment tồn tại
+        const comment = await Comment.findOne({ _id: commentId, isActive: true });
+        if (!comment) {
+            return res.status(404).json({
+                success: false,
+                message: 'Bình luận không tồn tại'
+            });
+        }
+
+        // Không thể tự báo cáo comment của mình
+        if (comment.userId.toString() === userId.toString()) {
+            return res.status(400).json({
+                success: false,
+                message: 'Bạn không thể báo cáo bình luận của chính mình'
+            });
+        }
+
+        // Kiểm tra đã báo cáo chưa
+        const existingReport = await Report.findOne({
+            reporterId: userId,
+            contentType: 'comment',
+            contentId: commentId
+        });
+
+        if (existingReport) {
+            return res.status(400).json({
+                success: false,
+                message: 'Bạn đã báo cáo bình luận này rồi'
+            });
+        }
+
+        // Tạo báo cáo
+        const report = await Report.create({
+            reporterId: userId,
+            contentType: 'comment',
+            contentId: commentId,
+            reportedUserId: comment.userId,
+            reason,
+            description: description || ''
+        });
+
+        // Tăng priority nếu nhiều người báo cáo
+        const reportCount = await Report.countDocuments({
+            contentType: 'comment',
+            contentId: commentId,
+            status: { $in: ['pending', 'reviewing'] }
+        });
+
+        if (reportCount > 1) {
+            const priority = Math.min(reportCount, 5);
+            await Report.updateMany(
+                { contentType: 'comment', contentId: commentId },
+                { priority }
+            );
+        }
+
+        // >= 3 reports -> auto reviewing
+        if (reportCount >= 3) {
+            await Report.updateMany(
+                { contentType: 'comment', contentId: commentId, status: 'pending' },
+                { status: 'reviewing' }
+            );
+        }
+
+        res.status(201).json({
+            success: true,
+            message: 'Đã gửi báo cáo. Cảm ơn bạn đã giúp duy trì cộng đồng lành mạnh!',
+            data: {
+                reportId: report._id,
+                status: report.status
             }
         });
     } catch (error) {

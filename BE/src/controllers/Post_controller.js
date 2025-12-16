@@ -3,6 +3,7 @@ import Like from '../models/Like.js';
 import Comment from '../models/Comment.js';
 import Friend from '../models/Friend.js';
 import BlockedUser from '../models/BlockedUser.js';
+import Report from '../models/Report.js';
 import { processModerationAsync } from '../../middlewares/moderationMiddleware.js';
 import { canBypassModeration } from '../../middlewares/requireModerator.js';
 import mongoose from 'mongoose';
@@ -596,6 +597,101 @@ export const getPostsByHashtag = async (req, res, next) => {
                     total,
                     pages: Math.ceil(total / limit)
                 }
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// ========== REPORT POST ==========
+
+// Báo cáo bài viết vi phạm
+export const reportPost = async (req, res, next) => {
+    try {
+        const userId = req.user._id;
+        const { postId } = req.params;
+        const { reason, description } = req.body;
+
+        // Validate reason
+        const validReasons = ['spam', 'harassment', 'hate_speech', 'violence', 'nsfw', 'misinformation', 'scam', 'copyright', 'other'];
+        if (!reason || !validReasons.includes(reason)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Vui lòng chọn lý do báo cáo hợp lệ'
+            });
+        }
+
+        // Kiểm tra bài viết tồn tại
+        const post = await Post.findOne({ _id: postId, isActive: true });
+        if (!post) {
+            return res.status(404).json({
+                success: false,
+                message: 'Bài viết không tồn tại'
+            });
+        }
+
+        // Không thể tự báo cáo bài viết của mình
+        if (post.userId.toString() === userId.toString()) {
+            return res.status(400).json({
+                success: false,
+                message: 'Bạn không thể báo cáo bài viết của chính mình'
+            });
+        }
+
+        // Kiểm tra đã báo cáo chưa (unique index sẽ catch duplicate)
+        const existingReport = await Report.findOne({
+            reporterId: userId,
+            contentType: 'post',
+            contentId: postId
+        });
+
+        if (existingReport) {
+            return res.status(400).json({
+                success: false,
+                message: 'Bạn đã báo cáo bài viết này rồi'
+            });
+        }
+
+        // Tạo báo cáo
+        const report = await Report.create({
+            reporterId: userId,
+            contentType: 'post',
+            contentId: postId,
+            reportedUserId: post.userId,
+            reason,
+            description: description || ''
+        });
+
+        // Tăng priority nếu nhiều người báo cáo cùng bài
+        const reportCount = await Report.countDocuments({
+            contentType: 'post',
+            contentId: postId,
+            status: { $in: ['pending', 'reviewing'] }
+        });
+
+        if (reportCount > 1) {
+            const priority = Math.min(reportCount, 5); // Max priority là 5
+            await Report.updateMany(
+                { contentType: 'post', contentId: postId },
+                { priority }
+            );
+        }
+
+        // Nếu có >= 3 reports, tự động chuyển sang reviewing
+        if (reportCount >= 3) {
+            await Report.updateMany(
+                { contentType: 'post', contentId: postId, status: 'pending' },
+                { status: 'reviewing' }
+            );
+        }
+
+        res.status(201).json({
+            success: true,
+            message: 'Đã gửi báo cáo. Cảm ơn bạn đã giúp duy trì cộng đồng lành mạnh!',
+            data: {
+                reportId: report._id,
+                status: report.status
             }
         });
     } catch (error) {

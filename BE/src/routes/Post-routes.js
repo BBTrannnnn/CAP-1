@@ -13,7 +13,8 @@ import {
     getPostLikes,
     sharePost,
     getTrendingHashtags,
-    getPostsByHashtag
+    getPostsByHashtag,
+    reportPost
 } from '../controllers/Post_controller.js';
 
 const router = express.Router();
@@ -64,5 +65,10 @@ router.get('/:postId/likes', authenticateToken, getPostLikes);
 
 // Share bài viết
 router.post('/:postId/share', authenticateToken, sharePost);
+
+// ========== REPORT ==========
+
+// Báo cáo bài viết vi phạm
+router.post('/:postId/report', authenticateToken, reportPost);
 
 export default router;

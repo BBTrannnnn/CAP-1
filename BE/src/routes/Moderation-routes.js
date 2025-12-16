@@ -10,7 +10,11 @@ import {
     submitAppeal,
     getAppeals,
     banUser,
-    unbanUser
+    unbanUser,
+    getReports,
+    warnUser,
+    dismissReport,
+    getTrustScore
 } from '../controllers/Moderation_controller.js';
 import {
     getModerationStats,
@@ -53,6 +57,22 @@ router.post('/ban/:userId', authenticateToken, requireModerator, banUser);
 
 // Unban user (Moderator/Admin)
 router.post('/unban/:userId', authenticateToken, requireModerator, unbanUser);
+
+// Warn user (Moderator/Admin)
+router.post('/users/:userId/warn', authenticateToken, requireModerator, warnUser);
+
+// ========== REPORTS (Moderator/Admin) ==========
+
+// Get all reports with filtering
+router.get('/reports', authenticateToken, requireModerator, getReports);
+
+// Dismiss report as invalid/false
+router.post('/reports/:reportId/dismiss', authenticateToken, requireModerator, dismissReport);
+
+// ========== USER TRUST SCORE (Moderator/Admin) ==========
+
+// Get user trust score and factors
+router.get('/users/:userId/trust-score', authenticateToken, requireModerator, getTrustScore);
 
 // ========== STATISTICS (Moderator/Admin) ==========
 

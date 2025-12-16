@@ -9,7 +9,8 @@ import {
     updateComment,
     deleteComment,
     toggleLikeComment,
-    getCommentLikes
+    getCommentLikes,
+    reportComment
 } from '../controllers/Comment_controller.js';
 
 const router = express.Router();
@@ -44,5 +45,10 @@ router.post('/:commentId/like', authenticateToken, toggleLikeComment);
 
 // Lấy danh sách người like comment
 router.get('/:commentId/likes', authenticateToken, getCommentLikes);
+
+// ========== REPORT ==========
+
+// Báo cáo comment vi phạm
+router.post('/:commentId/report', authenticateToken, reportComment);
 
 export default router;
