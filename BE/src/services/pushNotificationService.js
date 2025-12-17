@@ -1,8 +1,8 @@
 // services/pushNotificationService.js
 // ✅ HỖ TRỢ CẢ 2: Expo Push Token + Native FCM Token
 
-import fetch from 'node-fetch'; // npm install node-fetch
-import admin from '../config/firebase.js'; // Firebase Admin SDK
+import fetch from 'node-fetch';
+import admin from '../config/firebase.js';
 import User from '../models/User.js';
 
 class PushNotificationService {
@@ -13,29 +13,29 @@ class PushNotificationService {
     try {
       // Lấy tất cả tokens của user
       const user = await User.findById(userId);
-      
+
       if (!user || !user.fcmTokens || user.fcmTokens.length === 0) {
         console.log(`⚠️  User ${userId}: No FCM tokens registered`);
         return { success: false, message: 'No devices registered' };
       }
 
-      const allTokens = user.fcmTokens.map(t => t.token);
-      
+      const allTokens = user.fcmTokens
+        .map(t => t?.token)
+        .filter(t => typeof t === 'string' && t.length > 0);
+
+
       // ✅ PHÂN LOẠI TOKENS
-      const expoTokens = allTokens.filter(t => t.startsWith('ExponentPushToken['));
-      const nativeTokens = allTokens.filter(t => !t.startsWith('ExponentPushToken['));
+      const expoTokens = allTokens.filter(
+        t => t.startsWith('ExponentPushToken[') && t.endsWith(']')
+      );
+
+      const nativeTokens = allTokens.filter(
+        t => !t.startsWith('ExponentPushToken[')
+      );
 
       console.log(`📤 Gửi đến ${allTokens.length} devices:`);
       console.log(`   - Expo tokens: ${expoTokens.length}`);
       console.log(`   - Native FCM tokens: ${nativeTokens.length}`);
-      
-      // ✅ DEBUG: Hiện token để kiểm tra
-      if (nativeTokens.length > 0) {
-        console.log(`   🔍 Native tokens:`);
-        nativeTokens.forEach((token, i) => {
-          console.log(`      ${i + 1}. ${token.substring(0, 50)}... (length: ${token.length})`);
-        });
-      }
 
       // ✅ GỬI QUA CẢ 2 KÊNH
       const [expoResult, fcmResult] = await Promise.all([
@@ -60,7 +60,7 @@ class PushNotificationService {
         failureCount: totalFailed,
         total: allTokens.length
       };
-      
+
     } catch (error) {
       console.error(`❌ Error sending notification to user ${userId}:`, error.message);
       return { success: false, error: error.message };
@@ -69,6 +69,7 @@ class PushNotificationService {
 
   /**
    * Gửi qua EXPO PUSH API
+   * ✅ FIX: Gửi từng token riêng để tránh lỗi PUSH_TOO_MANY_EXPERIENCE_IDS
    */
   async sendViaExpoPush(tokens, notification) {
     if (tokens.length === 0) {
@@ -76,61 +77,106 @@ class PushNotificationService {
     }
 
     try {
-      // Tạo messages
-      const messages = tokens.map(token => ({
-        to: token,
-        sound: notification.soundEnabled ? 'default' : null,
-        title: notification.title || 'Habit Reminder',
-        body: notification.message || 'Time to complete your habit!',
-        data: {
-          type: notification.type || 'HABIT_REMINDER',
-          habitId: notification.habitId?.toString() || '',
-          reminderId: notification.reminderId?.toString() || '',
-          habitIcon: notification.habitIcon || '',
-          habitColor: notification.habitColor || '',
-          timestamp: new Date().toISOString()
-        },
-        priority: 'high',
-        channelId: 'habit_reminders',
-      }));
+      console.log(`   📱 Sending via Expo Push API...`);
 
-      // Gửi request
-      const response = await fetch('https://exp.host/--/api/v2/push/send', {
-        method: 'POST',
-        headers: {
-          Accept: 'application/json',
-          'Accept-encoding': 'gzip, deflate',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(messages),
+      // ✅ Validate Expo tokens
+      const validTokens = tokens.filter(token => {
+        const isValid = token.startsWith('ExponentPushToken[') && token.endsWith(']');
+        if (!isValid) {
+          console.log(`   ⚠️ Invalid Expo token format: ${token}`);
+        }
+        return isValid;
       });
 
-      const result = await response.json();
+      if (validTokens.length === 0) {
+        console.log('   ⚠️ No valid Expo tokens after validation');
+        return {
+          successCount: 0,
+          failureCount: tokens.length,
+          failedTokens: tokens
+        };
+      }
 
-      // Đếm kết quả
+      console.log(`   📨 Sending to ${validTokens.length} Expo tokens (one by one)...`);
+
+      // ✅ GỬI TỪNG TOKEN RIÊNG để tránh lỗi multiple projects
       let successCount = 0;
       let failureCount = 0;
       const failedTokens = [];
 
-      if (result.data) {
-        result.data.forEach((receipt, index) => {
+      for (let i = 0; i < validTokens.length; i++) {
+        const token = validTokens[i];
+
+        try {
+          const message = {
+            to: token,
+            sound: notification.soundEnabled ? 'default' : null,
+            title: notification.title || 'Habit Reminder',
+            body: notification.message || 'Time to complete your habit!',
+            data: {
+              type: notification.type || 'HABIT_REMINDER',
+              habitId: notification.habitId?.toString() || '',
+              reminderId: notification.reminderId?.toString() || '',
+              habitIcon: notification.habitIcon || '',
+              habitColor: notification.habitColor || '',
+              timestamp: new Date().toISOString()
+            },
+            priority: 'high',
+            channelId: 'habit_reminders',
+          };
+
+          const response = await fetch('https://exp.host/--/api/v2/push/send', {
+            method: 'POST',
+            headers: {
+              Accept: 'application/json',
+              'Accept-encoding': 'gzip, deflate',
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(message),
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`   ❌ Token ${i + 1} HTTP error ${response.status}:`, errorText);
+            failureCount++;
+            continue;
+          }
+
+          const result = await response.json();
+
+          // Xử lý response (single object hoặc có data array)
+          let receipt = result;
+          if (result.data && Array.isArray(result.data) && result.data.length > 0) {
+            receipt = result.data[0];
+          }
+
           if (receipt.status === 'ok') {
             successCount++;
+            console.log(`   ✅ Token ${i + 1}/${validTokens.length}: Success (id: ${receipt.id})`);
           } else {
             failureCount++;
-            console.log(`   ❌ Expo token ${index + 1} failed: ${receipt.message}`);
-            
+            console.log(`   ❌ Token ${i + 1}/${validTokens.length}: ${receipt.status} - ${receipt.message}`);
+
+            // Xóa token nếu không còn tồn tại
             if (receipt.details?.error === 'DeviceNotRegistered') {
-              failedTokens.push(tokens[index]);
+              failedTokens.push(token);
+              console.log(`      → Token will be removed from DB`);
             }
           }
-        });
+
+        } catch (error) {
+          console.error(`   ❌ Token ${i + 1} error:`, error.message);
+          failureCount++;
+        }
       }
+
+      console.log(`   📊 Expo Push Result: ${successCount} success, ${failureCount} failed`);
 
       return { successCount, failureCount, failedTokens };
 
     } catch (error) {
       console.error('❌ Expo Push API error:', error.message);
+      console.error('   Stack:', error.stack);
       return { successCount: 0, failureCount: tokens.length, failedTokens: [] };
     }
   }
@@ -144,7 +190,9 @@ class PushNotificationService {
     }
 
     try {
-      // ✅ Validate tokens (Native FCM token phải dài 140-180 chars)
+      console.log(`   🔥 Sending via Firebase Admin SDK...`);
+
+      // ✅ Validate tokens
       const validTokens = tokens.filter(token => {
         const isValid = token.length >= 140 && token.length <= 200 && !token.includes('[');
         if (!isValid) {
@@ -155,14 +203,15 @@ class PushNotificationService {
 
       if (validTokens.length === 0) {
         console.log('   ⚠️ No valid native FCM tokens after validation');
-        return { 
-          successCount: 0, 
-          failureCount: tokens.length, 
+        return {
+          successCount: 0,
+          failureCount: tokens.length,
           failedTokens: tokens.filter(t => !validTokens.includes(t))
         };
       }
 
-      console.log(`   ✅ ${validTokens.length}/${tokens.length} tokens passed validation`);
+      console.log(`   ✅ ${validTokens.length}/${tokens.length} FCM tokens passed validation`);
+
       // Tạo message theo format Firebase
       const message = {
         notification: {
@@ -193,32 +242,33 @@ class PushNotificationService {
             }
           }
         },
-        tokens: validTokens  // ← Dùng validTokens thay vì tokens
+        tokens: validTokens
       };
 
       // Gửi qua Firebase
       const response = await admin.messaging().sendEachForMulticast(message);
-      
-      const failedTokens = tokens.filter(t => !validTokens.includes(t)); // ← Thêm tokens invalid vào failed
-      
+
+      const failedTokens = tokens.filter(t => !validTokens.includes(t));
+
       // Lọc tokens lỗi
       response.responses.forEach((resp, idx) => {
         if (!resp.success) {
           const errorCode = resp.error?.code;
-          console.log(`   ❌ Native FCM token ${idx + 1} failed: ${errorCode}`);
-          console.log(`      Token: ${tokens[idx].substring(0, 50)}...`);
-          
-          // ✅ Xóa token lỗi (bao gồm cả invalid-argument)
+          console.log(`   ❌ FCM token ${idx + 1} failed: ${errorCode}`);
+
+          // Xóa token lỗi
           if (
             errorCode === 'messaging/invalid-registration-token' ||
             errorCode === 'messaging/registration-token-not-registered' ||
-            errorCode === 'messaging/invalid-argument'  // ← THÊM DÒNG NÀY
+            errorCode === 'messaging/invalid-argument'
           ) {
-            failedTokens.push(tokens[idx]);
+            failedTokens.push(validTokens[idx]);
             console.log(`      → Will be removed from DB`);
           }
         }
       });
+
+      console.log(`   📊 Firebase Result: ${response.successCount} success, ${response.failureCount} failed`);
 
       return {
         successCount: response.successCount,
@@ -242,7 +292,7 @@ class PushNotificationService {
       await User.findByIdAndUpdate(userId, {
         $pull: { fcmTokens: { token: { $in: failedTokens } } }
       });
-      
+
       console.log(`🧹 Cleaned ${failedTokens.length} invalid tokens for user ${userId}`);
     } catch (error) {
       console.error('❌ Error cleaning tokens:', error);

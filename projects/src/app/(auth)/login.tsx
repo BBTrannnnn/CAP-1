@@ -1,20 +1,16 @@
-import { AntDesign, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
+import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { Link, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, Image, Platform } from 'react-native';
+import { Image } from 'react-native';
 import { Check } from '@tamagui/lucide-icons';
 import { Button, Card, Checkbox, Input, Label, Separator, Text, Theme, XStack, YStack, Spinner } from 'tamagui';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { notifyError, notifySuccess } from '../../utils/notify';
-
-// ⬇️ import API đã đóng gói
-// ĐỔI đường dẫn này tới file users.js của bạn (ví dụ '@/api/users' hoặc '../../lib/users')
-import { login, setBaseUrl } from './../../server/users';
-
-// Logo app (đường dẫn đúng với cấu trúc bạn đang có)
-const Logo = require('../../assets/images/FlowState.png');
+import { login, getCurrentUser } from '../../server/users';
+import { registerForPushNotifications } from '../../utils/notifications';
 import { useAuth } from '../../stores/auth';
-import { getCurrentUser } from '../../server/users';
 
+const Logo = require('../../assets/images/FlowState.png');
 
 export default function Login() {
   const [email, setEmail] = useState<string>('');
@@ -29,14 +25,14 @@ export default function Login() {
   useEffect(() => {
     (async () => {
       try {
-        // ✅ GIỮ LẠI - ĐỂ NHỚ EMAIL KHI USER TICK "NHỚ MẬT KHẨU"
-        const { default: AsyncStorage } = await import('@react-native-async-storage/async-storage');
         const saved = await AsyncStorage.getItem('remember_email');
         if (saved) {
-          setEmail(saved);      // Tự động điền email
-          setRemember(true);     // Tick sẵn checkbox
+          setEmail(saved);
+          setRemember(true);
         }
-      } catch { }
+      } catch (err) {
+        console.warn('[Login] Lỗi load remember email:', err);
+      }
     })();
   }, []);
 
@@ -52,7 +48,15 @@ export default function Login() {
 
       if (__DEV__) console.log('[Login] API success:', res);
 
-      // Ưu tiên message từ API (tùy backend có thể ở res.message hoặc res.data.message)
+      // Lấy authToken từ response
+      const authToken =
+        res?.token ||
+        res?.data?.token ||
+        res?.accessToken ||
+        res?.data?.accessToken ||
+        res?.jwt;
+
+      // Ưu tiên message từ API
       const apiMessage =
         res?.message ||
         res?.data?.message ||
@@ -68,19 +72,37 @@ export default function Login() {
           const me = await getCurrentUser();
           signIn(me);
         } catch (e) {
-          console.log('Failed to fetch user info', e);
+          console.warn('[Login] Failed to fetch user info:', e);
         }
       }
 
-      router.replace("/(tabs)/home");
+      // 🔐 Lưu token để các màn khác dùng
+      if (authToken) {
+        await AsyncStorage.setItem('authToken', authToken);
+        
+        // ✅ Đăng ký FCM ngay sau khi login thành công
+        try {
+          const fcmToken = await registerForPushNotifications();
+          if (fcmToken) {
+            await AsyncStorage.setItem('fcmToken', fcmToken);
+            console.log('✅ Đăng ký FCM thành công sau login');
+          }
+        } catch (fcmErr) {
+          console.warn('⚠️ Không thể đăng ký FCM:', fcmErr);
+          // Không throw error, vì login vẫn thành công
+        }
+      }
 
-      // (Tuỳ chọn) Lưu email nếu nhớ
-      const { default: AsyncStorage } = await import('@react-native-async-storage/async-storage');
+      // 💾 Lưu email nếu nhớ
       if (remember) {
         await AsyncStorage.setItem('remember_email', email.trim());
       } else {
         await AsyncStorage.removeItem('remember_email');
       }
+
+      // Điều hướng sang màn home
+      router.replace('/(tabs)/home');
+
     } catch (err: any) {
       if (__DEV__) console.error('[Login] API error:', err?.status, err?.data || err);
 
@@ -95,7 +117,6 @@ export default function Login() {
       setLoading(false);
     }
   };
-
 
   return (
     <Theme name='light'>
@@ -185,18 +206,19 @@ export default function Login() {
             </XStack>
 
             {/* Remember + Forgot */}
-            <XStack alignItems="center" justifyContent="space-between" marginTop={8} marginBottom={12}>
-              <XStack alignItems="center" gap="$3">
+            <XStack alignItems='center' justifyContent='space-between' marginTop={8} marginBottom={12}>
+              <XStack alignItems='center' gap='$3'>
                 <Checkbox
-                  id="remember"
-                  size="$3"
+                  id='remember'
+                  size='$3'
+                  checked={remember}
                   onCheckedChange={(val) => {
                     if (typeof val === 'boolean') {
                       setRemember(val);
                     } else {
                       setRemember(false);
                     }
-                  }}   // val: boolean | 'indeterminate'
+                  }}
                   backgroundColor={remember ? '#085C9C' : '#FFFFFF'}
                   borderColor={remember ? '#085C9C' : '#E4E4E4'}
                   borderWidth={1}
@@ -204,15 +226,14 @@ export default function Login() {
                   hitSlop={8}
                 >
                   <Checkbox.Indicator>
-                    <Check size={14} color="#FFFFFF" strokeWidth={3} />
+                    <Check size={14} color='#FFFFFF' strokeWidth={3} />
                   </Checkbox.Indicator>
                 </Checkbox>
 
-                {/* Nhấn vào chữ cũng toggle */}
                 <Label
-                  htmlFor="remember"
+                  htmlFor='remember'
                   fontSize={13}
-                  color="#585858"
+                  color='#585858'
                   onPress={() => setRemember((v) => !v)}
                 >
                   Nhớ mật khẩu
@@ -220,12 +241,11 @@ export default function Login() {
               </XStack>
 
               <Link href='/(auth)/forgot_password' asChild>
-                <Text fontSize={14} fontWeight="500" color="#085C9C">
+                <Text fontSize={14} fontWeight='500' color='#085C9C'>
                   Quên mật khẩu?
                 </Text>
               </Link>
             </XStack>
-
 
             {/* Login button with icon */}
             <Button
@@ -239,7 +259,7 @@ export default function Login() {
             >
               <XStack alignItems='center' space={8}>
                 {loading ? (
-                  <Spinner size='small' />
+                  <Spinner size='small' color='#FFFFFF' />
                 ) : (
                   <MaterialIcons name='login' size={20} color='#FFFFFF' />
                 )}
@@ -257,9 +277,6 @@ export default function Login() {
               </Text>
               <Separator flex={1} backgroundColor='#E0E6EE' />
             </XStack>
-
-            {/* Google button with icon */}
-
 
             {/* Register */}
             <Text textAlign='center' marginTop={12} color='#585858' fontSize={14}>
