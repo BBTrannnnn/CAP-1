@@ -8,12 +8,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // =======================================
 // BASE URL (tự động detect theo platform)
 // =======================================
-<<<<<<< HEAD
 let BASE_URL = 'http://192.168.1.7:5000';
-=======
+
 // Thay đổi IP này thành IP LAN của máy bạn đang chạy backend (ví dụ 192.168.1.x)
-export let BASE_URL = 'http://192.168.1.8:5000';
->>>>>>> 2c3e2d85de15e175f5fd30ebaeeb1bdb170d256d
+export let BASE_URL = 'http://192.168.1.7:5000';
+
 
 export function setBaseUrl(url) {
   BASE_URL = url;
@@ -40,7 +39,7 @@ export function getFullImageUrl(path) {
 
   // 3. Ensure BASE_URL is valid
   // Fallback to a default if BASE_URL is somehow empty, though it shouldn't be.
-  const safeBase = BASE_URL || 'http://192.168.1.8:5000';
+  const safeBase = BASE_URL || 'http://192.168.1.7:5000';
 
   const finalUrl = `${safeBase}${cleanPath}`;
 
