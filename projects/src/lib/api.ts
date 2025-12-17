@@ -21,8 +21,6 @@ export async function clearToken() {
  * - Import từ users.js để có 1 nơi duy nhất cần sửa khi IP thay đổi
  * - Khi đổi WiFi / IP, chỉ cần sửa ở server/users.js
  */
-const BASE = 'http://192.168.1.7:5000';
-
 let BASE = USERS_BASE_URL;
 
 export function setApiBaseUrl(url: string) {

@@ -1760,7 +1760,6 @@ var config = createTamagui({
       circular: 9999
     },
     color: {
-      ...defaultConfig.tokens.color,
       white: "#fff",
       black: "#000"
     },
@@ -1791,7 +1790,6 @@ var config = createTamagui({
       // nền chính
     }
   },
-  animations: defaultConfig.animations,
   // media query definitions can be used as style props or with the useMedia hook
   // but also are added to "group styles", which work like Container Queries from CSS
   media: {

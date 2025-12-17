@@ -5,10 +5,7 @@
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// =======================================
-// BASE URL (tự động detect theo platform)
-// =======================================
-let BASE_URL = 'http://192.168.1.7:5000';
+
 
 // Thay đổi IP này thành IP LAN của máy bạn đang chạy backend (ví dụ 192.168.1.x)
 export let BASE_URL = 'http://192.168.1.7:5000';
