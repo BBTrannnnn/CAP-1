@@ -8,7 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // =======================================
 // BASE URL (tự động detect theo platform)
 // =======================================
-let BASE_URL = 'http://192.168.1.155:5000';
+let BASE_URL = 'http://192.168.1.7:5000';
 
 export function setBaseUrl(url) {
   BASE_URL = url;
