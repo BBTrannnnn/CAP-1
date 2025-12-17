@@ -8,22 +8,42 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // =======================================
 // BASE URL (tự động detect theo platform)
 // =======================================
-let BASE_URL = 'http://192.168.1.155:5000';
+// Thay đổi IP này thành IP LAN của máy bạn đang chạy backend (ví dụ 192.168.1.x)
+export let BASE_URL = 'http://192.168.1.8:5000';
 
 export function setBaseUrl(url) {
-  BASE_URL = url;
-  console.log('[API BASE]', BASE_URL);
   BASE_URL = url;
   console.log('[API BASE]', BASE_URL);
 }
 
 export function getFullImageUrl(path) {
   if (!path) return undefined;
-  if (path.startsWith('http')) return path;
-  // Remove leading slash if BASE_URL ends with one, or vice versa to ensure single slash
-  // But here BASE_URL doesn't have trailing slash usually.
+
+  // 1. Handle absolute URLs (http/https)
+  if (path.startsWith('http')) {
+    // If it points to localhost/127.0.0.1, it won't work on device -> replace with BASE_URL host
+    if (path.includes('localhost') || path.includes('127.0.0.1')) {
+      const baseUrlHost = BASE_URL.replace(/^https?:\/\//, ''); // e.g., '192.168.1.10:5000'
+      return path.replace(/localhost|127\.0\.0\.1/, baseUrlHost.split(':')[0]);
+    }
+    // Fix legacy hardcoded IP if completely different from current BASE_URL
+    // (Optional logic, can remove if not needed)
+    return path;
+  }
+
+  // 2. Handle relative paths (ensure they start with /)
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
-  return `${BASE_URL}${cleanPath}`;
+
+  // 3. Ensure BASE_URL is valid
+  // Fallback to a default if BASE_URL is somehow empty, though it shouldn't be.
+  const safeBase = BASE_URL || 'http://192.168.1.8:5000';
+
+  const finalUrl = `${safeBase}${cleanPath}`;
+
+  // Debug log (optional, extremely noisy if enabled globally, maybe enable only when needed)
+  // console.log('[getFullImageUrl]', path, '->', finalUrl);
+
+  return finalUrl;
 }
 
 // =======================================
@@ -593,9 +613,9 @@ export async function getCurrentUser() {
 }
 // Lấy trang cá nhân cộng đồng của 1 user
 // GET /api/social/profile/:userId
+// GET /api/users/public/:userId
 export async function getCommunityProfile(userId) {
-  return apiRequest(`/api/social/profile/${userId}`, {
-    method: 'GET',
-    auth: true,
-  });
+  // Backend không có route /api/social/profile/:userId
+  // Dùng tạm /api/users/public/:userId
+  return getPublicProfile(userId);
 }

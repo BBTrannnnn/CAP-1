@@ -20,7 +20,9 @@ import {
   updateProfile,
   deleteUser,
   adminCreateUser,
+  apiRequest,
 } from '../../server/users';
+import { notifyError, notifySuccess } from '../../utils/notify';
 
 const COLORS = {
   background: '#F6F8FB',
@@ -72,15 +74,7 @@ export default function AdminUsers() {
   const [search, setSearch] = useState('');
 
   // edit modal
-  const [editingUser, setEditingUser] = useState<any | null>(null);
-  const [editingName, setEditingName] = useState('');
-  const [editingEmail, setEditingEmail] = useState('');
-  const [editingPhone, setEditingPhone] = useState('');
-  const [editingDob, setEditingDob] = useState<Date | null>(null);
-  const [editingGender, setEditingGender] = useState<Gender | null>(null);
-  const [editingAddress, setEditingAddress] = useState('');
-  const [editingPassword, setEditingPassword] = useState('');
-  const [editingConfirmPassword, setEditingConfirmPassword] = useState('');
+
 
 
   // create form
@@ -94,21 +88,37 @@ export default function AdminUsers() {
   const [showNewDobPicker, setShowNewDobPicker] = useState(false);
   const [newGender, setNewGender] = useState<Gender | null>(null);
   const [newAddress, setNewAddress] = useState('');
+  const [newRole, setNewRole] = useState<'user' | 'moderator'>('user');
 
   const loadUsers = async () => {
     try {
       setLoading(true);
-      const res = await getAllUsers({ page: 1, limit: 100 });
-      const data = res?.data || res;
-      const list = data.users || data.data?.users || [];
+
+      const res = await getAllUsers();
+
+      let list: any[] = [];
+
+      if (Array.isArray(res?.data)) {
+        list = res.data;
+      }
+      else if (Array.isArray(res)) {
+        list = res;
+      }
+      else if (Array.isArray(res?.data?.users)) {
+        list = res.data.users;
+      } else if (Array.isArray(res?.users)) {
+        list = res.users;
+      }
+
       setUsers(list);
     } catch (e) {
-      console.log('loadUsers error', e);
-      Alert.alert('Lỗi', 'Không thể tải danh sách tài khoản');
+      console.log("loadUsers error", e);
+      notifyError("Lỗi", "Không thể tải danh sách người dùng.");
     } finally {
       setLoading(false);
     }
   };
+
 
   useEffect(() => {
     loadUsers();
@@ -126,64 +136,9 @@ export default function AdminUsers() {
     });
   }, [users, search]);
 
-  const openEdit = (u: any) => {
-    setEditingUser(u);
-    setEditingName(u.name || '');
-    setEditingEmail(u.email || '');
-    setEditingPhone(u.phone || '');
-    setEditingDob(parseDateString(u.dateOfBirth));
-    setEditingAddress(u.address || '');
-    setEditingPassword('');
-    setEditingConfirmPassword('');
-    const g = (u.gender || '').toLowerCase();
-    if (g === 'male' || g === 'female' || g === 'other') {
-      setEditingGender(g);
-    } else {
-      setEditingGender(null);
-    }
-  };
 
-    const onSaveEdit = async () => {
-    if (!editingUser) return;
 
-    // chỉ validate tên và mật khẩu
-    if (!editingName.trim()) {
-      Alert.alert('Lỗi', 'Tên tài khoản không được để trống');
-      return;
-    }
 
-    if (!editingPassword || !editingConfirmPassword) {
-      Alert.alert('Lỗi', 'Vui lòng nhập mật khẩu mới và xác nhận mật khẩu');
-      return;
-    }
-
-    if (editingPassword.length < 6) {
-      Alert.alert('Lỗi', 'Mật khẩu tối thiểu 6 ký tự');
-      return;
-    }
-
-    if (editingPassword !== editingConfirmPassword) {
-      Alert.alert('Lỗi', 'Mật khẩu xác nhận không khớp');
-      return;
-    }
-
-    try {
-      const id = editingUser._id || editingUser.id;
-
-      await updateProfile(id, {
-        name: editingName.trim(),
-        password: editingPassword,
-        confirmPassword: editingConfirmPassword,
-      });
-
-      Alert.alert('Thành công', 'Cập nhật tài khoản thành công');
-      setEditingUser(null);
-      await loadUsers();
-    } catch (e: any) {
-      console.log('onSaveEdit error', e?.message || e);
-      Alert.alert('Lỗi', e?.message || 'Cập nhật tài khoản thất bại');
-    }
-  };
 
 
   const onDeleteUser = async (u: any) => {
@@ -196,11 +151,11 @@ export default function AdminUsers() {
         onPress: async () => {
           try {
             await deleteUser(id);
-            Alert.alert('Thành công', 'Xoá tài khoản thành công');
+            notifySuccess('Thành công', 'Xoá tài khoản thành công');
             await loadUsers();
           } catch (e: any) {
             console.log('onDeleteUser error', e?.message || e);
-            Alert.alert('Lỗi', e?.message || 'Xoá tài khoản thất bại');
+            notifyError('Lỗi', e?.message || 'Xoá tài khoản thất bại');
           }
         },
       },
@@ -209,21 +164,21 @@ export default function AdminUsers() {
 
   const onCreateUser = async () => {
     if (!newName || !newEmail || !newPhone || !newPassword || !newConfirmPassword || !newAddress.trim()) {
-      Alert.alert('Lỗi', 'Vui lòng nhập đầy đủ thông tin');
+      notifyError('Lỗi', 'Vui lòng nhập đầy đủ thông tin');
       return;
     }
 
     if (!newDob) {
-      Alert.alert('Lỗi', 'Vui lòng chọn ngày sinh');
+      notifyError('Lỗi', 'Vui lòng chọn ngày sinh');
       return;
     }
     if (!newGender) {
-      Alert.alert('Lỗi', 'Vui lòng chọn giới tính');
+      notifyError('Lỗi', 'Vui lòng chọn giới tính');
       return;
     }
 
     const dobIso = formatDateIso(newDob);
-    
+
     try {
       setCreating(true);
       await adminCreateUser({
@@ -232,13 +187,13 @@ export default function AdminUsers() {
         phone: newPhone,
         password: newPassword,
         confirmPassword: newConfirmPassword,
-        role: 'user',
+        role: newRole,
         dateOfBirth: dobIso,
         gender: newGender,
         address: newAddress.trim(),
       });
 
-      Alert.alert('Thành công', 'Tạo tài khoản mới thành công');
+      notifySuccess('Thành công', 'Tạo tài khoản mới thành công');
       setNewName('');
       setNewEmail('');
       setNewPhone('');
@@ -247,11 +202,12 @@ export default function AdminUsers() {
       setNewDob(null);
       setNewGender(null);
       setNewAddress('');
+      setNewRole('user');
 
       await loadUsers();
     } catch (e: any) {
       console.log('onCreateUser error', e?.message || e);
-      Alert.alert('Lỗi', e?.message || 'Tạo tài khoản thất bại');
+      notifyError('Lỗi', e?.message || 'Tạo tài khoản thất bại');
     } finally {
       setCreating(false);
     }
@@ -385,6 +341,37 @@ export default function AdminUsers() {
                   ))}
                 </View>
               </Field>
+              <Field label="Vai trò">
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  {([
+                    { value: 'user' as const, label: 'User' },
+                    { value: 'moderator' as const, label: 'Moderator' },
+                  ] as const).map((opt) => (
+                    <TouchableOpacity
+                      key={opt.value}
+                      onPress={() => setNewRole(opt.value)}
+                      style={{
+                        flex: 1,
+                        borderWidth: 1,
+                        borderColor: COLORS.border,
+                        borderRadius: 999,
+                        paddingVertical: 8,
+                        alignItems: 'center',
+                        backgroundColor: newRole === opt.value ? COLORS.primary : '#FFF',
+                      }}
+                    >
+                      <Text
+                        style={{
+                          color: newRole === opt.value ? '#FFF' : COLORS.text,
+                          fontWeight: '700',
+                        }}
+                      >
+                        {opt.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </Field>
               <Field label="Địa chỉ">
                 <TextInput
                   style={[inputStyle, { height: 70, textAlignVertical: 'top' }]}
@@ -463,28 +450,13 @@ export default function AdminUsers() {
                       <Text style={{ marginTop: 4, fontSize: 12 }}>
                         Vai trò:{' '}
                         <Text style={{ fontWeight: '700' }}>
-                          {u.role === 'admin' ? 'Admin' : 'User'}
+                          {u.role === 'admin' ? 'Admin' : u.role === 'moderator' ? 'Moderator' : 'User'}
                         </Text>
                       </Text>
                     </View>
 
                     <View style={{ alignItems: 'flex-end', justifyContent: 'space-between' }}>
-                      <TouchableOpacity
-                        onPress={() => openEdit(u)}
-                        style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}
-                      >
-                        <Ionicons name="create-outline" size={18} color={COLORS.primary} />
-                        <Text
-                          style={{
-                            marginLeft: 4,
-                            color: COLORS.primary,
-                            fontSize: 12,
-                            fontWeight: '700',
-                          }}
-                        >
-                          Sửa
-                        </Text>
-                      </TouchableOpacity>
+
 
                       <TouchableOpacity
                         onPress={() => onDeleteUser(u)}
@@ -517,79 +489,7 @@ export default function AdminUsers() {
         )}
       </SafeAreaView>
 
-      {/* Modal sửa tài khoản */}
-      <Modal visible={!!editingUser} transparent animationType="fade">
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: 'rgba(0,0,0,0.4)',
-            justifyContent: 'center',
-            padding: 16,
-          }}
-        >
-          <View
-            style={{
-              backgroundColor: '#FFF',
-              borderRadius: 16,
-              padding: 16,
-            }}
-          >
-            <Text style={{ fontWeight: '800', fontSize: 16, marginBottom: 8 }}>
-              Chỉnh sửa tài khoản
-            </Text>
 
-            <Field label="Họ tên">
-              <TextInput style={inputStyle} value={editingName} onChangeText={setEditingName} />
-            </Field>
-                        <Field label="Mật khẩu mới">
-              <TextInput
-                style={inputStyle}
-                value={editingPassword}
-                onChangeText={setEditingPassword}
-                secureTextEntry
-                placeholder="Nhập mật khẩu mới"
-              />
-            </Field>
-
-            <Field label="Xác nhận mật khẩu mới">
-              <TextInput
-                style={inputStyle}
-                value={editingConfirmPassword}
-                onChangeText={setEditingConfirmPassword}
-                secureTextEntry
-                placeholder="Nhập lại mật khẩu mới"
-              />
-            </Field>
-
-            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 12, gap: 8 }}>
-              <TouchableOpacity
-                onPress={() => setEditingUser(null)}
-                style={{
-                  paddingVertical: 8,
-                  paddingHorizontal: 12,
-                  borderRadius: 999,
-                  borderWidth: 1,
-                  borderColor: COLORS.border,
-                  backgroundColor: '#FFF',
-                }}
-              >
-                <Text>Huỷ</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={onSaveEdit}
-                style={{
-                  paddingVertical: 8,
-                  paddingHorizontal: 12,
-                  borderRadius: 999,
-                  backgroundColor: COLORS.primary,
-                }}
-              >
-                <Text style={{ color: '#FFF', fontWeight: '700' }}>Lưu</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </>
   );
 }

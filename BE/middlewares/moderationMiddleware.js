@@ -35,10 +35,10 @@ export const postRateLimit = rateLimit({
 
 // Comment rate limiter
 export const commentRateLimit = rateLimit({
-    windowMs: 30 * 1000, // 30 seconds
+    windowMs: 5 * 1000, // 5 seconds
     max: async (req) => {
         const policy = getUserModerationPolicy(req.user);
-        return Math.ceil(policy.maxCommentsPerDay / (24 * 60 * 2)); // Per 30s limit
+        return Math.ceil(policy.maxCommentsPerDay / (24 * 60 * 10)); // Much faster
     },
     message: 'Bạn đang bình luận quá nhanh. Vui lòng chờ một chút.',
     standardHeaders: true,

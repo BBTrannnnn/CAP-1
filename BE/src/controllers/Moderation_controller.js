@@ -90,36 +90,70 @@ export const getContentForReview = async (req, res, next) => {
     try {
         const { contentType, contentId } = req.params;
 
-        const Model = contentType === 'post' ? Post : Comment;
-        const content = await Model.findById(contentId)
-            .populate('userId', 'name email avatar trustScore violations moderationHistory')
-            .lean();
+        let content;
+        let logs;
+        let userViolations = [];
 
-        if (!content) {
-            return res.status(404).json({
-                success: false,
-                message: 'Nội dung không tồn tại'
-            });
+        if (contentType === 'user') {
+            // For ban appeal reviews
+            const user = await User.findById(contentId)
+                .select('name email avatar trustScore violations isBanned bannedReason bannedUntil moderationHistory')
+                .lean();
+
+            if (!user) {
+                return res.status(404).json({ success: false, message: 'Người dùng không tồn tại' });
+            }
+
+            // Structure like post/comment for consistent FE handling, or handle differing structure in FE
+            // FE expects content.userId object usually. For user, content IS the user.
+            // Let's adjust structure:
+            content = {
+                ...user,
+                userId: user // Self-referencing so FE accessing content.userId works
+            };
+
+            // Logs for this user (warnings, bans, etc.)
+            logs = await ModerationLog.find({
+                userId: contentId,
+                action: { $in: ['warned', 'banned', 'ban_appeal_submitted', 'appeal_submitted'] }
+            })
+                .populate('reviewedBy', 'name email')
+                .sort({ createdAt: -1 })
+                .limit(10)
+                .lean();
+
+        } else {
+            const Model = contentType === 'post' ? Post : Comment;
+            content = await Model.findById(contentId)
+                .populate('userId', 'name email avatar trustScore violations moderationHistory')
+                .lean();
+
+            if (!content) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Nội dung không tồn tại'
+                });
+            }
+
+            // Get moderation logs for this content
+            logs = await ModerationLog.find({
+                contentType,
+                contentId
+            })
+                .populate('reviewedBy', 'name email')
+                .sort({ createdAt: -1 })
+                .limit(10)
+                .lean();
+
+            // Get user's recent violations
+            userViolations = await ModerationLog.find({
+                userId: content.userId._id,
+                action: { $in: ['auto_rejected', 'moderator_rejected'] }
+            })
+                .sort({ createdAt: -1 })
+                .limit(5)
+                .lean();
         }
-
-        // Get moderation logs for this content
-        const logs = await ModerationLog.find({
-            contentType,
-            contentId
-        })
-            .populate('reviewedBy', 'name email')
-            .sort({ createdAt: -1 })
-            .limit(10)
-            .lean();
-
-        // Get user's recent violations
-        const userViolations = await ModerationLog.find({
-            userId: content.userId._id,
-            action: { $in: ['auto_rejected', 'moderator_rejected'] }
-        })
-            .sort({ createdAt: -1 })
-            .limit(5)
-            .lean();
 
         res.status(200).json({
             success: true,
@@ -357,10 +391,21 @@ export const getAppeals = async (req, res, next) => {
 
         // Get content details for each appeal
         for (const appeal of appeals) {
+            // Check content type for ban appeals
+            if (appeal.contentType === 'user') {
+                continue;
+            }
+
             const Model = appeal.contentType === 'post' ? Post : Comment;
-            appeal.content = await Model.findById(appeal.contentId)
-                .select('content images moderationReason moderationScore')
-                .lean();
+            if (Model) {
+                try {
+                    appeal.content = await Model.findById(appeal.contentId)
+                        .select('content images moderationReason moderationScore')
+                        .lean();
+                } catch (err) {
+                    console.error('Error fetching appeal content:', err);
+                }
+            }
         }
 
         const count = await ModerationLog.countDocuments({
@@ -409,7 +454,7 @@ export const banUser = async (req, res, next) => {
 
         user.isBanned = true;
         user.bannedReason = reason;
-        user.bannedUntil = duration > 0 
+        user.bannedUntil = duration > 0
             ? new Date(Date.now() + duration * 24 * 60 * 60 * 1000)
             : null; // null = permanent
         await user.save();
@@ -460,12 +505,12 @@ export const unbanUser = async (req, res, next) => {
 // Get all reports (posts + comments)
 export const getReports = async (req, res, next) => {
     try {
-        const { 
+        const {
             type,           // 'post' | 'comment' | 'user'
             status,         // 'pending' | 'reviewing' | 'resolved' | 'dismissed'
             priority,       // 1-5
-            page = 1, 
-            limit = 20 
+            page = 1,
+            limit = 20
         } = req.query;
 
         // Build query
@@ -611,11 +656,11 @@ export const warnUser = async (req, res, next) => {
         let autoBanned = false;
         let banDuration = null;
         let banDurationText = '';
-        
+
         if (user.violations >= 5) {
             autoBanned = true;
             const banCount = user.violations - 4; // Số lần bị ban (lần 1, 2, 3...)
-            
+
             // Tính thời gian ban dựa trên số lần
             if (banCount === 1) {
                 banDuration = 24 * 60 * 60 * 1000; // 24 hours
@@ -631,11 +676,11 @@ export const warnUser = async (req, res, next) => {
                 banDuration = 100 * 365 * 24 * 60 * 60 * 1000; // 100 years
                 banDurationText = 'vĩnh viễn';
             }
-            
+
             user.isBanned = true;
             user.bannedUntil = new Date(Date.now() + banDuration);
             user.bannedReason = `Tự động cấm do vi phạm ${user.violations} lần`;
-            
+
             // Tạo ban log
             await ModerationLog.create({
                 userId: userId,
@@ -654,7 +699,7 @@ export const warnUser = async (req, res, next) => {
 
         res.status(201).json({
             success: true,
-            message: autoBanned 
+            message: autoBanned
                 ? `Đã gửi cảnh cáo. User tự động bị cấm ${banDurationText} do vi phạm ${user.violations} lần`
                 : 'Đã gửi cảnh cáo tới người dùng',
             data: {
@@ -769,7 +814,7 @@ export const getTrustScore = async (req, res, next) => {
 
         // Tính các factors ảnh hưởng trust score
         const accountAgeDays = Math.floor((Date.now() - new Date(user.createdAt).getTime()) / (1000 * 60 * 60 * 24));
-        
+
         // Đếm số bài viết được duyệt
         const postsApproved = await Post.countDocuments({
             userId: userId,

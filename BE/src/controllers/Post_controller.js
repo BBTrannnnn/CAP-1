@@ -4,6 +4,7 @@ import Comment from '../models/Comment.js';
 import Friend from '../models/Friend.js';
 import BlockedUser from '../models/BlockedUser.js';
 import Report from '../models/Report.js';
+import ModerationLog from '../models/ModerationLog.js';
 import { processModerationAsync } from '../../middlewares/moderationMiddleware.js';
 import { canBypassModeration } from '../../middlewares/requireModerator.js';
 import mongoose from 'mongoose';
@@ -47,12 +48,24 @@ export const createPost = async (req, res, next) => {
                     console.error(` Layer 2 moderation failed for post ${post._id}:`, err);
                 });
             });
+        } else {
+            // Log auto-approval for admin/moderator
+            await ModerationLog.create({
+                userId,
+                contentType: 'post',
+                contentId: post._id,
+                action: 'auto_approved',
+                reason: 'Trusted user (bypass)',
+                reviewedBy: userId, // Self-reviewed/System
+                reviewedAt: new Date(),
+                scores: { profanity: 0, nsfw: 0, spam: 0 }
+            });
         }
 
         res.status(201).json({
             success: true,
-            message: moderationStatus === 'pending' 
-                ? 'Bài viết đang được kiểm duyệt...' 
+            message: moderationStatus === 'pending'
+                ? 'Bài viết đang được kiểm duyệt...'
                 : 'Tạo bài viết thành công',
             data: post
         });
@@ -417,10 +430,10 @@ export const getPostLikes = async (req, res, next) => {
             targetType: 'post',
             targetId: postId
         })
-        .populate('userId', 'name avatar badge')
-        .skip((page - 1) * limit)
-        .limit(parseInt(limit))
-        .sort({ createdAt: -1 });
+            .populate('userId', 'name avatar badge')
+            .skip((page - 1) * limit)
+            .limit(parseInt(limit))
+            .sort({ createdAt: -1 });
 
         const total = await Like.countDocuments({
             targetType: 'post',
@@ -564,10 +577,10 @@ export const getPostsByHashtag = async (req, res, next) => {
             visibility: 'public',
             moderationStatus: 'approved' // CHỈ HIỂN THỊ BÀI ĐÃ DUYỆT
         })
-        .populate('userId', 'name avatar badge')
-        .sort({ createdAt: -1 })
-        .skip((page - 1) * limit)
-        .limit(parseInt(limit));
+            .populate('userId', 'name avatar badge')
+            .sort({ createdAt: -1 })
+            .skip((page - 1) * limit)
+            .limit(parseInt(limit));
 
         const postsWithLikeStatus = await Promise.all(
             posts.map(async (post) => {

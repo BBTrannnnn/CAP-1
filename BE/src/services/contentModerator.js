@@ -9,16 +9,16 @@ import sharp from 'sharp';
 
 // Vietnamese profanity patterns (Tier 1: Severe - auto block)
 const SEVERE_PROFANITY_PATTERNS = [
-    /đ[ịiíìỉĩ\*\.\s]*t\s*m[ẹeéèẻẽ\*\.\s]*[^a-z]/gi,           // đit mẹ
-    /c[ặaáàảãạ\*\.\s]*c\s*[^a-z]/gi,                           // cặc, c*c
-    /l[ồoóòỏõọ\*\.\s]*n\s*[^a-z]/gi,                           // lồn, l*n
-    /bu[ồoóòỏõọ\*\.\s]*i\s*[^a-z]/gi,                          // buồi
+    /đ[ịiíìỉĩ\*\.\s]*t\s*m[ẹeéèẻẽ\*\.\s]*(?:[^a-z]|$)/gi,           // đit mẹ
+    /c[ặaáàảãạ\*\.\s]*c(?:\s*[^a-z]|$)/gi,                           // cặc, c*c (fixed boundary)
+    /l[ồoóòỏõọ\*\.\s]*n(?:\s*[^a-z]|$)/gi,                           // lồn, l*n
+    /bu[ồoóòỏõọ\*\.\s]*i(?:\s*[^a-z]|$)/gi,                          // buồi
     /\bcon\s*đ[ĩiíìỉ\*\.\s]*\b/gi,                              // con đĩ
     /\b[đd][ĩiíìỉĩ\*\.\s]*\s*[đd][iíìỉĩ\*\.\s]*[êếệ]m\b/gi,   // đĩ điếm
     /\bđ[ĩiíìỉĩ\*\.\s]*(?=\s|$)/gi,                            // đĩ (đứng riêng)
     /m[ẹeéèẻẽ\*\.\s]*\s*m[áàảãạ\*\.\s]*y/gi,                  // mẹ mày
-    /đ[ụuúùủũ\*\.\s]*\s*m[áàảãạ\*\.\s]*[^a-z]/gi,             // địt má
-    /v[cklồ]\s*l[^a-z]/gi,                                      // vcl, vkl
+    /đ[ụuúùủũ\*\.\s]*\s*m[áàảãạ\*\.\s]*(?:[^a-z]|$)/gi,             // địt má
+    /v[cklồ]\s*l(?:[^a-z]|$)/gi,                                      // vcl, vkl
 ];
 
 // Moderate profanity (Tier 2: Warning - needs review if multiple)
@@ -170,8 +170,8 @@ export function checkUrls(text) {
     for (const url of urls) {
         try {
             const hostname = new URL(url).hostname.toLowerCase();
-            
-            const isBlacklisted = BLACKLISTED_DOMAINS.some(domain => 
+
+            const isBlacklisted = BLACKLISTED_DOMAINS.some(domain =>
                 hostname.includes(domain)
             );
 
@@ -232,7 +232,7 @@ export function checkDuplicateContent(userId, content) {
     // Check similarity (using string-similarity)
     for (const post of validPosts) {
         const similarity = stringSimilarity.compareTwoStrings(content, post.content);
-        
+
         if (similarity > 0.85) { // 85% similar
             return {
                 blocked: true,
@@ -287,7 +287,7 @@ async function analyzeImageHeuristics(imageBuffer) {
     try {
         const metadata = await sharp(imageBuffer).metadata();
         const stats = await sharp(imageBuffer).stats();
-        
+
         // Heuristic checks (basic filters)
         const warnings = [];
         let suspicionScore = 0;
@@ -365,11 +365,11 @@ async function checkImageWithSightengine(imageUrl) {
         });
 
         const data = response.data;
-        
+
         // Parse nudity scores
         const nudityScore = data.nudity?.sexual || 0;
         const partialScore = data.nudity?.partial || 0;
-        
+
         return {
             blocked: nudityScore > 0.6 || partialScore > 0.7,
             scores: {

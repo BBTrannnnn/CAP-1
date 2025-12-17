@@ -2,6 +2,7 @@ import Comment from '../models/Comment.js';
 import Post from '../models/Post.js';
 import Like from '../models/Like.js';
 import Report from '../models/Report.js';
+import ModerationLog from '../models/ModerationLog.js';
 import { processModerationAsync } from '../../middlewares/moderationMiddleware.js';
 import { canBypassModeration } from '../../middlewares/requireModerator.js';
 import mongoose from 'mongoose';
@@ -69,6 +70,18 @@ export const createComment = async (req, res, next) => {
                 processModerationAsync('comment', comment._id, userId).catch(err => {
                     console.error('Background moderation error:', err);
                 });
+            });
+        } else {
+            // Log auto-approval for admin/moderator
+            await ModerationLog.create({
+                userId,
+                contentType: 'comment',
+                contentId: comment._id,
+                action: 'auto_approved',
+                reason: 'Trusted user (bypass)',
+                reviewedBy: userId,
+                reviewedAt: new Date(),
+                scores: { profanity: 0, nsfw: 0, spam: 0 }
             });
         }
 
@@ -336,10 +349,10 @@ export const getCommentLikes = async (req, res, next) => {
             targetType: 'comment',
             targetId: commentId
         })
-        .populate('userId', 'name avatar badge')
-        .skip((page - 1) * limit)
-        .limit(parseInt(limit))
-        .sort({ createdAt: -1 });
+            .populate('userId', 'name avatar badge')
+            .skip((page - 1) * limit)
+            .limit(parseInt(limit))
+            .sort({ createdAt: -1 });
 
         const total = await Like.countDocuments({
             targetType: 'comment',

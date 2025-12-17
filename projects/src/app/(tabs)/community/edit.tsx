@@ -5,6 +5,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { apiRequest } from '../../../server/users';
 import { eventBus } from '../../../lib/eventBus';
+import { notifyError, notifySuccess } from '../../../utils/notify';
 
 export default function EditPostScreen() {
   const router = useRouter();
@@ -41,9 +42,9 @@ export default function EditPostScreen() {
   }, [postId]);
 
   const handleSave = async () => {
-    if (!postId) return Alert.alert('Lỗi', 'Không tìm thấy bài viết để chỉnh sửa');
+    if (!postId) return notifyError('Lỗi', 'Không tìm thấy bài viết để chỉnh sửa');
     const trimmed = (content || '').trim();
-    if (!trimmed) return Alert.alert('Lỗi', 'Nội dung không được để trống');
+    if (!trimmed) return notifyError('Lỗi', 'Nội dung không được để trống');
 
     setSaving(true);
     try {
@@ -63,12 +64,11 @@ export default function EditPostScreen() {
         console.error('[Edit] emitAsync reloadFeed error', e);
       }
 
-      Alert.alert('Thành công', res?.message || 'Đã cập nhật bài viết', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
+      notifySuccess('Thành công', res?.message || 'Đã cập nhật bài viết');
+      router.back();
     } catch (err: any) {
       console.error('[EditPost] save error', err);
-      Alert.alert('Lỗi', err?.message || 'Không thể lưu bài viết');
+      notifyError('Lỗi', err?.message || 'Không thể lưu bài viết');
     } finally {
       setSaving(false);
     }

@@ -12,7 +12,10 @@ import AntDesign from '@expo/vector-icons/AntDesign';
 
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { apiGet, apiPost, apiPut, apiDelete } from '../../../lib/api';
+import { notifyError, notifySuccess } from '../../../utils/notify';
+import { scheduleDailyNotification } from '../../../utils/notifications';
 
 // Color constants for Sleep tabs (keep PRIMARY consistent across app)
 const PRIMARY = '#9B59FF'; // Main purple
@@ -37,8 +40,17 @@ export default function SleepLab() {
     return `${yyyy}-${mm}-${dd}`;
   });
 
+  const SLEEP_TIPS = [
+    "Tránh màn hình điện tử 1 giờ trước khi ngủ. Ánh sáng xanh có thể ảnh hưởng đến melatonin.",
+    "Giữ phòng ngủ tối, mát mẻ (khoảng 20-22°C) và yên tĩnh để dễ đi vào giấc ngủ hơn.",
+    "Thư giãn với một cuốn sách hoặc nghe nhạc nhẹ không lời trước khi ngủ thay vì lướt web.",
+    "Tránh uống caffeine (cà phê, trà) hoặc ăn quá no vào buổi tối, đặc biệt là sát giờ ngủ.",
+    "Cố gắng duy trì giờ đi ngủ và thức dậy cố định mỗi ngày, kể cả cuối tuần."
+  ];
+  const [tipIndex, setTipIndex] = useState(0);
+
   // Additional states required for the Journal UI
-  const FACTORS = ['Uống coffee','Tập luyện','Stress','Ăn muộn','Đọc sách','Xem phim','Tắm nước ấm'] as const;
+  const FACTORS = ['Uống coffee', 'Tập luyện', 'Stress', 'Ăn muộn', 'Đọc sách', 'Xem phim', 'Tắm nước ấm'] as const;
 
   const [mood, setMood] = useState<Mood>('😊');
   const [factors, setFactors] = useState<Record<string, boolean>>(Object.fromEntries(FACTORS.map(f => [f, false])) as Record<string, boolean>);
@@ -177,10 +189,10 @@ export default function SleepLab() {
   };
 
   const COL_DAY = 72;
-  const COL_TIME = 64;      
-  const COL_DURATION = 72; 
-  const COL_STAR = 48;      
-  const COL_MOOD = 64;      
+  const COL_TIME = 64;
+  const COL_DURATION = 72;
+  const COL_STAR = 48;
+  const COL_MOOD = 64;
   const HEADER_FONT = 9;
 
   function selectedFactorsFromState(factorsState: Record<string, boolean>) {
@@ -241,7 +253,7 @@ export default function SleepLab() {
     if (l.sleepAt) {
       try {
         return new Date(l.sleepAt).toISOString().slice(0, 10);
-      } catch {}
+      } catch { }
     }
     return '';
   }
@@ -310,573 +322,597 @@ export default function SleepLab() {
     setFactors((p) => ({ ...p, [k]: !p[k] }));
 
   const onSaveJournal = async () => {
-  try {
-    setLoading(true);
-    
-    // Validate sleepDate (YYYY-MM-DD)
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(sleepDate)) {
-      Alert.alert('Ngày không hợp lệ', 'Vui lòng nhập ngày dạng YYYY-MM-DD.');
-      return;
-    }
-
-    const sendDate =
-      crossesMidnight(bedTime, wakeTime) ? shiftYMD(sleepDate, -1) : sleepDate;
-
-    const payload = {
-      date: sendDate,                  
-      sleepTime: bedTime,               
-      wakeTime: wakeTime,              
-      quality,                         
-      wakeMood: moodMap[mood] || 'thu_gian',
-      factors: selectedFactorsFromState(factors),
-  notes: '',
-    };
-
-    console.log('[Sleep] payload gửi BE →', payload);
-
     try {
-      await apiPost('/api/sleep/logs', payload);
-    } catch (e: any) {
-      const msg = e?.data?.message || e?.message || '';
-      const status = e?.status || (typeof e?.code === 'number' ? e.code : undefined);
-      if (String(status) === '409' || /409|trùng|Conflict/i.test(msg)) {
-        const listRes = await apiGet('/api/sleep/logs?page=1&limit=1');
+      setLoading(true);
+
+      // Validate sleepDate (YYYY-MM-DD)
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(sleepDate)) {
+        notifyError('Ngày không hợp lệ', 'Vui lòng nhập ngày dạng YYYY-MM-DD.');
+        return;
+      }
+
+      const sendDate =
+        crossesMidnight(bedTime, wakeTime) ? shiftYMD(sleepDate, -1) : sleepDate;
+
+      const payload = {
+        date: sendDate,
+        sleepTime: bedTime,
+        wakeTime: wakeTime,
+        quality,
+        wakeMood: moodMap[mood] || 'thu_gian',
+        factors: selectedFactorsFromState(factors),
+        notes: '',
+      };
+
+      console.log('[Sleep] payload gửi BE →', payload);
+
+      try {
+        await apiPost('/api/sleep/logs', payload);
+      } catch (e: any) {
+        const msg = e?.data?.message || e?.message || '';
+        const status = e?.status || (typeof e?.code === 'number' ? e.code : undefined);
+        if (String(status) === '409' || /409|trùng|Conflict/i.test(msg)) {
+          const listRes = await apiGet('/api/sleep/logs?page=1&limit=1');
           const latest = normalizeLogs(listRes?.data || [])[0];
-        if (latest?._id) {
-          await apiPut(`/api/sleep/logs/${latest._id}`, {
-            quality: payload.quality,
-            wakeMood: payload.wakeMood,
-            factors: payload.factors,
-            notes: payload.notes,
-          });
+          if (latest?._id) {
+            await apiPut(`/api/sleep/logs/${latest._id}`, {
+              quality: payload.quality,
+              wakeMood: payload.wakeMood,
+              factors: payload.factors,
+              notes: payload.notes,
+            });
+          } else {
+            throw e;
+          }
         } else {
           throw e;
         }
-      } else {
-        throw e;
       }
+      const listRes = await apiGet('/api/sleep/logs?page=1&limit=10');
+      const freshLogs = normalizeLogs(listRes?.data || []);
+
+      try {
+        const mins = diffMinutes(bedTime, wakeTime);
+        const newEntry = {
+          dateISO: sendDate,
+          bedTime,
+          wakeTime,
+          durationMin: mins,
+          quality,
+          mood,
+          factors: Object.keys(factors).filter((k) => !!factors[k]),
+        };
+
+        setEntries((prev) => {
+          const others = prev.filter((e) => e.dateISO !== sendDate);
+          const next = [newEntry, ...others]
+            .sort((a, b) => (a.dateISO < b.dateISO ? 1 : -1))
+            .slice(0, 7);
+          AsyncStorage.setItem('sleepJournal', JSON.stringify(next));
+          return next;
+        });
+      } catch (err) {
+        if (__DEV__) console.warn('[Sleep] update local entries failed', err);
+      }
+
+      setLogs(freshLogs);
+      notifySuccess('Thành công', 'Đã lưu nhật ký giấc ngủ!');
+    } catch (e: any) {
+      console.error('[Sleep] save error:', e);
+      const msg = e?.data?.message || e?.message || 'Không thể lưu nhật ký.';
+      notifyError('Lỗi', String(msg));
+    } finally {
+      setLoading(false);
     }
-  const listRes = await apiGet('/api/sleep/logs?page=1&limit=10');
-  const freshLogs = normalizeLogs(listRes?.data || []);
+  };
+
+  const handleDelete = async (logId: string, dateISO: string) => {
+    console.log('[UI] handleDelete click:', { logId, dateISO });
+
+    if (!logId) {
+      notifyError('Lỗi', 'Không tìm thấy _id để xoá.');
+      return;
+    }
 
     try {
-      const mins = diffMinutes(bedTime, wakeTime);
-      const newEntry = {
-        dateISO: sendDate,
-        bedTime,
-        wakeTime,
-        durationMin: mins,
-        quality,
-        mood,
-        factors: Object.keys(factors).filter((k) => !!factors[k]),
-      };
+      const ok = await confirmDelete('Bạn có chắc muốn xoá nhật ký này?');
+      if (!ok) return;
+    } catch (e) {
+      console.warn('[UI] confirmDelete failed:', e);
+      return;
+    }
+
+    setDeletingId(logId);
+    const snapshot = logs;
+    setLogs((prev: any[]) => prev.filter((l) => l._id !== logId));
+
+    try {
+      await apiDelete(`/api/sleep/logs/${logId}`);
+
+      const listRes = await apiGet('/api/sleep/logs?page=1&limit=10');
+      setLogs(normalizeLogs(listRes?.data || []));
 
       setEntries((prev) => {
-        const others = prev.filter((e) => e.dateISO !== sendDate);
-        const next = [newEntry, ...others]
-          .sort((a, b) => (a.dateISO < b.dateISO ? 1 : -1))
-          .slice(0, 7);
+        const next = prev.filter((e) => e.dateISO !== dateISO);
         AsyncStorage.setItem('sleepJournal', JSON.stringify(next));
         return next;
       });
-    } catch (err) {
-      if (__DEV__) console.warn('[Sleep] update local entries failed', err);
+
+      notifySuccess('Đã xoá', 'Nhật ký đã được xoá.');
+    } catch (err: any) {
+      console.log('[UI] delete error:', err);
+      // rollback nếu lỗi
+      setLogs(snapshot);
+      notifyError('Lỗi', err?.message || 'Không thể xoá nhật ký.');
+    } finally {
+      setDeletingId(null);
     }
-
-  setLogs(freshLogs);
-    Alert.alert('Thành công', 'Đã lưu nhật ký giấc ngủ!');
-  } catch (e: any) {
-    console.error('[Sleep] save error:', e);
-    const msg = e?.data?.message || e?.message || 'Không thể lưu nhật ký.';
-    Alert.alert('Lỗi', String(msg));
-  } finally {
-    setLoading(false);
-  }
-};
-
-const handleDelete = async (logId: string, dateISO: string) => {
-  console.log('[UI] handleDelete click:', { logId, dateISO }); 
-
-  if (!logId) {
-    Alert.alert('Lỗi', 'Không tìm thấy _id để xoá.');
-    return;
-  }
-
-  try {
-    const ok = await confirmDelete('Bạn có chắc muốn xoá nhật ký này?');
-    if (!ok) return;
-  } catch (e) {
-    console.warn('[UI] confirmDelete failed:', e);
-    return;
-  }
-
-  setDeletingId(logId);
-  const snapshot = logs;
-  setLogs((prev: any[]) => prev.filter((l) => l._id !== logId));
-
-  try {
-    await apiDelete(`/api/sleep/logs/${logId}`);
-
-    const listRes = await apiGet('/api/sleep/logs?page=1&limit=10');
-    setLogs(normalizeLogs(listRes?.data || []));
-
-    setEntries((prev) => {
-      const next = prev.filter((e) => e.dateISO !== dateISO);
-      AsyncStorage.setItem('sleepJournal', JSON.stringify(next));
-      return next;
-    });
-
-    Alert.alert('Đã xoá', 'Nhật ký đã được xoá.');
-  } catch (err: any) {
-    console.log('[UI] delete error:', err);
-    // rollback nếu lỗi
-    setLogs(snapshot);
-    Alert.alert('Lỗi', err?.message || 'Không thể xoá nhật ký.');
-  } finally {
-    setDeletingId(null);
-  }
-};
+  };
+  const handleSetReminder = async () => {
+    try {
+      const mins = toMins12h(bedTime);
+      const h = Math.floor(mins / 60);
+      const m = mins % 60;
+      await scheduleDailyNotification('Đến giờ đi ngủ!', 'Chúc bạn ngủ ngon và mơ đẹp!', h, m);
+      notifySuccess('Đã đặt nhắc nhở', `Bạn sẽ được nhắc vào lúc ${bedTime} mỗi ngày.`);
+    } catch (error) {
+      console.error(error);
+      notifyError('Lỗi', 'Không thể đặt nhắc nhở.');
+    }
+  };
 
   return (
-    <YStack flex={1} backgroundColor={BG}>
-      {/* Header */}
-      <XStack alignItems="center" paddingHorizontal={16} paddingVertical={12}>
-        <Button backgroundColor="transparent" height={36} width={36} onPress={() => router.back()}>
-          <Ionicons name="chevron-back" size={22} color="#111" />
-        </Button>
-        <Text fontSize={18} fontWeight="700" style={{ marginLeft: 8 }}>Sleep</Text>
-        <XStack flex={1} />
-        <Button backgroundColor="transparent" height={36} width={36}>
-          <Ionicons name="moon-outline" size={20} color={PRIMARY} />
-        </Button>
-      </XStack>
+    <SafeAreaView style={{ flex: 1, backgroundColor: BG }}>
+      <YStack flex={1} backgroundColor={BG}>
+        {/* Header */}
+        <XStack alignItems="center" paddingHorizontal={16} paddingVertical={12}>
+          <Button backgroundColor="transparent" height={36} width={36} onPress={() => router.back()}>
+            <Ionicons name="chevron-back" size={22} color="#000" />
+          </Button>
+          <Text fontSize={18} fontWeight="700" style={{ marginLeft: 8 }} color="#000">{'Sleep'}</Text>
+          <XStack flex={1} />
+          <Button backgroundColor="transparent" height={36} width={36}>
+            <Ionicons name="moon-outline" size={20} color={PRIMARY} />
+          </Button>
+        </XStack>
 
-      {/* Tabs */}
-      <XStack paddingHorizontal={16} marginBottom={8} gap={8}>
-        {[
-          { key: 'journal', label: 'Nhật ký ngủ' },
-          { key: 'support', label: 'Hỗ trợ ngủ' },
-          { key: 'dreams', label: 'Giấc mơ' },
-        ].map((t) => {
-          const active = tab === (t.key as any);
-          return (
-            <Button
-              key={t.key}
-              flex={1}
-              height={52}
-              borderRadius={999}
-              backgroundColor={active ? '#F3E8FF' : '#FFFFFF'}
-              borderColor={active ? PRIMARY : '#E8ECF3'}
-              borderWidth={1}
-              onPress={() => setTab(t.key as any)}
-            >
-              <Text fontSize={14} color={active ? PRIMARY : '#6B6B6B'} fontWeight="600">
-                {t.label}
-              </Text>
-            </Button>
-          );
-        })}
-      </XStack>
-
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
-        
-        {/* ============= TAB 1: JOURNAL ============= */}
-        {tab === 'journal' && (
-          <YStack gap={16}>
-            <Card
-              padding={16}
-              borderRadius={12}
-              borderWidth={1}
-              borderColor="#E8ECF3"
-              backgroundColor="#FFFFFF"
-            >
-              <XStack alignItems="center" gap={8}>
-                <Ionicons name="bed-outline" size={20} color={PRIMARY} />
-                <Text fontSize={16} fontWeight="700">Thời gian ngủ hôm nay</Text>
-              </XStack>
-              {/* Sleep Date Input - test */}
-              <YStack marginTop={12}>
-                <Text fontSize={13} color="#6B6B6B">Ngày ghi nhật ký (test trong vòng 1 tuần)</Text>
-
-                <XStack
-                  alignItems="center"
-                  height={52}
-                  borderRadius={12}
-                  borderWidth={1}
-                  backgroundColor="#F8F8F8"
-                  borderColor="#E4E4E4"
-                  paddingHorizontal={12}
-                  style={{ marginTop: 6 }}
-                >
-                  <Ionicons name="calendar-outline" size={18} color="#6B6B6B" />
-                  <Input
-                    flex={1}
-                    height={52}
-                    fontSize={16}
-                    placeholder="yyyy-mm-dd (VD: 2025-11-27)"
-                    value={sleepDate}
-                    onChangeText={setSleepDate}
-                    backgroundColor="transparent"
-                    style={{ marginLeft: 8 }}
-                  />
-                </XStack>
-              </YStack>
-
-              {/* Bed / Wake rows */}
-              <XStack marginTop={12} gap={12}>
-                <YStack flex={1}>
-                  <Text fontSize={13} color="#6B6B6B">Giờ đi ngủ</Text>
-                  <XStack
-                    alignItems="center"
-                    height={52}
-                    borderRadius={12}
-                    borderWidth={1}
-                    backgroundColor="#F8F8F8"
-                    borderColor="#E4E4E4"
-                    paddingHorizontal={12}
-                    style={{ marginTop: 6 }}
-                  >
-                    <Ionicons name="time-outline" size={18} color="#6B6B6B" />
-                    <Input
-                      flex={1}
-                      height={52}
-                      fontSize={16}
-                      placeholder="10:30 PM"
-                      value={bedTime}
-                      onChangeText={setBedTime}
-                      backgroundColor="transparent"
-                      style={{ marginLeft: 8 }}
-                    />
-                  </XStack>
-                </YStack>
-
-                <YStack flex={1}>
-                  <Text fontSize={13} color="#6B6B6B">Giờ thức dậy</Text>
-                  <XStack
-                    alignItems="center"
-                    height={52}
-                    borderRadius={12}
-                    borderWidth={1}
-                    backgroundColor="#F8F8F8"
-                    borderColor="#E4E4E4"
-                    paddingHorizontal={12}
-                    style={{ marginTop: 6 }}
-                  >
-                    <Ionicons name="alarm-outline" size={18} color="#6B6B6B" />
-                    <Input
-                      flex={1}
-                      height={52}
-                      fontSize={16}
-                      placeholder="7:00 AM"
-                      value={wakeTime}
-                      onChangeText={setWakeTime}
-                      backgroundColor="transparent"
-                      style={{ marginLeft: 8 }}
-                    />
-                  </XStack>
-                </YStack>
-              </XStack>
-
-              {/* Duration badge */}
-              <YStack
-                alignItems="center"
-                justifyContent="center"
-                height={44}
-                borderRadius={10}
-                backgroundColor="#F3E8FF"
-                style={{ marginTop: 12 }}
+        {/* Tabs */}
+        <XStack paddingHorizontal={16} marginBottom={8} gap={8}>
+          {[
+            { key: 'journal', label: 'Nhật ký ngủ' },
+            { key: 'support', label: 'Hỗ trợ ngủ' },
+            { key: 'dreams', label: 'Giấc mơ' },
+          ].map((t) => {
+            const active = tab === (t.key as any);
+            return (
+              <Button
+                key={t.key}
+                flex={1}
+                height={52}
+                borderRadius={999}
+                backgroundColor={active ? '#F3E8FF' : '#FFFFFF'}
+                borderColor={active ? PRIMARY : '#E8ECF3'}
+                borderWidth={1}
+                onPress={() => setTab(t.key as any)}
               >
-                <Text fontSize={15} fontWeight="700" color={PRIMARY}>{`Thời gian ngủ: ${durationText}`}</Text>
-              </YStack>
+                <Text fontSize={14} color={active ? PRIMARY : '#6B6B6B'} fontWeight="600">
+                  {t.label}
+                </Text>
+              </Button>
+            );
+          })}
+        </XStack>
 
-              <Separator backgroundColor="#EEF1F6" style={{ marginVertical: 12 }} />
+        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
 
-              {/* Rating */}
-              <XStack alignItems="center" gap={8} style={{ marginTop: 12 }}>
-                <Ionicons name="star-outline" size={20} color={PRIMARY} />
-                <Text fontSize={13} color="#6B6B6B">Chất lượng giấc ngủ</Text>
-              </XStack>
-              <XStack alignItems="center" style={{ marginTop: 6 }}>
-                {Array.from({ length: 5 }).map((_, i) => {
-                  const idx = i + 1;
-                  const active = quality >= idx;
-                  return (
-                    <Button
-                      key={idx}
-                      backgroundColor="transparent"
-                      height={36}
-                      width={36}
-                      onPress={() => setQuality(idx)}
-                    >
-                      <AntDesign name="star" size={20} color={active ? '#FFC107' : '#E0E0E0'} />
-                    </Button>
-                  );
-                })}
-              </XStack>
+          {/* ============= TAB 1: JOURNAL ============= */}
+          {tab === 'journal' && (
+            <YStack gap={16}>
+              <Card
+                padding={16}
+                borderRadius={12}
+                borderWidth={1}
+                borderColor="#E8ECF3"
+                backgroundColor="#FFFFFF"
+              >
+                <XStack alignItems="center" gap={8}>
+                  <Ionicons name="bed-outline" size={20} color={PRIMARY} />
+                  <Text fontSize={16} fontWeight="700">Thời gian ngủ hôm nay</Text>
+                </XStack>
+                {/* Sleep Date Input - test */}
+                <YStack marginTop={12}>
+                  <Text fontSize={13} color="#6B6B6B">Ngày ghi nhật ký (test trong vòng 1 tuần)</Text>
 
-              {/* Mood */}
-              <XStack alignItems="center" gap={8} style={{ marginTop: 12 }}>
-                <Ionicons name="happy-outline" size={20} color={PRIMARY} />
-                <Text fontSize={13} color="#6B6B6B">Tình trạng khi thức dậy</Text>
-              </XStack>
-              <XStack alignItems="center" flexWrap="wrap" style={{ marginTop: 6 }}>
-                {(['😴', '😐', '😊','😫','😡','😭','🤩','😌','🤯'] as Mood[]).map((m) => (
-                  <Button
-                    key={m}
-                    backgroundColor={mood === m ? '#FFF3CC' : '#FFFFFF'}
+                  <XStack
+                    alignItems="center"
+                    height={52}
+                    borderRadius={12}
                     borderWidth={1}
-                    borderColor="#E8ECF3"
-                    height={40}
-                    borderRadius={999}
-                    paddingHorizontal={14}
-                    onPress={() => setMood(m)}
-                    style={{ marginRight: 8, marginBottom: 8 }}
+                    backgroundColor="#F8F8F8"
+                    borderColor="#E4E4E4"
+                    paddingHorizontal={12}
+                    style={{ marginTop: 6 }}
                   >
-                    <Text fontSize={18}>{m}</Text>
-                  </Button>
-                ))}
-              </XStack>
+                    <Ionicons name="calendar-outline" size={18} color="#6B6B6B" />
+                    <Input
+                      flex={1}
+                      height={52}
+                      fontSize={16}
+                      placeholder="yyyy-mm-dd (VD: 2025-11-27)"
+                      value={sleepDate}
+                      onChangeText={setSleepDate}
+                      backgroundColor="transparent"
+                      style={{ marginLeft: 8 }}
+                    />
+                  </XStack>
+                </YStack>
 
-              {/* Factors */}
-              <XStack alignItems="center" gap={8} style={{ marginTop: 12 }}>
-                <Ionicons name="list-outline" size={20} color={PRIMARY} />
-                <Text fontSize={13} color="#6B6B6B">Yếu tố ảnh hưởng</Text>
-              </XStack>
-              <XStack flexWrap="wrap" style={{ marginTop: 6 }}>
-                {FACTORS.map((f) => {
-                  const active = !!factors[f];
-                  return (
-                    <Button
-                      key={f}
-                      backgroundColor={active ? '#EEF0FF' : '#FFFFFF'}
+                {/* Bed / Wake rows */}
+                <XStack marginTop={12} gap={12}>
+                  <YStack flex={1}>
+                    <Text fontSize={13} color="#6B6B6B">Giờ đi ngủ</Text>
+                    <XStack
+                      alignItems="center"
+                      height={52}
+                      borderRadius={12}
                       borderWidth={1}
-                      borderColor={active ? PRIMARY : '#E8ECF3'}
-                      height={36}
-                      borderRadius={999}
+                      backgroundColor="#F8F8F8"
+                      borderColor="#E4E4E4"
                       paddingHorizontal={12}
-                      onPress={() => toggleFactor(f)}
+                      style={{ marginTop: 6 }}
+                    >
+                      <Ionicons name="time-outline" size={18} color="#6B6B6B" />
+                      <Input
+                        flex={1}
+                        height={52}
+                        fontSize={16}
+                        placeholder="10:30 PM"
+                        value={bedTime}
+                        onChangeText={setBedTime}
+                        backgroundColor="transparent"
+                        style={{ marginLeft: 8 }}
+                      />
+                    </XStack>
+                  </YStack>
+
+                  <YStack flex={1}>
+                    <Text fontSize={13} color="#6B6B6B">Giờ thức dậy</Text>
+                    <XStack
+                      alignItems="center"
+                      height={52}
+                      borderRadius={12}
+                      borderWidth={1}
+                      backgroundColor="#F8F8F8"
+                      borderColor="#E4E4E4"
+                      paddingHorizontal={12}
+                      style={{ marginTop: 6 }}
+                    >
+                      <Ionicons name="alarm-outline" size={18} color="#6B6B6B" />
+                      <Input
+                        flex={1}
+                        height={52}
+                        fontSize={16}
+                        placeholder="7:00 AM"
+                        value={wakeTime}
+                        onChangeText={setWakeTime}
+                        backgroundColor="transparent"
+                        style={{ marginLeft: 8 }}
+                      />
+                    </XStack>
+                  </YStack>
+                </XStack>
+
+                {/* Duration badge */}
+                <YStack
+                  alignItems="center"
+                  justifyContent="center"
+                  height={44}
+                  borderRadius={10}
+                  backgroundColor="#F3E8FF"
+                  style={{ marginTop: 12 }}
+                >
+                  <Text fontSize={15} fontWeight="700" color={PRIMARY}>{`Thời gian ngủ: ${durationText}`}</Text>
+                </YStack>
+
+                <Separator backgroundColor="#EEF1F6" style={{ marginVertical: 12 }} />
+
+                {/* Rating */}
+                <XStack alignItems="center" gap={8} style={{ marginTop: 12 }}>
+                  <Ionicons name="star-outline" size={20} color={PRIMARY} />
+                  <Text fontSize={13} color="#6B6B6B">Chất lượng giấc ngủ</Text>
+                </XStack>
+                <XStack alignItems="center" style={{ marginTop: 6 }}>
+                  {Array.from({ length: 5 }).map((_, i) => {
+                    const idx = i + 1;
+                    const active = quality >= idx;
+                    return (
+                      <Button
+                        key={idx}
+                        backgroundColor="transparent"
+                        height={36}
+                        width={36}
+                        onPress={() => setQuality(idx)}
+                      >
+                        <AntDesign name="star" size={20} color={active ? '#FFC107' : '#E0E0E0'} />
+                      </Button>
+                    );
+                  })}
+                </XStack>
+
+                {/* Mood */}
+                <XStack alignItems="center" gap={8} style={{ marginTop: 12 }}>
+                  <Ionicons name="happy-outline" size={20} color={PRIMARY} />
+                  <Text fontSize={13} color="#6B6B6B">Tình trạng khi thức dậy</Text>
+                </XStack>
+                <XStack alignItems="center" flexWrap="wrap" style={{ marginTop: 6 }}>
+                  {(['😴', '😐', '😊', '😫', '😡', '😭', '🤩', '😌', '🤯'] as Mood[]).map((m) => (
+                    <Button
+                      key={m}
+                      backgroundColor={mood === m ? '#FFF3CC' : '#FFFFFF'}
+                      borderWidth={1}
+                      borderColor="#E8ECF3"
+                      height={40}
+                      borderRadius={999}
+                      paddingHorizontal={14}
+                      onPress={() => setMood(m)}
                       style={{ marginRight: 8, marginBottom: 8 }}
                     >
-                      <Text fontSize={13} color={active ? PRIMARY : '#111111'} fontWeight="600">
-                        {f}
-                      </Text>
+                      <Text fontSize={18}>{m}</Text>
                     </Button>
-                  );
-                })}
-              </XStack>
+                  ))}
+                </XStack>
 
-              {/* Save */}
-              <Button
-                height={52}
+                {/* Factors */}
+                <XStack alignItems="center" gap={8} style={{ marginTop: 12 }}>
+                  <Ionicons name="list-outline" size={20} color={PRIMARY} />
+                  <Text fontSize={13} color="#6B6B6B">Yếu tố ảnh hưởng</Text>
+                </XStack>
+                <XStack flexWrap="wrap" style={{ marginTop: 6 }}>
+                  {FACTORS.map((f) => {
+                    const active = !!factors[f];
+                    return (
+                      <Button
+                        key={f}
+                        backgroundColor={active ? '#EEF0FF' : '#FFFFFF'}
+                        borderWidth={1}
+                        borderColor={active ? PRIMARY : '#E8ECF3'}
+                        height={36}
+                        borderRadius={999}
+                        paddingHorizontal={12}
+                        onPress={() => toggleFactor(f)}
+                        style={{ marginRight: 8, marginBottom: 8 }}
+                      >
+                        <Text fontSize={13} color={active ? PRIMARY : '#111111'} fontWeight="600">
+                          {f}
+                        </Text>
+                      </Button>
+                    );
+                  })}
+                </XStack>
+
+                {/* Save */}
+                <Button
+                  height={52}
+                  borderRadius={12}
+                  backgroundColor={PRIMARY}
+                  pressStyle={{ backgroundColor: PRIMARY_PRESSED }}
+                  onPress={onSaveJournal}
+                  style={{ marginTop: 12 }}
+                >
+                  <Text fontSize={16} fontWeight="700" color="#FFFFFF">Lưu nhật ký ngủ</Text>
+                </Button>
+              </Card>
+
+              {/* Tip banner */}
+              <Card
+                backgroundColor="#F3E8FF"
+                borderWidth={1}
+                borderColor="#E3D7FE"
                 borderRadius={12}
-                backgroundColor={PRIMARY}
-                pressStyle={{ backgroundColor: PRIMARY_PRESSED }}
-                onPress={onSaveJournal}
+                paddingHorizontal={16}
+                paddingVertical={14}
+              >
+                <XStack alignItems="center">
+                  <Ionicons name="bulb-outline" size={20} color={PRIMARY_PRESSED} />
+                  <YStack style={{ marginLeft: 10, flex: 1 }}>
+                    <Text fontSize={14} fontWeight="700" color="#1F1F1F">Mẹo ngủ ngon</Text>
+                    <Text fontSize={13} color="#6B6B6B" marginTop={4}>
+                      {SLEEP_TIPS[tipIndex]}
+                    </Text>
+                    <Button
+                      size="$2"
+                      marginTop={8}
+                      backgroundColor={PRIMARY_PRESSED}
+                      borderRadius={999}
+                      alignSelf="flex-start"
+                      onPress={() => setTipIndex((prev) => (prev + 1) % SLEEP_TIPS.length)}
+                    >
+                      <Text fontSize={11} color="white">Mẹo khác</Text>
+                    </Button>
+                  </YStack>
+                </XStack>
+              </Card>
+              {/* BẢNG THỐNG KÊ 7 NGÀY */}
+              <Card
+                padding={16}
+                borderRadius={16}
+                borderWidth={1}
+                borderColor="#E8ECF3"
+                backgroundColor="#FFFFFF"
                 style={{ marginTop: 12 }}
               >
-                <Text fontSize={16} fontWeight="700" color="#FFFFFF">Lưu nhật ký ngủ</Text>
-              </Button>
-            </Card>
-
-            {/* Tip banner */}
-            <Card
-              backgroundColor="#F3E8FF"
-              borderWidth={1}
-              borderColor="#E3D7FE"
-              borderRadius={12}
-              paddingHorizontal={16}
-              paddingVertical={14}
-            >
-              <XStack alignItems="center">
-                <Ionicons name="bulb-outline" size={20} color={PRIMARY_PRESSED} />
-                <YStack style={{ marginLeft: 10 }}>
-                  <Text fontSize={14} fontWeight="700" color="#1F1F1F">Mẹo ngủ ngon</Text>
-                  <Text fontSize={13} color="#6B6B6B">
-                    Tránh màn hình điện tử 1 giờ trước khi ngủ. Ánh sáng xanh có thể ảnh hưởng đến melatonin.
+                <XStack alignItems="center" gap={8} marginBottom={10}>
+                  <Ionicons name="analytics-outline" size={22} color={PRIMARY} />
+                  <Text fontSize={17} fontWeight="700" color="#1F1F1F">
+                    Thống kê giấc ngủ · 7 ngày gần nhất
                   </Text>
-                </YStack>
-              </XStack>
-            </Card>
-            {/* BẢNG THỐNG KÊ 7 NGÀY */}
-            <Card
-              padding={16}
-              borderRadius={16}
-              borderWidth={1}
-              borderColor="#E8ECF3"
-              backgroundColor="#FFFFFF"
-              style={{ marginTop: 12 }}
-            >
-              <XStack alignItems="center" gap={8} marginBottom={10}>
-                <Ionicons name="analytics-outline" size={22} color={PRIMARY} />
-                <Text fontSize={17} fontWeight="700" color="#1F1F1F">
-                  Thống kê giấc ngủ · 7 ngày gần nhất
-                </Text>
-              </XStack>
+                </XStack>
 
-              {/* Horizontal ScrollView for table */}
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <YStack>
-                  {/* Header */}
-                  <XStack
-                    alignItems="center"
-                    justifyContent="space-between"
-                    backgroundColor="#F7F9FC"
-                    paddingVertical={8}
-                    paddingHorizontal={10}
-                    borderRadius={10}
-                    borderWidth={1}
-                    borderColor="#E5E9F0"
-                  >
-                    <Text
-                      fontSize={HEADER_FONT}
-                      fontWeight="700"
-                      color="#6B6B6B"
-                      style={{ width: COL_DAY }}
-                    >
-                      Ngày
-                    </Text>
-
-                    <Text
-                      fontSize={HEADER_FONT}
-                      fontWeight="700"
-                      color="#6B6B6B"
-                      style={{ width: COL_TIME, textAlign: 'center' }}
-                    >
-                      Đi ngủ
-                    </Text>
-
-                    <Text
-                      fontSize={HEADER_FONT}
-                      fontWeight="700"
-                      color="#6B6B6B"
-                      style={{ width: COL_TIME, textAlign: 'center' }}
-                    >
-                      Thức dậy
-                    </Text>
-
-                    <Text
-                      fontSize={HEADER_FONT}
-                      fontWeight="700"
-                      color="#6B6B6B"
-                      style={{ width: COL_DURATION, textAlign: 'center' }}
-                    >
-                      Thời gian
-                    </Text>
-
-                    <Text
-                      fontSize={HEADER_FONT}
-                      fontWeight="700"
-                      color="#6B6B6B"
-                      style={{ width: COL_STAR, textAlign: 'center' }}
-                    >
-                      Sao
-                    </Text>
-
-                    <Text
-                      fontSize={HEADER_FONT}
-                      fontWeight="700"
-                      color="#6B6B6B"
-                      style={{ width: COL_MOOD, textAlign: 'right' }}
-                    >
-                      Mood
-                    </Text>
-
-                    <XStack style={{ width: 60 }} />
-                  </XStack>
-
-                  {/* Rows */}
-                  {weeklyEntries.length === 0 ? (
-                <Text
-                  fontSize={13}
-                  color="#6B6B6B"
-                  textAlign="center"
-                  marginTop={12}
-                >
-                  Chưa có dữ liệu trong 7 ngày gần nhất.  
-                  Hãy bấm <Text fontWeight="700" color={PRIMARY}>“Lưu nhật ký ngủ”</Text>.
-                </Text>
-              ) : (
-                weeklyEntries.map((e, index) => (
-                  <XStack
-                    key={e.dateISO}
-                    alignItems="center"
-                    justifyContent="space-between"
-                    paddingVertical={12}
-                    paddingHorizontal={10}
-                    backgroundColor={index % 2 === 0 ? '#FFFFFF' : '#F9FBFF'}
-                    borderBottomWidth={1}
-                    borderColor="#EEF1F5"
-                    borderRadius={index === weeklyEntries.length - 1 ? 10 : 0}
-                  >
-                      <Text fontSize={13} fontWeight="600" color="#1F1F1F" style={{ width: COL_DAY }}>
-                        {formatVN(e.dateISO)}
-                      </Text>
-                      <Text fontSize={13} color="#333" style={{ width: COL_TIME, textAlign: 'center' }}>{e.bedTime}</Text>
-                      <Text fontSize={13} color="#333" style={{ width: COL_TIME, textAlign: 'center' }}>{e.wakeTime}</Text>
-                      <Text fontSize={13} color="#333" style={{ width: COL_DURATION, textAlign: 'center' }}>{fmtDuration(e.durationMin)}</Text>
-
-                      <XStack style={{ width: COL_STAR, justifyContent: 'center' }} alignItems="center" gap={6}>
-                        {Array.from({ length: 5 }).map((_, i) => (
-                          <AntDesign
-                            key={i}
-                            name="star"
-                            size={12}
-                            color={i < e.quality ? '#FFC107' : '#E0E0E0'}
-                          />
-                        ))}
-                      </XStack>
-
-                      <Text fontSize={14} style={{ width: COL_MOOD, textAlign: 'right' }}>
-                        {e.mood}
-                      </Text>
-                    <Button
-                      backgroundColor="#FFEAEA"
-                      disabled={deletingId === idByDate[e.dateISO]}
-                      borderRadius={999}
+                {/* Horizontal ScrollView for table */}
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <YStack>
+                    {/* Header */}
+                    <XStack
+                      alignItems="center"
+                      justifyContent="space-between"
+                      backgroundColor="#F7F9FC"
+                      paddingVertical={8}
                       paddingHorizontal={10}
-                      height={26}
-                      onPress={async () => {
-                        try {
-                          console.log('[UI] Click Xoá ngày:', e.dateISO);
-                          // tìm _id tin cậy theo YMD
-                          const id = await getIdForDate(e.dateISO);
-                          console.log('[UI] Resolved _id:', id);
-                          if (!id) {
-                            Alert.alert(
-                              'Không tìm thấy log để xoá',
-                              'Hãy làm mới dữ liệu (ấn “Lưu nhật ký ngủ” để đồng bộ hoặc kéo xuống để tải lại).'
-                            );
-                            return;
-                          }
-                          // gọi flow xoá (đã có optimistic update)
-                          await handleDelete(id, e.dateISO);
-                        } catch (err: any) {
-                          console.log('[UI] onPress delete error:', err);
-                          Alert.alert('Lỗi', err?.message || 'Không thể xử lý yêu cầu xoá.');
-                        }
-                      }}
+                      borderRadius={10}
+                      borderWidth={1}
+                      borderColor="#E5E9F0"
                     >
-                      {deletingId === idByDate[e.dateISO]
-                        ? <Text color="#9CA3AF" fontSize={12}>Đang xoá…</Text>
-                        : <Text color="#E53935" fontSize={12}>Xoá</Text>
-                      }
-                    </Button>
-                  </XStack>
-                ))
-                  )}
-                </YStack>
-              </ScrollView>
-            </Card>
-          </YStack>
-        )}
+                      <Text
+                        fontSize={HEADER_FONT}
+                        fontWeight="700"
+                        color="#6B6B6B"
+                        style={{ width: COL_DAY }}
+                      >
+                        Ngày
+                      </Text>
 
-        {/* ============= TAB 2: SUPPORT ============= */}
-        {tab === 'support' && <SleepContent />}
+                      <Text
+                        fontSize={HEADER_FONT}
+                        fontWeight="700"
+                        color="#6B6B6B"
+                        style={{ width: COL_TIME, textAlign: 'center' }}
+                      >
+                        Đi ngủ
+                      </Text>
 
-        {/* ============= TAB 3: DREAMS ============= */}
-        {tab === 'dreams' && <DreamsScreen />}
-      </ScrollView>
-    </YStack>
+                      <Text
+                        fontSize={HEADER_FONT}
+                        fontWeight="700"
+                        color="#6B6B6B"
+                        style={{ width: COL_TIME, textAlign: 'center' }}
+                      >
+                        Thức dậy
+                      </Text>
+
+                      <Text
+                        fontSize={HEADER_FONT}
+                        fontWeight="700"
+                        color="#6B6B6B"
+                        style={{ width: COL_DURATION, textAlign: 'center' }}
+                      >
+                        Thời gian
+                      </Text>
+
+                      <Text
+                        fontSize={HEADER_FONT}
+                        fontWeight="700"
+                        color="#6B6B6B"
+                        style={{ width: COL_STAR, textAlign: 'center' }}
+                      >
+                        Sao
+                      </Text>
+
+                      <Text
+                        fontSize={HEADER_FONT}
+                        fontWeight="700"
+                        color="#6B6B6B"
+                        style={{ width: COL_MOOD, textAlign: 'right' }}
+                      >
+                        Mood
+                      </Text>
+
+                      <XStack style={{ width: 60 }} />
+                    </XStack>
+
+                    {/* Rows */}
+                    {weeklyEntries.length === 0 ? (
+                      <Text
+                        fontSize={13}
+                        color="#6B6B6B"
+                        textAlign="center"
+                        marginTop={12}
+                      >
+                        Chưa có dữ liệu trong 7 ngày gần nhất.
+                        Hãy bấm <Text fontWeight="700" color={PRIMARY}>“Lưu nhật ký ngủ”</Text>.
+                      </Text>
+                    ) : (
+                      weeklyEntries.map((e, index) => (
+                        <XStack
+                          key={e.dateISO}
+                          alignItems="center"
+                          justifyContent="space-between"
+                          paddingVertical={12}
+                          paddingHorizontal={10}
+                          backgroundColor={index % 2 === 0 ? '#FFFFFF' : '#F9FBFF'}
+                          borderBottomWidth={1}
+                          borderColor="#EEF1F5"
+                          borderRadius={index === weeklyEntries.length - 1 ? 10 : 0}
+                        >
+                          <Text fontSize={13} fontWeight="600" color="#1F1F1F" style={{ width: COL_DAY }}>
+                            {formatVN(e.dateISO)}
+                          </Text>
+                          <Text fontSize={13} color="#333" style={{ width: COL_TIME, textAlign: 'center' }}>{e.bedTime}</Text>
+                          <Text fontSize={13} color="#333" style={{ width: COL_TIME, textAlign: 'center' }}>{e.wakeTime}</Text>
+                          <Text fontSize={13} color="#333" style={{ width: COL_DURATION, textAlign: 'center' }}>{fmtDuration(e.durationMin)}</Text>
+
+                          <XStack style={{ width: COL_STAR, justifyContent: 'center' }} alignItems="center" gap={6}>
+                            {Array.from({ length: 5 }).map((_, i) => (
+                              <AntDesign
+                                key={i}
+                                name="star"
+                                size={12}
+                                color={i < e.quality ? '#FFC107' : '#E0E0E0'}
+                              />
+                            ))}
+                          </XStack>
+
+                          <Text fontSize={14} style={{ width: COL_MOOD, textAlign: 'right' }}>
+                            {e.mood}
+                          </Text>
+                          <Button
+                            backgroundColor="#FFEAEA"
+                            disabled={deletingId === idByDate[e.dateISO]}
+                            borderRadius={999}
+                            paddingHorizontal={10}
+                            height={26}
+                            onPress={async () => {
+                              try {
+                                console.log('[UI] Click Xoá ngày:', e.dateISO);
+                                // tìm _id tin cậy theo YMD
+                                const id = await getIdForDate(e.dateISO);
+                                console.log('[UI] Resolved _id:', id);
+                                if (!id) {
+                                  Alert.alert(
+                                    'Không tìm thấy log để xoá',
+                                    'Hãy làm mới dữ liệu (ấn “Lưu nhật ký ngủ” để đồng bộ hoặc kéo xuống để tải lại).'
+                                  );
+                                  return;
+                                }
+                                // gọi flow xoá (đã có optimistic update)
+                                await handleDelete(id, e.dateISO);
+                              } catch (err: any) {
+                                console.log('[UI] onPress delete error:', err);
+                                Alert.alert('Lỗi', err?.message || 'Không thể xử lý yêu cầu xoá.');
+                              }
+                            }}
+                          >
+                            {deletingId === idByDate[e.dateISO]
+                              ? <Text color="#9CA3AF" fontSize={12}>Đang xoá…</Text>
+                              : <Text color="#E53935" fontSize={12}>Xoá</Text>
+                            }
+                          </Button>
+                        </XStack>
+                      ))
+                    )}
+                  </YStack>
+                </ScrollView>
+              </Card>
+            </YStack>
+          )}
+
+          {/* ============= TAB 2: SUPPORT ============= */}
+          {tab === 'support' && <SleepContent />}
+
+          {/* ============= TAB 3: DREAMS ============= */}
+          {tab === 'dreams' && <DreamsScreen />}
+        </ScrollView>
+      </YStack>
+    </SafeAreaView>
   );
 }
 
