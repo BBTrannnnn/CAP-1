@@ -10,11 +10,13 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { useFonts } from 'expo-font';
 
 import {
   getProfile,
@@ -23,6 +25,10 @@ import {
   updateAdditionalInfo,
   logout as apiLogout,
 } from '../../../server/users';
+import { notifyError, notifySuccess } from '../../../utils/notify';
+
+// Default Logo
+const LOGO_URI = require('../../../assets/images/FlowState.png');
 
 const COLORS = {
   background: '#F6F8FB',
@@ -34,7 +40,7 @@ const COLORS = {
   danger: '#DC2626',
 };
 
-type Role = 'admin' | 'user';
+type Role = 'admin' | 'moderator' | 'user';
 
 type UserProfile = {
   id: string;
@@ -45,6 +51,7 @@ type UserProfile = {
   dateOfBirth?: string | null;
   gender?: string | null;
   address?: string | null;
+  trustScore?: number;
 };
 
 function parseDateString(input?: string | null): Date | null {
@@ -72,6 +79,10 @@ function formatDateDMY(d: Date | null): string {
 export default function ProfileScreen() {
   const router = useRouter();
 
+  const [fontsLoaded] = useFonts({
+    'SpaceMono-Regular': require('../../../assets/fonts/SpaceMono-Regular.ttf'),
+  });
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -91,6 +102,7 @@ export default function ProfileScreen() {
 
   const [showInfoSection, setShowInfoSection] = useState(true);
   const isAdmin = summary?.role === 'admin';
+  const isModerator = summary?.role === 'moderator';
 
   const loadProfile = async () => {
     try {
@@ -135,7 +147,7 @@ export default function ProfileScreen() {
       }
     } catch (err: any) {
       console.log('[loadProfile] error', err?.message || err);
-      Alert.alert('Lỗi', err?.message || 'Không thể tải hồ sơ người dùng');
+      notifyError('Lỗi', err?.message || 'Không thể tải hồ sơ người dùng');
     } finally {
       setLoading(false);
     }
@@ -149,17 +161,17 @@ export default function ProfileScreen() {
     if (!user) return;
 
     if (!name.trim() || !email.trim()) {
-      Alert.alert('Lỗi', 'Tên và email không được để trống');
+      notifyError('Lỗi', 'Tên và email không được để trống');
       return;
     }
 
     if (!dob) {
-      Alert.alert('Lỗi', 'Vui lòng chọn ngày sinh');
+      notifyError('Lỗi', 'Vui lòng chọn ngày sinh');
       return;
     }
 
     if (!gender) {
-      Alert.alert('Lỗi', 'Vui lòng chọn giới tính');
+      notifyError('Lỗi', 'Vui lòng chọn giới tính');
       return;
     }
 
@@ -181,10 +193,10 @@ export default function ProfileScreen() {
       // 3. load lại profile từ BE
       await loadProfile();
 
-      Alert.alert('Thành công', 'Cập nhật hồ sơ thành công');
+      notifySuccess('Thành công', 'Cập nhật hồ sơ thành công');
     } catch (err: any) {
       console.log('[onSave] error', err?.message || err);
-      Alert.alert('Lỗi', err?.message || 'Cập nhật hồ sơ thất bại');
+      notifyError('Lỗi', err?.message || 'Cập nhật hồ sơ thất bại');
     } finally {
       setSaving(false);
     }
@@ -237,12 +249,57 @@ export default function ProfileScreen() {
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.background }}>
+
+        {/* HEADER: Logo + FlowState (Left) + Streak (Right) */}
+        <View style={{
+          paddingHorizontal: 16,
+          paddingVertical: 12,
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          backgroundColor: COLORS.background
+        }}>
+          {/* Left: Logo + Text */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Image
+              source={require('../../../assets/images/FlowState.png')}
+              style={{ width: 32, height: 32 }}
+              resizeMode="contain"
+            />
+            <Text style={{
+              fontFamily: 'serif',
+              fontStyle: 'italic',
+              fontWeight: '500',
+              fontSize: 22,
+              color: '#000000'
+            }}>
+              FlowState
+            </Text>
+          </View>
+
+          {/* Right: Streak */}
+          <Text style={{ fontSize: 13, color: '#000000' }}>
+            Streak: <Text style={{ fontWeight: '700', color: '#000000' }}>7 ngày</Text>
+          </Text>
+        </View>
+
         <KeyboardAvoidingView
           style={{ flex: 1 }}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
         >
           <ScrollView contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+            {/* Page Title */}
+            <Text style={{
+              fontSize: 24,
+              fontWeight: '700',
+              color: '#000000',
+              marginHorizontal: 16,
+              marginTop: 10,
+              marginBottom: 10
+            }}>
+              Hồ sơ cá nhân
+            </Text>
             {/* CARD THÔNG TIN CƠ BẢN */}
             <View
               style={{
@@ -272,23 +329,15 @@ export default function ProfileScreen() {
                     Xin chào, {summary.name}
                   </Text>
                   <Text style={{ color: COLORS.subtext, marginTop: 2 }}>{summary.email}</Text>
-                  <View
-                    style={{
-                      alignSelf: 'flex-start',
-                      marginTop: 8,
-                      backgroundColor: isAdmin ? '#0F172A' : COLORS.primary,
-                      borderRadius: 999,
-                      paddingHorizontal: 10,
-                      paddingVertical: 6,
-                    }}
-                  >
-                    <Text style={{ color: '#FFF', fontWeight: '700' }}>
-                      {isAdmin ? 'Quản trị viên' : 'Người dùng'}
+                  <View style={{ alignSelf: 'flex-start', marginTop: 8, backgroundColor: isAdmin ? '#DC2626' : isModerator ? '#3B82F6' : '#64748B', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 }}>
+                    <Text style={{ color: 'white', fontSize: 11, fontWeight: '700' }}>
+                      {isAdmin ? 'Quản trị viên' : isModerator ? 'Mod' : 'Người dùng'}
                     </Text>
                   </View>
                 </View>
               </View>
             </View>
+
 
             {/* MENU DÀNH CHO ADMIN */}
             {isAdmin && (
@@ -560,7 +609,7 @@ export default function ProfileScreen() {
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
-      </SafeAreaView>
+      </SafeAreaView >
     </>
   );
 }

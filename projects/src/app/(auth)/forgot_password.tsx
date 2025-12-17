@@ -4,6 +4,7 @@ import { Stack, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { Button, Card, Input, Label, Separator, Text, Theme, XStack, YStack } from 'tamagui';
+import { notifyError, notifyInfo, notifySuccess } from '../../utils/notify';
 
 import { forgotPassword, verifyOTP, resetPassword } from './../../server/users';
 
@@ -29,17 +30,22 @@ const getApiMsg = (res: any, fallback: string) => res?.message || res?.data?.mes
 const getErrMsg = (err: any, fallback: string) =>
   err?.response?.data?.message || err?.data?.message || err?.message || fallback;
 
-const showAlert = (title: string, msg: string, onOk?: () => void) => {
-  if (Platform.OS === 'web') {
-    alert(`${title}: ${msg}`);
-    onOk?.();
-  } else {
-    Alert.alert(title, msg, onOk ? [{ text: 'OK', onPress: onOk }] : [{ text: 'OK' }]);
+// Helper generic để tương thích code cũ, nhưng chuyển sang Notify
+const showAlert = (title: string, msg: string, onOk?: () => void, type: 'success' | 'error' | 'info' = 'info') => {
+  // Mapping type sang notify
+  if (type === 'success') notifySuccess(title, msg);
+  else if (type === 'error') notifyError(title, msg);
+  else notifyInfo(title, msg);
+
+  // Vì toast ko block, ta chạy onOk ngay (hoặc delay xíu nếu muốn user kịp đọc - tùy UX)
+  if (onOk) {
+    onOk();
   }
 };
-const showInfo = (msg: string, title = 'Thông báo') => showAlert(title, msg);
-const showSuccess = (msg: string, title = 'Thành công') => showAlert(title, msg);
-const showErr = (msg: string, title = 'Lỗi') => showAlert(title, msg);
+
+const showInfo = (msg: string, title = 'Thông báo') => showAlert(title, msg, undefined, 'info');
+const showSuccess = (msg: string, title = 'Thành công') => showAlert(title, msg, undefined, 'success');
+const showErr = (msg: string, title = 'Lỗi') => showAlert(title, msg, undefined, 'error');
 
 /* ================== COMPONENT ================== */
 export default function ForgotPassword() {
@@ -151,7 +157,7 @@ export default function ForgotPassword() {
         setCodeInput('');
         setOtpVerified(false);
         router.replace('/(auth)/login');
-      });
+      }, 'success');
     } catch (err: any) {
       if (__DEV__) console.error('[ForgotPw] reset error:', err?.status, err?.data || err);
       showErr(String(getErrMsg(err, 'Đặt lại mật khẩu thất bại. Vui lòng thử lại.')));
@@ -184,7 +190,7 @@ export default function ForgotPassword() {
                   borderWidth: 1,
                   borderColor: 'rgba(0,0,0,0.08)',
                   backgroundColor: '#fff',
-                  padding:20
+                  padding: 20
                 }}
               >
                 <YStack style={{ gap: 12 }}>
@@ -290,7 +296,7 @@ export default function ForgotPassword() {
                             borderWidth: 0,
                             backgroundColor: 'transparent',
                             marginLeft: 8,
-                            fontSize:16
+                            fontSize: 16
                           }}
                           placeholder="Nhập email của bạn"
                           value={email}
@@ -355,7 +361,7 @@ export default function ForgotPassword() {
                             borderWidth: 0,
                             backgroundColor: 'transparent',
                             marginLeft: 8,
-                            fontSize:18
+                            fontSize: 18
                           }}
                           placeholder="123456"
                           value={codeInput}
@@ -440,7 +446,7 @@ export default function ForgotPassword() {
                             borderWidth: 0,
                             backgroundColor: 'transparent',
                             marginLeft: 8,
-                            fontSize:16
+                            fontSize: 16
                           }}
                           placeholder="Nhập mật khẩu mới"
                           value={newPassword}
@@ -481,7 +487,7 @@ export default function ForgotPassword() {
                             borderWidth: 0,
                             backgroundColor: 'transparent',
                             marginLeft: 8,
-                            fontSize:16
+                            fontSize: 16
                           }}
                           placeholder="Nhập lại mật khẩu"
                           value={confirmPassword}

@@ -1,6 +1,7 @@
 // src/lib/api.ts
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { BASE_URL as USERS_BASE_URL } from '../server/users';
 
 export const TOKEN_KEY = 'auth_token';
 
@@ -17,11 +18,19 @@ export async function clearToken() {
 
 /**
  * ⚠️ BASE URL BACKEND
- * - Bạn đang chạy BE trên máy với IP: 192.168.1.155, port 5000
- * - Chạy trên máy thật / Expo Go đều dùng URL này
- * - Sau này đổi WiFi / IP thì chỉ cần sửa chỗ này.
+ * - Import từ users.js để có 1 nơi duy nhất cần sửa khi IP thay đổi
+ * - Khi đổi WiFi / IP, chỉ cần sửa ở server/users.js
  */
+<<<<<<< HEAD
 const BASE = 'http://192.168.1.7:5000';
+=======
+let BASE = USERS_BASE_URL;
+
+export function setApiBaseUrl(url: string) {
+  BASE = url;
+  console.log('[API BASE] Updated to:', BASE);
+}
+>>>>>>> 2c3e2d85de15e175f5fd30ebaeeb1bdb170d256d
 
 if (__DEV__) {
   console.log('[API BASE]', BASE);

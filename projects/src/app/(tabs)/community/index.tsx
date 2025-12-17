@@ -11,14 +11,19 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { YStack, XStack, Text, Button, Card, Input } from 'tamagui';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import PostCard, { Post, Comment } from './PostCard';
 import { apiRequest, getBlockedUsers, unblockUser, getTrendingHashtags, getPostsByHashtag, getFriendRequests, acceptFriendRequest, rejectFriendRequest } from '../../../server/users';
+import { ModerationApi, SocialApi } from '../../../api/services';
+import { notifyError, notifySuccess, notifyInfo } from '../../../utils/notify';
+
 import { eventBus } from '../../../lib/eventBus';
+import AppealModal from '../../../components/AppealModal';
 import {
   getFeedPosts,
   createPostApi,
@@ -31,6 +36,7 @@ import {
   getFriendStatus,
   sharePost as sharePostApi,
   unfriend,
+  getToken,
 
   getFullImageUrl,
 } from '../../../server/users';
@@ -38,6 +44,18 @@ import {
 const PRIMARY = '#FF2FB2';
 const PRIMARY_SOFT = '#FFE6F4';
 const BG = '#F4F7FB';
+import { BASE_URL as USER_BASE_URL } from '../../../server/users';
+const BASE = USER_BASE_URL;
+
+type Notification = {
+  _id: string;
+  type: string;
+  title: string;
+  message: string;
+  isRead: boolean;
+  createdAt: string;
+  data?: any;
+};
 
 type TabKey = 'feed' | 'create';
 
@@ -45,7 +63,7 @@ const SUGGESTED_TAGS = ['FlowState', 'WellnessJourney', 'Mindfulness'];
 
 function mapApiPostToPost(apiPost: any): Post {
   const user = apiPost.userId || apiPost.user || {};
-  let rawAvatar = user.avatar || user.avatarUrl || '';
+  let rawAvatar = user.avatarUrl || user.avatar || '';
   if (rawAvatar === 'null' || rawAvatar === 'undefined') rawAvatar = '';
   const avatarUrl = getFullImageUrl(rawAvatar);
 
@@ -61,7 +79,6 @@ function mapApiPostToPost(apiPost: any): Post {
       imageUrl: shared.images?.[0]?.url || shared.imageUrl || shared.image || undefined,
       user: {
         name: sharedUser.name || 'Người dùng FlowState',
-        name: sharedUser.name || 'Người dùng FlowState',
         avatarUrl: getFullImageUrl(sharedUser.avatar || sharedUser.avatarUrl),
       },
     };
@@ -75,6 +92,7 @@ function mapApiPostToPost(apiPost: any): Post {
       avatarUrl,
       badge: user.badge || undefined,
       gender: user.gender,
+      trustScore: user.trustScore,
     },
     // ở FE trước dùng "4 giờ trước" – giờ hiển thị ngày/giờ tạo cho đơn giản
     createdAgo: apiPost.createdAt
@@ -93,8 +111,14 @@ function mapApiPostToPost(apiPost: any): Post {
     hasLiked: !!apiPost.hasLiked,
     imageUrl:
       apiPost.images && apiPost.images.length > 0
-        ? getFullImageUrl(apiPost.images[0].url || apiPost.images[0])
+        ? (() => {
+          const rawUrl = apiPost.images[0].url || apiPost.images[0];
+          const fullUrl = getFullImageUrl(rawUrl);
+          console.log('[DEBUG] Image Render:', { id: apiPost._id, raw: rawUrl, full: fullUrl });
+          return fullUrl;
+        })()
         : undefined,
+    moderationStatus: apiPost.moderationStatus || 'approved',
     sharedPost,
   };
 }
@@ -112,6 +136,7 @@ function mapApiCommentToUi(postId: string, apiComment: any): Comment {
       ? new Date(apiComment.createdAt).toLocaleString('vi-VN')
       : 'Vừa xong',
     userId: user._id || user.id || apiComment.userId, // Thêm userId để check quyền edit
+    moderationStatus: apiComment.moderationStatus || 'approved',
   };
 }
 
@@ -166,6 +191,17 @@ export default function CommunityScreen() {
   const [loadingFeed, setLoadingFeed] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Moderation state (for moderators/admins)
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [pendingCount, setPendingCount] = useState({ posts: 0, comments: 0, total: 0 });
+  const [appealModalVisible, setAppealModalVisible] = useState(false);
+  const [appealLoading, setAppealLoading] = useState(false);
+
+  // Notification state
+  const [notifs, setNotifs] = useState<Notification[]>([]);
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
+  const [notifModalVisible, setNotifModalVisible] = useState(false);
+
   // ---------- GỌI API FEED ----------
   const loadFeed = useCallback(async () => {
     setLoadingFeed(true);
@@ -183,7 +219,7 @@ export default function CommunityScreen() {
       setPosts(mapped);
     } catch (error) {
       console.error('[Community] loadFeed error', error);
-      alert('Không tải được bài viết, vui lòng thử lại.');
+      notifyError('Lỗi', 'Không tải được bài viết, vui lòng thử lại.');
     } finally {
       setLoadingFeed(false);
       setRefreshing(false);
@@ -220,7 +256,7 @@ export default function CommunityScreen() {
       setPosts(mapped);
     } catch (error) {
       console.error('[Community] loadPostsByHashtag error', error);
-      Alert.alert('Lỗi', 'Không tải được bài viết theo hashtag');
+      notifyError('Lỗi', 'Không tải được bài viết theo hashtag');
     } finally {
       setLoadingFeed(false);
     }
@@ -288,7 +324,27 @@ export default function CommunityScreen() {
         content: commentText.trim(),
       });
 
+      // Kiểm tra response từ BE
+      const success = res?.success !== false;
+      const message = res?.message || '';
       const apiComment = (res as any)?.comment || (res as any)?.data || res;
+      const moderationStatus = apiComment?.moderationStatus;
+
+      // Xử lý trường hợp bị từ chối (success = false)
+      if (!success) {
+        notifyError(
+          'Nội dung không phù hợp',
+          message || 'Bình luận chứa từ ngữ vi phạm tiêu chuẩn cộng đồng.',
+        );
+        return;
+      }
+
+      // Xử lý trường hợp pending (không hiện alert làm phiền, chỉ hiện UI pending trong list)
+      // if (moderationStatus === 'pending') {
+      //   Alert.alert('Kiểm duyệt', 'Bình luận đang được kiểm duyệt...');
+      // }
+
+      // Thêm comment vào UI (cho cả approved và pending)
       const newComment = mapApiCommentToUi(activeCommentPostId, apiComment);
       setCommentsByPost(prev => ({
         ...prev,
@@ -298,8 +354,17 @@ export default function CommunityScreen() {
         ],
       }));
       setCommentText('');
-    } catch (err) {
+      setCommentText('');
+    } catch (err: any) {
       console.error('[Community] submit comment error', err);
+      // Hiển thị message chi tiết từ backend nếu có
+      const msg = err?.message || 'Không thể gửi bình luận. Vui lòng thử lại.';
+
+      if (msg.includes('vi phạm tiêu chuẩn cộng đồng') || msg.toLowerCase().includes('profanity') || msg.toLowerCase().includes('violation')) {
+        notifyError('Vi phạm tiêu chuẩn', 'Nội dung bình luận của bạn có chứa từ ngữ vi phạm tiêu chuẩn cộng đồng.');
+      } else {
+        notifyError('Lỗi', msg);
+      }
     }
   };
 
@@ -308,7 +373,9 @@ export default function CommunityScreen() {
       try {
         const me = await apiRequest('/api/users/me', { auth: true });
         const user = me.user || me.data?.user || me;
+        console.log('[Community] loadMe - user:', { id: user?.id || user?._id, role: user?.role });
         setCurrentUserId(user?.id || user?._id || null);
+        setUserRole(user?.role || null);
       } catch (error) {
         console.log('[Community] loadMe error', error);
       }
@@ -316,6 +383,109 @@ export default function CommunityScreen() {
 
     loadMe();
   }, []);
+
+  // Load pending count for moderators/admins
+  const loadPendingCount = useCallback(async () => {
+    console.log('[Community] loadPendingCount - userRole:', userRole);
+    if (!userRole || (userRole !== 'moderator' && userRole !== 'admin')) {
+      console.log('[Community] Skipping loadPendingCount - not mod/admin');
+      return;
+    }
+
+    try {
+      console.log('[Community] Fetching moderation stats...');
+      // Remove '1d' argument to use default (today) or whatever backend default is.
+      // Note: pending counts in backend are global, not filtered by period.
+      const res = await ModerationApi.getStats();
+      console.log('[Community] Stats response:', JSON.stringify(res));
+
+      const stats = res as any;
+      // Backend returns { success: true, data: { pending: { posts: X... } } }
+      // Client might unwrap specific layers, so check multiple paths.
+      const currentPending = stats?.data?.pending || stats?.pending || stats?.currentPending || {};
+
+      const newCount = {
+        posts: currentPending.posts || 0,
+        comments: currentPending.comments || 0,
+        total: currentPending.total || 0,
+      };
+      console.log('[Community] Setting pendingCount:', newCount);
+      setPendingCount(newCount);
+    } catch (error) {
+      console.log('[Community] loadPendingCount error (non-critical):', error);
+    }
+  }, [userRole]);
+
+  // ... (lines 409-2059 omitted) ...
+
+  <ScrollView contentContainerStyle={{ paddingBottom: 20 }}>
+    {notifs.length === 0 ? (
+      <Text textAlign="center" color="$gray10" marginTop={20}>Không có thông báo mới</Text>
+    ) : (
+      notifs.map(notif => (
+        <Card key={notif._id} padding={12} marginBottom={8} backgroundColor={notif.isRead ? 'white' : '#F0F9FF'} onPress={() => {
+          // Navigate based on type
+          if (notif.type === 'moderation_pending') {
+            router.push('/(tabs)/moderation'); // Go to moderation dashboard
+            setNotifModalVisible(false);
+          }
+        }}>
+          <XStack gap={10} alignItems="center">
+            <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#E0E7FF', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="notifications" size={20} color="#4F46E5" />
+            </View>
+            <YStack flex={1}>
+              <Text fontWeight="600" numberOfLines={1} color="#000">{notif.title}</Text>
+              <Text fontSize={13} color="#333" numberOfLines={2}>{notif.message}</Text>
+              <Text fontSize={11} color="#666" marginTop={4}>{new Date(notif.createdAt).toLocaleString('vi-VN')}</Text>
+            </YStack>
+          </XStack>
+        </Card>
+      ))
+    )}
+  </ScrollView>
+
+  // Load pending count when user role is available
+  useEffect(() => {
+    if (userRole === 'moderator' || userRole === 'admin') {
+      loadPendingCount();
+    }
+  }, [userRole, loadPendingCount]);
+
+  // Reload pending count when screen comes into focus (for moderators/admins)
+  useFocusEffect(
+    useCallback(() => {
+      if (userRole === 'moderator' || userRole === 'admin') {
+        loadPendingCount();
+        loadNotifications(); // Load notifications too
+      }
+    }, [userRole, loadPendingCount])
+  );
+
+  const loadNotifications = async () => {
+    try {
+      const res = await apiRequest('/api/notifications?limit=10', { auth: true });
+      const data = res?.data || res;
+      setNotifs(data.notifications || []);
+      setUnreadNotifCount(data.unreadCount || 0);
+    } catch (error) {
+      console.log('Load notifs error', error);
+    }
+  };
+
+  const handleOpenNotifs = async () => {
+    setNotifModalVisible(true);
+    // Mark all as read visualy first
+    setUnreadNotifCount(0);
+    setNotifs(prev => prev.map(n => ({ ...n, isRead: true })));
+
+    // Call API to mark all read
+    try {
+      await apiRequest('/api/notifications/all/read', { method: 'PATCH', auth: true });
+    } catch (err) {
+      console.log('Mark read error', err);
+    }
+  };
 
   // Load friend requests
   useEffect(() => {
@@ -337,7 +507,7 @@ export default function CommunityScreen() {
   const handleAcceptFriend = async (friendId: string, friendName: string) => {
     try {
       await acceptFriendRequest(friendId);
-      Alert.alert('Thành công', `Đã chấp nhận lời mời từ ${friendName}`);
+      notifySuccess('Thành công', `Đã chấp nhận lời mời từ ${friendName}`);
 
       // Remove from list
       setFriendRequests(prev => prev.filter((req: any) => {
@@ -347,7 +517,7 @@ export default function CommunityScreen() {
       }));
       setFriendRequestCount(prev => Math.max(0, prev - 1));
     } catch (err: any) {
-      Alert.alert('Lỗi', err.message || 'Không thể chấp nhận lời mời');
+      notifyError('Lỗi', err.message || 'Không thể chấp nhận lời mời');
     }
   };
 
@@ -355,7 +525,7 @@ export default function CommunityScreen() {
   const handleRejectFriend = async (friendId: string, friendName: string) => {
     try {
       await rejectFriendRequest(friendId);
-      Alert.alert('Đã từ chối', `Đã từ chối lời mời từ ${friendName}`);
+      notifyInfo('Đã từ chối', `Đã từ chối lời mời từ ${friendName}`);
 
       // Remove from list
       setFriendRequests(prev => prev.filter((req: any) => {
@@ -365,7 +535,7 @@ export default function CommunityScreen() {
       }));
       setFriendRequestCount(prev => Math.max(0, prev - 1));
     } catch (err: any) {
-      Alert.alert('Lỗi', err.message || 'Không thể từ chối lời mời');
+      notifyError('Lỗi', err.message || 'Không thể từ chối lời mời');
     }
   };
 
@@ -396,7 +566,7 @@ export default function CommunityScreen() {
       );
     } catch (error) {
       console.error('[Community] toggleLike error', error);
-      alert('Không thể thích/bỏ thích bài viết. Vui lòng thử lại.');
+      notifyError('Lỗi', 'Không thể thích/bỏ thích bài viết. Vui lòng thử lại.');
     }
   }, []);
 
@@ -454,7 +624,7 @@ export default function CommunityScreen() {
         );
       } catch (error) {
         console.error('[Community] addComment error', error);
-        alert('Không thể gửi bình luận. Vui lòng thử lại.');
+        notifyError('Lỗi', 'Không thể gửi bình luận. Vui lòng thử lại.');
       }
     },
     [],
@@ -478,7 +648,7 @@ export default function CommunityScreen() {
       });
 
       if (res.success) {
-        Alert.alert('Thành công', 'Đã chia sẻ bài viết 🎉');
+        notifySuccess('Thành công', 'Đã chia sẻ bài viết 🎉');
         setSharePost(null);
         await loadFeed();
       } else {
@@ -486,7 +656,7 @@ export default function CommunityScreen() {
       }
     } catch (error) {
       console.error('[Community] share post error', error);
-      Alert.alert('Alert', 'Không thể chia sẻ bài viết, vui lòng thử lại.');
+      notifyError('Lỗi', 'Không thể chia sẻ bài viết, vui lòng thử lại.');
     } finally {
       setIsSharing(false);
     }
@@ -511,11 +681,11 @@ export default function CommunityScreen() {
   };
 
   const handleReportPost = (post: Post) => {
-    alert(`Đã ghi nhận báo cáo bài viết của ${post.user.name}.`);
+    notifyInfo('Thông báo', `Đã ghi nhận báo cáo bài viết của ${post.user.name}.`);
   };
 
   const handleMutePost = (postId: string) => {
-    alert('Bạn sẽ không nhận thông báo từ bài viết này (demo).');
+    notifyInfo('Thông báo', 'Bạn sẽ không nhận thông báo từ bài viết này.');
   };
 
   const handleUndoHidePost = () => {
@@ -580,11 +750,11 @@ export default function CommunityScreen() {
 
     // Đã là bạn bè hoặc đã chờ thì không gửi tiếp
     if (friendStatus === 'friends') {
-      Alert.alert('Kết bạn', 'Bạn và người này đã là bạn bè.');
+      notifyInfo('Kết bạn', 'Bạn và người này đã là bạn bè.');
       return;
     }
     if (friendStatus === 'pending') {
-      Alert.alert('Kết bạn', 'Bạn đã gửi lời mời trước đó, hãy chờ phản hồi.');
+      notifyInfo('Kết bạn', 'Bạn đã gửi lời mời trước đó, hãy chờ phản hồi.');
       return;
     }
 
@@ -592,10 +762,10 @@ export default function CommunityScreen() {
       setFriendLoading(true);
       const res = await sendFriendRequest(selectedUser.id);
 
-      Alert.alert('Kết bạn', res?.message || 'Đã gửi lời mời kết bạn');
+      notifySuccess('Kết bạn', res?.message || 'Đã gửi lời mời kết bạn');
       setFriendStatus('pending');
     } catch (error: any) {
-      Alert.alert('Lỗi', error.message || 'Gửi lời mời kết bạn thất bại');
+      notifyError('Lỗi', error.message || 'Gửi lời mời kết bạn thất bại');
     } finally {
       setFriendLoading(false);
     }
@@ -617,12 +787,12 @@ export default function CommunityScreen() {
           onPress: async () => {
             try {
               const res = await unfriend(selectedUser.id);
-              Alert.alert('Thành công', res?.message || 'Đã cập nhật trạng thái bạn bè');
+              notifySuccess('Thành công', res?.message || 'Đã cập nhật trạng thái bạn bè');
 
               // Sau khi huỷ, coi như trở lại trạng thái "none"
               setFriendStatus('none');
             } catch (error: any) {
-              Alert.alert('Lỗi', error?.message || 'Không thể huỷ kết bạn / huỷ lời mời');
+              notifyError('Lỗi', error?.message || 'Không thể huỷ kết bạn / huỷ lời mời');
             }
           },
         },
@@ -632,7 +802,7 @@ export default function CommunityScreen() {
 
   const handleSendMessage = () => {
     setUserActionsVisible(false);
-    alert('Đi tới màn hình nhắn tin (demo).');
+    notifyInfo('Thông báo', 'Đi tới màn hình nhắn tin (demo).');
   };
 
   const handleBlockUser = async () => {
@@ -649,7 +819,7 @@ export default function CommunityScreen() {
           onPress: async () => {
             try {
               const res = await blockUser(selectedUser.id, 'Blocked from community');
-              Alert.alert('Thành công', res?.message || 'Đã chặn người dùng');
+              notifySuccess('Thành công', res?.message || 'Đã chặn người dùng');
 
               // Ẩn tất cả bài viết của user bị chặn khỏi feed hiện tại
               setPosts((prev) =>
@@ -658,7 +828,7 @@ export default function CommunityScreen() {
 
               handleCloseUserActions();
             } catch (error: any) {
-              Alert.alert('Lỗi', error.message || 'Chặn người dùng thất bại');
+              notifyError('Lỗi', error.message || 'Chặn người dùng thất bại');
             }
           },
         },
@@ -680,7 +850,7 @@ export default function CommunityScreen() {
       setBlockedUsers(arr);
     } catch (error) {
       console.error('[Community] loadBlocklist error', error);
-      Alert.alert('Lỗi', 'Không tải được danh sách đã chặn');
+      notifyError('Lỗi', 'Không tải được danh sách đã chặn');
     } finally {
       setLoadingBlocklist(false);
     }
@@ -695,7 +865,7 @@ export default function CommunityScreen() {
         onPress: async () => {
           try {
             const res = await unblockUser(blockedUserId);
-            Alert.alert('Thành công', res?.message || 'Đã bỏ chặn');
+            notifySuccess('Thành công', res?.message || 'Đã bỏ chặn');
 
             setBlockedUsers(prev =>
               prev.filter(b => {
@@ -704,7 +874,7 @@ export default function CommunityScreen() {
               }),
             );
           } catch (error) {
-            Alert.alert('Lỗi', 'Không thể bỏ chặn');
+            notifyError('Lỗi', 'Không thể bỏ chặn');
           }
         },
       },
@@ -739,21 +909,77 @@ export default function CommunityScreen() {
   const handleCreatePost = async () => {
     const trimmed = content.trim();
     if (!trimmed) {
-      alert('Vui lòng nhập nội dung bài viết.');
+      notifyError('Cảnh báo', 'Vui lòng nhập nội dung bài viết.');
       return;
     }
 
     setCreating(true);
     try {
+      let uploadedImageUrl = null;
+
+      // STEP 1: Upload image if exists
+      if (imageUri) {
+        console.log('[Community] Uploading image:', imageUri);
+
+        try {
+          // Create FormData for image upload
+          const formData = new FormData();
+          formData.append('image', {
+            uri: imageUri,
+            type: 'image/jpeg',
+            name: 'post-image.jpg',
+          } as any);
+
+          // Get token for auth
+          const token = await getToken();
+
+          // Upload to server
+          const uploadRes = await fetch(`${BASE}/api/upload/image`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+            body: formData,
+          });
+
+          if (!uploadRes.ok) {
+            const errorData = await uploadRes.json();
+            throw new Error(errorData.message || 'Failed to upload image');
+          }
+
+          const uploadData = await uploadRes.json();
+          uploadedImageUrl = uploadData.url;
+          console.log('[Community] Image uploaded successfully:', uploadedImageUrl);
+        } catch (uploadError: any) {
+          console.error('[Community] Image upload error:', uploadError);
+          Alert.alert(
+            'Lỗi tải ảnh',
+            uploadError.message || 'Không thể tải ảnh lên. Vui lòng thử lại hoặc đăng bài không có ảnh.',
+            [
+              { text: 'Hủy', style: 'cancel' },
+              {
+                text: 'Đăng không có ảnh',
+                onPress: () => {
+                  // Continue without image
+                  uploadedImageUrl = null;
+                }
+              }
+            ]
+          );
+          setCreating(false);
+          return;
+        }
+      }
+
+      // STEP 2: Create post with uploaded image URL
       const body: any = {
         content: trimmed,
         visibility: privacy, // 'public' | 'friends'
         hashtags: selectedTags,
       };
 
-      // TODO: sau này nếu có upload ảnh lên BE thì gửi url thật.
-      if (imageUri) {
-        body.images = [{ url: imageUri }];
+      if (uploadedImageUrl) {
+        body.images = [{ url: uploadedImageUrl }];
       }
 
       const res = await apiRequest('/api/posts', {
@@ -762,29 +988,186 @@ export default function CommunityScreen() {
         body,
       });
 
+      // DEBUG: Log toàn bộ response để kiểm tra
+      console.log('[DEBUG] Full response:', JSON.stringify(res, null, 2));
+
+      // Kiểm tra response từ BE
+      const success = res?.success !== false;
+      const message = res?.message || '';
       const createdPostFromApi = res?.data || res?.data?.post || res;
+      const moderationStatus = createdPostFromApi?.moderationStatus;
 
-      const newPost = mapApiPostToPost(createdPostFromApi);
+      // DEBUG: Log các giá trị quan trọng
+      console.log('[DEBUG] success:', success);
+      console.log('[DEBUG] message:', message);
+      console.log('[DEBUG] createdPostFromApi:', createdPostFromApi);
+      console.log('[DEBUG] moderationStatus:', moderationStatus);
 
-      setPosts(prev => [newPost, ...prev]);
-      resetCreateForm();
-      setTab('feed');
-    } catch (error) {
+      // Xử lý trường hợp bị từ chối (success = false)
+      if (!success) {
+        notifyError(
+          'Nội dung không phù hợp',
+          message || 'Nội dung chứa từ ngữ vi phạm tiêu chuẩn cộng đồng, vui lòng chỉnh sửa lại bài viết.',
+        );
+        return;
+      }
+
+      // Xử lý trường hợp pending
+      if (moderationStatus === 'pending') {
+        notifyInfo('Kiểm duyệt', 'Bài viết đang được kiểm duyệt...');
+        const newPost = mapApiPostToPost(createdPostFromApi);
+        setPosts(prev => [newPost, ...prev]);
+
+        // Bắt đầu polling để check status
+        pollPostStatus(createdPostFromApi._id);
+
+        resetCreateForm();
+        setTab('feed');
+        return;
+      }
+
+      // Xử lý trường hợp approved
+      if (moderationStatus === 'approved' || !moderationStatus) {
+        notifySuccess('Thành công', 'Tạo bài viết thành công');
+        const newPost = mapApiPostToPost(createdPostFromApi);
+        setPosts(prev => [newPost, ...prev]);
+        resetCreateForm();
+        setTab('feed');
+      }
+    } catch (error: any) {
       console.error('[Community] createPost error', error);
-      alert('Không thể đăng bài viết. Vui lòng thử lại.');
+
+      // Check for rate limiting (429 status) first
+      if (error?.status === 429) {
+        notifyError(
+          'Đăng bài quá nhanh',
+          error?.message || 'Bạn đang đăng bài quá nhanh. Vui lòng chờ một chút.'
+        );
+        return;
+      }
+
+      // Parse error message from backend
+      const errorMessage = error?.message || '';
+
+      // Check for specific moderation errors
+      if (errorMessage.includes('từ ngữ không phù hợp') ||
+        errorMessage.includes('profanity') ||
+        errorMessage.includes('Nội dung chứa')) {
+        notifyError(
+          'Nội dung không phù hợp',
+          'Nội dung chứa từ ngữ vi phạm tiêu chuẩn cộng đồng. Vui lòng chỉnh sửa và thử lại.'
+        );
+      } else if (errorMessage.includes('spam') ||
+        errorMessage.includes('đăng bài quá nhanh') ||
+        errorMessage.includes('duplicate')) {
+        notifyError(
+          'Đăng bài quá nhanh',
+          'Bạn đang đăng bài quá nhanh. Vui lòng chờ một chút.'
+        );
+      } else if (errorMessage.includes('NSFW') ||
+        errorMessage.includes('hình ảnh không phù hợp')) {
+        notifyError(
+          'Hình ảnh không phù hợp',
+          'Hình ảnh không phù hợp với tiêu chuẩn cộng đồng. Vui lòng chọn hình ảnh khác.'
+        );
+      } else if (errorMessage.includes('banned') ||
+        errorMessage.includes('bị khóa')) {
+        notifyError(
+          'Tài khoản bị khóa',
+          errorMessage || 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.'
+        );
+      } else {
+        // Generic error message for other cases
+        notifyError(
+          'Lỗi',
+          errorMessage || 'Không thể đăng bài viết. Vui lòng thử lại.'
+        );
+      }
     } finally {
       setCreating(false);
     }
   };
 
+  // Polling để check status của bài pending
+  const pollPostStatus = async (postId: string) => {
+    let attempts = 0;
+    const maxAttempts = 10; // Poll trong 10 giây
+
+    const interval = setInterval(async () => {
+      attempts++;
+
+      try {
+        // Kiểm tra token trước khi gọi
+        const token = await getToken();
+        if (!token) {
+          clearInterval(interval);
+          return;
+        }
+
+        const response = await apiRequest(`/api/posts/${postId}`, {
+          method: 'GET',
+          auth: true
+        });
+
+        const updatedStatus = response?.data?.moderationStatus;
+
+        if (updatedStatus === 'approved') {
+          // Cập nhật post trong state
+          setPosts(prev => prev.map(p =>
+            p.id === postId
+              ? { ...p, moderationStatus: 'approved' }
+              : p
+          ));
+          clearInterval(interval);
+          notifySuccess('Thành công', 'Bài viết đã được duyệt!');
+        } else if (updatedStatus === 'rejected') {
+          // Xóa post khỏi feed
+          setPosts(prev => prev.filter(p => p.id !== postId));
+          clearInterval(interval);
+          notifyError('Từ chối', 'Bài viết không được duyệt');
+        }
+
+        if (attempts >= maxAttempts) {
+          clearInterval(interval);
+          console.log('[Polling] Stopped after', maxAttempts, 'attempts');
+        }
+      } catch (error: any) {
+        // Silent fail for auth error during polling
+        if (error.message?.includes('No auth token')) {
+          clearInterval(interval);
+          return;
+        }
+        console.error('[Polling] Error:', error);
+        if (attempts >= maxAttempts) {
+          clearInterval(interval);
+        }
+      }
+    }, 1000); // Poll mỗi 1 giây
+  };
+
+
   const filteredPosts =
     searchQuery.trim().length === 0
-      ? posts
-      : posts.filter(p =>
-        (p.content + ' ' + p.hashtags.join(' '))
-          .toLowerCase()
-          .includes(searchQuery.toLowerCase()),
-      );
+      ? posts.filter(p => {
+        // Chỉ hiển thị approved posts cho tất cả mọi người
+        if (p.moderationStatus === 'approved' || !p.moderationStatus) return true;
+        // Hiển thị pending posts chỉ cho chủ bài viết
+        if (p.moderationStatus === 'pending' && p.user.id === currentUserId) return true;
+        // Ẩn rejected posts
+        return false;
+      })
+      : posts
+        .filter(p => {
+          // Áp dụng cùng logic moderation filter
+          if (p.moderationStatus === 'approved' || !p.moderationStatus) return true;
+          if (p.moderationStatus === 'pending' && p.user.id === currentUserId) return true;
+          return false;
+        })
+        .filter(p =>
+          (p.content + ' ' + p.hashtags.join(' '))
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase()),
+        );
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: BG }} edges={['top', 'bottom']}>
@@ -800,7 +1183,7 @@ export default function CommunityScreen() {
             <Ionicons name="chevron-back" size={22} color="#111" />
           </Button>
           <YStack>
-            <Text fontSize={18} fontWeight="700">
+            <Text fontSize={18} fontWeight="700" color="#000">
               Community
             </Text>
             <Text fontSize={11} color="#7A7A7A">
@@ -809,6 +1192,50 @@ export default function CommunityScreen() {
           </YStack>
           <XStack flex={1} />
           {/* Search icon */}
+          <Button
+            backgroundColor="transparent"
+            height={36}
+            width={36}
+            onPress={() => setAppealModalVisible(true)}
+          >
+            <Ionicons name="megaphone-outline" size={20} color="#111" />
+          </Button>
+
+
+
+          {/* Notification Bell (Only for Mods/Admins) - Navigate to Moderation */}
+          {(userRole === 'admin' || userRole === 'moderator') && (
+            <Button
+              backgroundColor="transparent"
+              height={36}
+              width={36}
+              onPress={() => router.push('/(tabs)/moderation')}
+            >
+              <View>
+                <Ionicons name="notifications-outline" size={20} color="#111" />
+                {pendingCount.total > 0 && (
+                  <View
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      right: 2,
+                      backgroundColor: 'red',
+                      borderRadius: 10,
+                      width: 14,
+                      height: 14,
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Text color="white" fontSize={9} fontWeight="bold">
+                      {pendingCount.total > 9 ? '9+' : pendingCount.total}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </Button>
+          )}
+
           <Button
             backgroundColor="transparent"
             height={36}
@@ -892,6 +1319,40 @@ export default function CommunityScreen() {
           </View>
         )}
 
+        {/* Moderation pending banner (for moderators/admins) */}
+        {(userRole === 'moderator' || userRole === 'admin') && pendingCount.total > 0 && (
+          <View
+            style={{
+              paddingHorizontal: 16,
+              marginBottom: 12,
+            }}
+          >
+            <Card
+              padding={12}
+              borderRadius={8}
+              backgroundColor="#fef3c7"
+            >
+              <XStack alignItems="center" justifyContent="space-between" gap={8}>
+                <Ionicons name="alert-circle" size={20} color="#f59e0b" />
+                <Text fontSize={13} color="#92400e" flexShrink={1}>
+                  {pendingCount.total} nội dung đang chờ kiểm duyệt
+                </Text>
+                <Button
+                  height={32}
+                  borderRadius={6}
+                  backgroundColor="#f59e0b"
+                  onPress={() => router.push('/(tabs)/moderation')}
+                >
+                  <Text fontSize={12} color="#fff" fontWeight="600">
+                    Xem ngay
+                  </Text>
+                </Button>
+              </XStack>
+            </Card>
+          </View>
+        )}
+
+
         {/* Tabs */}
         <XStack paddingHorizontal={16} marginBottom={8} gap={8}>
           {[
@@ -932,7 +1393,6 @@ export default function CommunityScreen() {
               undefined
             }
           >
-            {/* Friend Requests Banner */}
             {friendRequestCount > 0 && (
               <XStack
                 marginBottom={12}
@@ -964,6 +1424,9 @@ export default function CommunityScreen() {
                 </Button>
               </XStack>
             )}
+
+
+
 
             {loadingFeed && posts.length === 0 ? (
               <YStack alignItems="center" marginTop={40} gap={8}>
@@ -1060,7 +1523,9 @@ export default function CommunityScreen() {
                   handleOpenUserActions(user);
                 }}
                 canEdit={post.user?.id === currentUserId}
-                onEdit={handleEditPost}
+                onDelete={(postId) => {
+                  setPosts(prev => prev.filter(p => p.id !== postId));
+                }}
               />
             ))}
 
@@ -1135,7 +1600,7 @@ export default function CommunityScreen() {
                     setSearchVisible(false);
                   }}
                 >
-                  <Text>Đóng</Text>
+                  <Text color="#000">Đóng</Text>
                 </Button>
                 <Button
                   height={38}
@@ -1338,7 +1803,7 @@ export default function CommunityScreen() {
               >
                 <XStack alignItems="center" gap={8}>
                   <Ionicons name="ban-outline" size={18} color="#EF4444" />
-                  <Text fontSize={13} color="#111">
+                  <Text fontSize={16} fontWeight="600" color="#000">
                     Danh sách đã chặn
                   </Text>
                 </XStack>
@@ -1405,7 +1870,7 @@ export default function CommunityScreen() {
                 backgroundColor="#E5E7EB"
                 onPress={() => setSharePost(null)}
               >
-                <Text>Đóng</Text>
+                <Text color="#000">Đóng</Text>
               </Button>
             </Card>
           </View>
@@ -1458,7 +1923,7 @@ export default function CommunityScreen() {
                 >
                   <XStack alignItems="center" gap={8}>
                     <Ionicons name="person-circle" size={18} color={PRIMARY} />
-                    <Text fontSize={13}>Xem trang cá nhân</Text>
+                    <Text fontSize={13} color="#000">Xem trang cá nhân</Text>
                   </XStack>
                 </Button>
 
@@ -1477,7 +1942,7 @@ export default function CommunityScreen() {
                       onPress={handleAddFriend}
                       disabled={isFriendButtonDisabled}
                     >
-                      <Text fontSize={13}>{renderFriendLabel()}</Text>
+                      <Text fontSize={13} color="#000">{renderFriendLabel()}</Text>
                     </Button>
 
                     {(friendStatus === 'friends' || friendStatus === 'pending') && (
@@ -1500,7 +1965,7 @@ export default function CommunityScreen() {
                       backgroundColor="#F3F4F6"
                       onPress={handleSendMessage}
                     >
-                      <Text fontSize={13}>Nhắn tin</Text>
+                      <Text fontSize={13} color="#000">Nhắn tin</Text>
                     </Button>
 
                     <Button
@@ -1524,13 +1989,39 @@ export default function CommunityScreen() {
                 backgroundColor="#E5E7EB"
                 onPress={() => setUserActionsVisible(false)}
               >
-                <Text>Đóng</Text>
+                <Text color="#000">Đóng</Text>
               </Button>
             </Card>
           </View>
         </Modal>
       </YStack>
-    </SafeAreaView>
+      <AppealModal
+        visible={appealModalVisible}
+        onClose={() => setAppealModalVisible(false)}
+        onSubmit={async (reason) => {
+          try {
+            setAppealLoading(true);
+            if (!currentUserId) {
+              Alert.alert('Lỗi', 'Không thể xác định tài khoản. Vui lòng đăng nhập lại.');
+              setAppealLoading(false);
+              return;
+            }
+            // Submit ban appeal using createAppeal (correct endpoint)
+            await SocialApi.createAppeal('account', currentUserId, reason);
+            Alert.alert('Thành công', 'Đã gửi kháng cáo. Vui lòng chờ phản hồi.');
+            setAppealModalVisible(false);
+          } catch (err: any) {
+            console.error('Appeal error:', err);
+            Alert.alert('Lỗi', err.message || 'Không thể gửi kháng cáo');
+          } finally {
+            setAppealLoading(false);
+          }
+        }}
+        loading={appealLoading}
+        contentType="ban"
+      />
+
+    </SafeAreaView >
   );
 }
 
@@ -1599,6 +2090,7 @@ function CreatePostCard({
           borderRadius={16}
           padding={12}
           fontSize={14}
+          color="#111827"
         />
         <Text fontSize={11} color="#9A9A9A" textAlign="right" marginTop={4}>
           {content.length}/500 ký tự
@@ -1691,7 +2183,7 @@ function CreatePostCard({
           >
             <XStack alignItems="center" gap={6}>
               <Ionicons name="image-outline" size={16} color="#111" />
-              <Text fontSize={13}>Thêm ảnh</Text>
+              <Text fontSize={13} color="#000">Thêm ảnh</Text>
             </XStack>
           </Button>
           {imageUri && (
@@ -1728,7 +2220,7 @@ function CreatePostCard({
         padding={12}
         backgroundColor="#E3E8FF"
       >
-        <Text fontSize={13} fontWeight="700">
+        <Text fontSize={14} fontWeight="600" marginBottom={8} color="#000">
           Tips chia sẻ hiệu quả
         </Text>
         <Text fontSize={12} color="#333" marginTop={4}>

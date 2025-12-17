@@ -10,7 +10,8 @@ import {
     checkFriendStatus,
     blockUser,
     unblockUser,
-    getBlockedUsers
+    getBlockedUsers,
+    createAppeal
 } from '../controllers/Social_controller.js';
 
 const router = express.Router();
@@ -51,5 +52,10 @@ router.delete('/unblock', authenticateToken, unblockUser);
 
 // Lấy danh sách người đã chặn
 router.get('/blocked', authenticateToken, getBlockedUsers);
+
+// ========== APPEAL ROUTES ==========
+
+// Create appeal (ban appeals or content appeals)
+router.post('/appeals', authenticateToken, createAppeal);
 
 export default router;

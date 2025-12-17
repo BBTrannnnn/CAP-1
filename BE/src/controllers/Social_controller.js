@@ -1,6 +1,7 @@
 import Friend from '../models/Friend.js';
 import BlockedUser from '../models/BlockedUser.js';
 import User from '../models/User.js';
+import ModerationLog from '../models/ModerationLog.js';
 import mongoose from 'mongoose';
 
 // ========== FRIEND REQUESTS ==========
@@ -141,7 +142,11 @@ export const acceptFriendRequest = async (req, res, next) => {
             message: 'Đã chấp nhận lời mời kết bạn'
         });
     } catch (error) {
-        next(error);
+        console.error('Error in unfriend:', error);
+        return res.status(500).json({
+            success: false,
+            message: error.message || 'Lỗi server khi hủy kết bạn'
+        });
     }
 };
 
@@ -220,41 +225,84 @@ export const getFriends = async (req, res, next) => {
     try {
         const userId = req.params.userId || req.user.id;
         const { page = 1, limit = 20, search } = req.query;
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+        const limitNum = parseInt(limit);
 
-        const query = {
-            userId: userId,
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+            return res.status(400).json({
+                success: false,
+                message: 'ID người dùng không hợp lệ'
+            });
+        }
+
+        // Base match: friends of userId with status 'accepted'
+        const baseMatch = {
+            userId: new mongoose.Types.ObjectId(userId),
             status: 'accepted'
         };
 
-        const friends = await Friend.find(query)
-            .populate({
-                path: 'friendId',
-                select: 'name email avatar bio',
-                match: search ? { name: new RegExp(search, 'i') } : {}
-            })
-            .skip((page - 1) * limit)
-            .limit(parseInt(limit))
-            .sort({ createdAt: -1 });
+        // Aggregation pipeline
+        const pipeline = [
+            { $match: baseMatch },
+            // Lookup friend info
+            {
+                $lookup: {
+                    from: 'users',
+                    localField: 'friendId',
+                    foreignField: '_id',
+                    as: 'friendInfo'
+                }
+            },
+            { $unwind: '$friendInfo' },
+            // Filter by search if provided
+            ...(search ? [{
+                $match: {
+                    'friendInfo.name': { $regex: search, $options: 'i' }
+                }
+            }] : []),
+            // Sort by createdAt
+            { $sort: { createdAt: -1 } },
+            // Facet for data and count
+            {
+                $facet: {
+                    metadata: [{ $count: 'total' }],
+                    data: [{ $skip: skip }, { $limit: limitNum }]
+                }
+            }
+        ];
 
-        // Filter out null populated friends (from search match)
-        const validFriends = friends.filter(f => f.friendId != null);
+        const result = await Friend.aggregate(pipeline);
 
-        const total = await Friend.countDocuments(query);
+        const metadata = result[0].metadata[0] || { total: 0 };
+        const friendsData = result[0].data.map(item => ({
+            _id: item._id,
+            userId: item.userId,
+            friendId: {
+                _id: item.friendInfo._id,
+                name: item.friendInfo.name || 'Người dùng',
+                email: item.friendInfo.email,
+                avatar: item.friendInfo.avatar,
+                bio: item.friendInfo.bio,
+                gender: item.friendInfo.gender
+            },
+            status: item.status,
+            createdAt: item.createdAt
+        }));
 
         res.status(200).json({
             success: true,
             data: {
-                friends: validFriends,
+                friends: friendsData,
                 pagination: {
                     page: parseInt(page),
-                    limit: parseInt(limit),
-                    total,
-                    pages: Math.ceil(total / limit)
+                    limit: limitNum,
+                    total: metadata.total,
+                    pages: Math.ceil(metadata.total / limitNum)
                 }
             }
         });
     } catch (error) {
-        next(error);
+        next(JSON.stringify(error));
     }
 };
 
@@ -335,7 +383,7 @@ export const checkFriendStatus = async (req, res, next) => {
         }
 
         let statusInfo = { status: friendship.status };
-        
+
         if (friendship.status === 'pending') {
             statusInfo.sentBy = friendship.requestedBy.equals(userId) ? 'you' : 'them';
         }
@@ -466,6 +514,106 @@ export const getBlockedUsers = async (req, res, next) => {
             }
         });
     } catch (error) {
+        next(error);
+    }
+};
+
+// ========== APPEALS ==========
+
+// Create appeal (for ban appeals or content appeals)
+export const createAppeal = async (req, res, next) => {
+    try {
+        const { type, targetId, reason } = req.body;
+        const userId = req.user._id || req.user.id;
+
+        // Validate appeal type
+        if (!['post', 'comment', 'account'].includes(type)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Loại kháng cáo không hợp lệ. Phải là: post, comment, hoặc account'
+            });
+        }
+
+        // Validate reason
+        if (!reason || reason.trim().length < 10) {
+            return res.status(400).json({
+                success: false,
+                message: 'Vui lòng cung cấp lý do kháng cáo (tối thiểu 10 ký tự)'
+            });
+        }
+
+        // ========== HANDLE ACCOUNT BAN APPEAL ==========
+        if (type === 'account') {
+            // Validate user can only appeal for themselves
+            if (targetId !== userId.toString()) {
+                return res.status(403).json({
+                    success: false,
+                    message: 'Bạn chỉ có thể kháng cáo cho chính tài khoản của mình'
+                });
+            }
+
+            // Check if user is actually banned
+            const user = await User.findById(targetId);
+            if (!user) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Người dùng không tồn tại'
+                });
+            }
+
+            if (!user.isBanned) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Tài khoản chưa bị cấm, không thể gửi kháng cáo'
+                });
+            }
+
+            // Check for duplicate appeals (only one appeal per ban)
+            const existingAppeal = await ModerationLog.findOne({
+                userId: targetId,
+                action: 'ban_appeal_submitted',
+                // Only check appeals submitted after the ban date
+                createdAt: { $gte: user.bannedAt || new Date(0) }
+            });
+
+            if (existingAppeal) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Bạn đã gửi kháng cáo cho lần cấm này rồi. Vui lòng chờ moderator xem xét.'
+                });
+            }
+
+            // Create ban appeal in ModerationLog
+            await ModerationLog.create({
+                userId: targetId,
+                contentType: 'user',
+                contentId: targetId,
+                action: 'appeal_submitted',
+                reason: 'User ban appeal',
+                appealReason: reason.trim(),
+                appealedAt: new Date()
+            });
+
+            return res.status(200).json({
+                success: true,
+                message: 'Đã gửi kháng cáo khóa tài khoản. Moderator sẽ xem xét trong vòng 24-48 giờ.',
+                data: {
+                    appealType: 'ban_appeal',
+                    status: 'pending_review'
+                }
+            });
+        }
+
+        // ========== HANDLE POST/COMMENT APPEAL ==========
+        // For post/comment appeals, we would forward to moderation controller
+        // or handle similarly here. For now, return not implemented.
+        return res.status(501).json({
+            success: false,
+            message: 'Kháng cáo nội dung (post/comment) chưa được hỗ trợ qua endpoint này. Vui lòng sử dụng /api/moderation/appeal/:contentType/:contentId'
+        });
+
+    } catch (error) {
+        console.error('[createAppeal] Error:', error);
         next(error);
     }
 };

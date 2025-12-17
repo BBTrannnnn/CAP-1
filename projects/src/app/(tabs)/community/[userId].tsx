@@ -16,6 +16,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 
 import PostCard, { Post } from './PostCard';
 import { apiRequest, togglePostLike, getPostComments, getUserFriends, updateComment, createCommentApi, getFriendStatus, getFullImageUrl } from '../../../server/users';
+import { notifyError, notifyInfo } from '../../../utils/notify';
 
 const COLORS = {
   background: '#F6F8FB',
@@ -35,6 +36,7 @@ type CommunityProfile = {
   postCount?: number;
   friendCount?: number;
   gender?: string;
+  trustScore?: number;
 };
 
 export default function CommunityProfileScreen() {
@@ -163,7 +165,7 @@ export default function CommunityProfileScreen() {
       }
     } catch (error) {
       console.log('[CommunityProfile] loadProfile error', error);
-      Alert.alert('Lỗi', 'Không thể tải trang cá nhân cộng đồng');
+      notifyError('Lỗi', 'Không thể tải trang cá nhân cộng đồng');
     } finally {
       setLoading(false);
     }
@@ -216,7 +218,7 @@ export default function CommunityProfileScreen() {
       );
     } catch (err) {
       console.log('[CommunityProfile] like error', err);
-      Alert.alert('Lỗi', 'Không thể like bài viết');
+      notifyError('Lỗi', 'Không thể like bài viết');
     }
   };
 
@@ -278,7 +280,7 @@ export default function CommunityProfileScreen() {
       setCommentText('');
     } catch (err) {
       console.log('[Profile] submit comment error', err);
-      Alert.alert('Lỗi', 'Không thể gửi bình luận');
+      notifyError('Lỗi', 'Không thể gửi bình luận');
     }
   };
 
@@ -288,14 +290,6 @@ export default function CommunityProfileScreen() {
 
     // Use loose comparison or string conversion for safety
     const isMe = currentUserId && String(profile.id) === String(currentUserId);
-
-    const initials =
-      profile.name
-        ?.split(' ')
-        .map((s: string) => s[0])
-        .join('')
-        .slice(0, 2)
-        .toUpperCase() || 'U';
 
     const statusLabel =
       profile.friendStatus === 'friends'
@@ -309,18 +303,20 @@ export default function CommunityProfileScreen() {
     return (
       <View
         style={{
-          padding: 16,
+          paddingHorizontal: 16,
+          paddingVertical: 12,
           backgroundColor: COLORS.card,
           borderBottomWidth: 1,
           borderColor: COLORS.border,
         }}
       >
+        {/* Top Row: Avatar + Info */}
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <View
             style={{
-              width: 64,
-              height: 64,
-              borderRadius: 32,
+              width: 50,
+              height: 50,
+              borderRadius: 25,
               backgroundColor: '#F3F4F6',
               justifyContent: 'center',
               alignItems: 'center',
@@ -334,35 +330,31 @@ export default function CommunityProfileScreen() {
                     ? require('../../../assets/images/avatar-girl.png')
                     : require('../../../assets/images/avatar-placeholder.png')
               }
-              style={{ width: 64, height: 64 }}
+              style={{ width: 50, height: 50 }}
               resizeMode="cover"
             />
           </View>
 
-          <View style={{ marginLeft: 16, flex: 1 }}>
+          <View style={{ marginLeft: 12, flex: 1 }}>
             <Text style={{ fontSize: 18, fontWeight: '700', color: COLORS.text }}>
-              {profile.name}
+              {profile.name || 'Người dùng'}
             </Text>
-            {profile.bio ? (
+            {profile.bio && (
               <Text
                 style={{
-                  marginTop: 4,
                   fontSize: 13,
                   color: COLORS.subtext,
+                  marginTop: 4,
+                  lineHeight: 18,
                 }}
+                numberOfLines={3}
               >
                 {profile.bio}
               </Text>
-            ) : null}
+            )}
 
-            <View
-              style={{
-                flexDirection: 'row',
-                marginTop: 8,
-                alignItems: 'center',
-              }}
-            >
-              <Text style={{ fontSize: 13, color: COLORS.subtext, marginRight: 12 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 12 }}>
+              <Text style={{ fontSize: 13, color: COLORS.subtext }}>
                 {posts.length} bài viết
               </Text>
               <Text style={{ fontSize: 13, color: COLORS.subtext }}>
@@ -370,18 +362,41 @@ export default function CommunityProfileScreen() {
               </Text>
             </View>
           </View>
+        </View>
 
-          {/* Friends section */}
-          {friends.length > 0 && (
-            <View style={{ marginTop: 16 }}>
-              <Text style={{ fontSize: 14, fontWeight: '600', marginBottom: 8 }}>
+        {/* Status Label (if not me) */}
+        {!isMe && (
+          <View style={{ marginTop: 8, flexDirection: 'row' }}>
+            <View
+              style={{
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                borderRadius: 999,
+                backgroundColor: '#FDF2FF',
+              }}
+            >
+              <Text style={{ fontSize: 12, color: COLORS.primary }}>{statusLabel}</Text>
+            </View>
+          </View>
+        )}
+
+        {/* Friends section */}
+        {friends.length > 0 && (
+          <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#F0F0F0' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: COLORS.text }}>
                 Bạn bè ({friendCount})
               </Text>
+              <TouchableOpacity onPress={() => router.push(`/community/friends?userId=${profile.id || (profile as any)._id}&userName=${encodeURIComponent(profile.name)}`)}>
+                <Text style={{ fontSize: 12, color: COLORS.primary, fontWeight: '600' }}>Xem tất cả</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={{ height: 75 }}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <View style={{ flexDirection: 'row', gap: 12 }}>
                   {friends.slice(0, 10).map((friend: any) => {
                     // Backend returns friendId as populated user object
-                    const fUser = friend.friendId || friend.user || friend;
+                    const fUser = friend.friendId || friend.user || friend || {};
                     const fId = fUser._id || fUser.id;
                     const fName = fUser.name || 'Bạn bè';
                     const fAvatar = fUser.avatarUrl || fUser.avatar;
@@ -391,34 +406,32 @@ export default function CommunityProfileScreen() {
                     return (
                       <TouchableOpacity
                         key={fId}
-                        style={{ alignItems: 'center', width: 70 }}
+                        style={{ alignItems: 'center', width: 60 }}
                         onPress={() => router.push(`/community/${fId}`)}
                       >
                         <View
                           style={{
-                            width: 60,
-                            height: 60,
-                            borderRadius: 30,
+                            width: 50,
+                            height: 50,
+                            borderRadius: 25,
                             backgroundColor: COLORS.card,
                             justifyContent: 'center',
                             alignItems: 'center',
                             overflow: 'hidden',
                           }}
                         >
-                          {fAvatar ? (
-                            <Image
-                              source={{ uri: fAvatar }}
-                              style={{ width: 60, height: 60 }}
-                            />
-                          ) : (
-                            <Text style={{ fontSize: 20, color: COLORS.subtext }}>
-                              {fName.charAt(0).toUpperCase()}
-                            </Text>
-                          )}
+                          <Image
+                            source={
+                              getFullImageUrl(fAvatar)
+                                ? { uri: getFullImageUrl(fAvatar) }
+                                : require('../../../assets/images/avatar-placeholder.png')
+                            }
+                            style={{ width: 50, height: 50 }}
+                          />
                         </View>
                         <Text
                           style={{
-                            fontSize: 11,
+                            fontSize: 10,
                             color: COLORS.text,
                             marginTop: 4,
                             textAlign: 'center',
@@ -433,25 +446,8 @@ export default function CommunityProfileScreen() {
                 </View>
               </ScrollView>
             </View>
-          )}
-        </View>
-
-        <View style={{ marginTop: 12, flexDirection: 'row' }}>
-          <View
-            style={{
-              paddingHorizontal: 12,
-              paddingVertical: 6,
-              borderRadius: 999,
-              backgroundColor: '#FDF2FF',
-              // Hide if it's me
-              display: isMe ? 'none' : 'flex',
-            }}
-          >
-            {!isMe && (
-              <Text style={{ fontSize: 12, color: COLORS.primary }}>{statusLabel}</Text>
-            )}
           </View>
-        </View>
+        )}
       </View>
     );
   };
@@ -496,10 +492,10 @@ export default function CommunityProfileScreen() {
       canEditComment={canEditComment}
 
       onShare={() => {
-        Alert.alert('Chia sẻ', 'Chức năng chia sẻ sẽ dùng cùng logic với tab Cộng đồng.');
+        notifyInfo('Chia sẻ', 'Chức năng chia sẻ sẽ dùng cùng logic với tab Cộng đồng.');
       }}
       onReport={(post) => {
-        Alert.alert('Báo cáo', 'Chức năng báo cáo sẽ được hoàn thiện.');
+        notifyInfo('Báo cáo', 'Chức năng báo cáo sẽ được hoàn thiện.');
       }}
       onHide={() => { }}
       onMute={() => { }}
