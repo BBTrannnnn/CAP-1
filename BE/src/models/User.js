@@ -122,6 +122,10 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: true
     },
+    newUser: {
+        type: Boolean,
+        default: true
+    },
     
     // ========== MODERATION & TRUST SYSTEM ==========
     trustScore: {

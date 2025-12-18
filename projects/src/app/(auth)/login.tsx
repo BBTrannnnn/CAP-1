@@ -100,9 +100,35 @@ export default function Login() {
         await AsyncStorage.removeItem('remember_email');
       }
 
+<<<<<<< HEAD
       // Điều hướng sang màn home
       router.replace('/(tabs)/home');
 
+=======
+      // 🔔 Đăng ký push notifications với backend
+      try {
+        const fcmToken = await registerForPushNotifications(authToken);
+        if (fcmToken) {
+          await AsyncStorage.setItem('fcmToken', fcmToken);
+          if (__DEV__) console.log('[Login] FCM token saved:', fcmToken);
+        }
+      } catch (err) {
+        console.warn('[Login] Lỗi đăng ký push notification:', err);
+        // Không cần chặn login vì lỗi push
+      }
+
+      // Thông báo & điều hướng
+      const apiMessage =
+        res?.message ||
+        res?.data?.message ||
+        'Đăng nhập thành công!';
+
+      Alert.alert('Đăng nhập thành công', apiMessage);
+      if(res?.user?.newUser == true)
+      router.replace('/(tabs)/habits/HabitSurvey');
+        else
+        router.replace('/(tabs)/home');
+>>>>>>> recover-work
     } catch (err: any) {
       if (__DEV__) console.error('[Login] API error:', err?.status, err?.data || err);
 
