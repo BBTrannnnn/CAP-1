@@ -147,6 +147,7 @@ const register = asyncHandler(async (req, res) => {
     phone,
     password,
     confirmPassword,
+    newUser: true,
     isActive: true
   };
   if (dob) userPayload.dateOfBirth = dob;
@@ -174,7 +175,8 @@ const register = asyncHandler(async (req, res) => {
         dateOfBirth: user.dateOfBirth,
         gender: user.gender,
         createdAt: user.createdAt,
-        updatedAt: user.updatedAt
+        updatedAt: user.updatedAt,
+        newUser: user.newUser
       }
     }
   });
@@ -527,6 +529,13 @@ const login = asyncHandler(async (req, res) => {
   // Tạo JWT token
   const token = generateToken(user);
 
+  // Kiểm tra và cập nhật newUser flag nếu đây là lần đăng nhập đầu tiên
+  let isNewUser = user.newUser || false;
+  if (user.newUser) {
+    user.newUser = false; // Đánh dấu user đã không còn mới sau lần đăng nhập đầu tiên
+    await user.save({ validateModifiedOnly: true });
+  }
+
   // Trả về dữ liệu user
   res.json({
     success: true,
@@ -538,7 +547,8 @@ const login = asyncHandler(async (req, res) => {
       phone: user.phone,
       name: user.name,
       isActive: user.isActive,
-      loginProvider: user.loginProvider
+      loginProvider: user.loginProvider,
+      newUser: isNewUser
     },
   });
 });
