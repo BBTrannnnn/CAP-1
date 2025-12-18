@@ -104,7 +104,10 @@ export default function Login() {
         'Đăng nhập thành công!';
 
       Alert.alert('Đăng nhập thành công', apiMessage);
-      router.replace('/(tabs)/home');
+      if(res?.user?.newUser == true)
+      router.replace('/(tabs)/habits/HabitSurvey');
+        else
+        router.replace('/(tabs)/home');
     } catch (err: any) {
       if (__DEV__) console.error('[Login] API error:', err?.status, err?.data || err);
 
