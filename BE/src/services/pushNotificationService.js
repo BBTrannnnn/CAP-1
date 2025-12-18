@@ -1,5 +1,6 @@
 // services/pushNotificationService.js
 // ✅ HỖ TRỢ CẢ 2: Expo Push Token + Native FCM Token
+// 🔧 FIX: Improved error handling và logging
 
 import fetch from 'node-fetch';
 import admin from '../config/firebase.js';
@@ -22,7 +23,6 @@ class PushNotificationService {
       const allTokens = user.fcmTokens
         .map(t => t?.token)
         .filter(t => typeof t === 'string' && t.length > 0);
-
 
       // ✅ PHÂN LOẠI TOKENS
       const expoTokens = allTokens.filter(
@@ -69,7 +69,7 @@ class PushNotificationService {
 
   /**
    * Gửi qua EXPO PUSH API
-   * ✅ FIX: Gửi từng token riêng để tránh lỗi PUSH_TOO_MANY_EXPERIENCE_IDS
+   * ✅ FIX: Cải thiện error handling và logging
    */
   async sendViaExpoPush(tokens, notification) {
     if (tokens.length === 0) {
@@ -135,37 +135,81 @@ class PushNotificationService {
             body: JSON.stringify(message),
           });
 
+          // 🔧 LOG RAW RESPONSE để debug
+          const responseText = await response.text();
+          console.log(`   📄 Token ${i + 1} Raw Response:`, responseText.substring(0, 200));
+
           if (!response.ok) {
-            const errorText = await response.text();
-            console.error(`   ❌ Token ${i + 1} HTTP error ${response.status}:`, errorText);
+            console.error(`   ❌ Token ${i + 1} HTTP error ${response.status}:`, responseText);
             failureCount++;
             continue;
           }
 
-          const result = await response.json();
+          // Parse JSON
+          let result;
+          try {
+            result = JSON.parse(responseText);
+          } catch (parseErr) {
+            console.error(`   ❌ Token ${i + 1} JSON parse error:`, parseErr.message);
+            failureCount++;
+            continue;
+          }
 
-          // Xử lý response (single object hoặc có data array)
-          let receipt = result;
+          // 🔧 LOG PARSED RESULT
+          console.log(`   📊 Token ${i + 1} Parsed Result:`, JSON.stringify(result, null, 2));
+
+          // ✅ XỬ LÝ RESPONSE - hỗ trợ nhiều format
+          let receipt = null;
+          
+          // Format 1: { data: [{ status, id, ... }] }
           if (result.data && Array.isArray(result.data) && result.data.length > 0) {
             receipt = result.data[0];
           }
+          // Format 2: { status, id, ... }
+          else if (result.status) {
+            receipt = result;
+          }
+          // Format 3: { ok: true/false }
+          else if (typeof result.ok === 'boolean') {
+            receipt = { status: result.ok ? 'ok' : 'error' };
+          }
 
+          // Kiểm tra receipt
+          if (!receipt) {
+            console.warn(`   ⚠️ Token ${i + 1}: Cannot parse receipt from response`);
+            // ✅ NHƯNG VẪN CÓ THỂ GỬI THÀNH CÔNG - đánh dấu success
+            successCount++;
+            console.log(`   ✅ Token ${i + 1}/${validTokens.length}: Assuming success (receipt parsing failed)`);
+            continue;
+          }
+
+          // Kiểm tra status
           if (receipt.status === 'ok') {
             successCount++;
-            console.log(`   ✅ Token ${i + 1}/${validTokens.length}: Success (id: ${receipt.id})`);
-          } else {
+            console.log(`   ✅ Token ${i + 1}/${validTokens.length}: Success (id: ${receipt.id || 'N/A'})`);
+          } else if (receipt.status === 'error') {
             failureCount++;
-            console.log(`   ❌ Token ${i + 1}/${validTokens.length}: ${receipt.status} - ${receipt.message}`);
+            const errorMsg = receipt.message || receipt.details?.error || 'Unknown error';
+            console.log(`   ❌ Token ${i + 1}/${validTokens.length}: Error - ${errorMsg}`);
 
             // Xóa token nếu không còn tồn tại
-            if (receipt.details?.error === 'DeviceNotRegistered') {
+            if (
+              receipt.details?.error === 'DeviceNotRegistered' ||
+              receipt.message?.includes('DeviceNotRegistered')
+            ) {
               failedTokens.push(token);
               console.log(`      → Token will be removed from DB`);
             }
+          } else {
+            // Status không phải 'ok' hoặc 'error' - xử lý tùy case
+            console.warn(`   ⚠️ Token ${i + 1}: Unknown status "${receipt.status}"`);
+            // Giả sử thành công nếu không có error rõ ràng
+            successCount++;
           }
 
-        } catch (error) {
-          console.error(`   ❌ Token ${i + 1} error:`, error.message);
+        } catch (tokenError) {
+          console.error(`   ❌ Token ${i + 1} error:`, tokenError.message);
+          console.error(`      Stack:`, tokenError.stack);
           failureCount++;
         }
       }
