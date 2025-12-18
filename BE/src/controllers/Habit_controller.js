@@ -188,7 +188,7 @@ const updateHabit = asyncHandler(async (req, res) => {
   if (!habit) {
     return res.status(404).json({
       success: false,
-      message: 'Habit not found'
+      message: 'Không tìm thấy thói quen'
     });
   }
 
@@ -196,7 +196,7 @@ const updateHabit = asyncHandler(async (req, res) => {
     'name', 'description', 'icon', 'color',
     'frequency', 'customFrequency',
     'category', 'habitType',
-    // 'trackingMode', // ❌ XÓA DÒNG NÀY - không cho sửa trackingMode
+    // 'trackingMode', // ❌ Không cho sửa trackingMode
     'targetCount', 'unit',
     'startDate', 'endDate',
     'isActive',
@@ -210,17 +210,17 @@ const updateHabit = asyncHandler(async (req, res) => {
     }
   });
 
-  // ✅ THÊM: Kiểm tra nếu user cố đổi trackingMode
+  // ✅ Kiểm tra nếu user cố đổi trackingMode
   if (body.trackingMode !== undefined && body.trackingMode !== habit.trackingMode) {
     return res.status(400).json({
       success: false,
-      message: 'Cannot change tracking mode after habit creation',
-      currentMode: habit.trackingMode,
-      hint: 'Tracking mode is locked to prevent data conflicts. Create a new habit if you need a different tracking mode.'
+      message: 'Không thể thay đổi chế độ theo dõi sau khi tạo thói quen',
+      currentMode: habit.trackingMode === 'check' ? 'Đánh dấu' : 'Đếm số lần',
+      hint: 'Chế độ theo dõi đã bị khóa để tránh xung đột dữ liệu. Vui lòng tạo thói quen mới nếu cần chế độ khác.'
     });
   }
 
-  // ✅ Sử dụng trackingMode hiện tại (không thể thay đổi)
+  // ✅ Sử dụng trackingMode hiện tại
   const trackingMode = habit.trackingMode || 'check';
 
   // Frequency/customFrequency consistency
@@ -229,7 +229,7 @@ const updateHabit = asyncHandler(async (req, res) => {
     if (!['daily', 'weekly', 'monthly', 'custom'].includes(freq)) {
       return res.status(400).json({ 
         success: false, 
-        message: 'frequency must be one of daily, weekly, monthly, custom' 
+        message: 'Tần suất phải là daily, weekly, monthly hoặc custom' 
       });
     }
     if (freq !== 'custom') {
@@ -238,7 +238,7 @@ const updateHabit = asyncHandler(async (req, res) => {
       if (body.customFrequency === undefined && habit.customFrequency === undefined) {
         return res.status(400).json({ 
           success: false, 
-          message: 'customFrequency is required when frequency is custom' 
+          message: 'Cần nhập tần suất tùy chỉnh khi chọn chế độ custom' 
         });
       }
     }
@@ -247,7 +247,7 @@ const updateHabit = asyncHandler(async (req, res) => {
     if (effFreq !== 'custom') {
       return res.status(400).json({ 
         success: false, 
-        message: 'customFrequency can only be set when frequency is custom' 
+        message: 'Chỉ có thể đặt tần suất tùy chỉnh khi chế độ là custom' 
       });
     }
   }
@@ -259,19 +259,19 @@ const updateHabit = asyncHandler(async (req, res) => {
     if (!isNaN(s) && !isNaN(e) && s > e) {
       return res.status(400).json({ 
         success: false, 
-        message: 'startDate must be before or equal to endDate' 
+        message: 'Ngày bắt đầu phải trước hoặc bằng ngày kết thúc' 
       });
     }
   }
 
-  // ✅ Enforce rules dựa trên trackingMode HIỆN TẠI (không cho đổi)
+  // ✅ Enforce rules dựa trên trackingMode
   if (trackingMode === 'check') {
     // ❌ Không cho sửa targetCount/unit khi ở mode check
     if (body.targetCount !== undefined || body.unit !== undefined) {
       return res.status(400).json({
         success: false,
-        message: 'Cannot update targetCount or unit for check tracking mode',
-        hint: 'This habit uses simple check tracking. targetCount and unit are not applicable.'
+        message: 'Không thể cập nhật số lần mục tiêu hoặc đơn vị cho chế độ đánh dấu',
+        hint: 'Thói quen này sử dụng chế độ đánh dấu đơn giản. Số lần mục tiêu và đơn vị không áp dụng.'
       });
     }
     // Đảm bảo giá trị mặc định
@@ -287,7 +287,7 @@ const updateHabit = asyncHandler(async (req, res) => {
       if (isNaN(tc) || tc <= 0) {
         return res.status(400).json({
           success: false,
-          message: 'targetCount must be a positive number for count tracking mode'
+          message: 'Số lần mục tiêu phải là số dương cho chế độ đếm số lần'
         });
       }
       updates.targetCount = tc;
@@ -295,17 +295,16 @@ const updateHabit = asyncHandler(async (req, res) => {
 
     // Nếu có cố gắng sửa unit
     if (body.unit !== undefined) {
-      const allowedUnits = ['times', 'reps', 'pages', 'ml', 'km', 'minute', 'phút', 'lần', 'custom', ''];
+      const allowedUnits = ['times', 'reps', 'pages', 'ml', 'km', 'minute', 'phút', 'lần', 'trang', 'ly', 'custom', ''];
       const unitValue = String(body.unit).trim();
       
-      // Cho phép unit rỗng hoặc bất kỳ giá trị nào (tùy bạn)
       updates.unit = unitValue;
       
       // Nếu muốn kiểm tra strict, bỏ comment dòng dưới:
       // if (unitValue !== '' && !allowedUnits.includes(unitValue)) {
       //   return res.status(400).json({ 
       //     success: false, 
-      //     message: `unit must be one of: ${allowedUnits.join(', ')}` 
+      //     message: `Đơn vị phải là một trong: ${allowedUnits.join(', ')}` 
       //   });
       // }
     }
@@ -320,7 +319,7 @@ const updateHabit = asyncHandler(async (req, res) => {
 
   res.json({
     success: true,
-    message: 'Habit updated successfully',
+    message: 'Cập nhật thói quen thành công',
     habit: updatedHabit
   });
 });
