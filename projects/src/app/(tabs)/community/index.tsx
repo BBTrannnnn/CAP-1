@@ -800,10 +800,6 @@ export default function CommunityScreen() {
     );
   };
 
-  const handleSendMessage = () => {
-    setUserActionsVisible(false);
-    notifyInfo('Thông báo', 'Đi tới màn hình nhắn tin (demo).');
-  };
 
   const handleBlockUser = async () => {
     if (!selectedUser) return;
@@ -1959,14 +1955,6 @@ export default function CommunityScreen() {
                       </Button>
                     )}
 
-                    <Button
-                      height={40}
-                      borderRadius={999}
-                      backgroundColor="#F3F4F6"
-                      onPress={handleSendMessage}
-                    >
-                      <Text fontSize={13} color="#000">Nhắn tin</Text>
-                    </Button>
 
                     <Button
                       height={40}
