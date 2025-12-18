@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Alert, Image } from 'react-native';
 import { Link, useRouter } from 'expo-router';
-import { AntDesign, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
+import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { Check } from '@tamagui/lucide-icons';
 import {
   Button,
@@ -19,11 +19,17 @@ import {
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// ⬇️ API users (giữ đúng path dự án của bạn)
-import { login, setBaseUrl } from './../../server/users';
+// ⬇️ API users
+import { login, getCurrentUser } from '../../server/users';
 
-// ⬇️ Hàm đăng ký push notifications (giữ đúng path tới utils/notifications)
+// ⬇️ Hàm đăng ký push notifications
 import { registerForPushNotifications } from '../../utils/notifications';
+
+// ⬇️ Toast notifications
+import { notifyError, notifySuccess } from '../../utils/notify';
+
+// ⬇️ Auth store
+import { useAuth } from '../../stores/auth';
 
 // Logo app
 const Logo = require('../../assets/images/FlowState.png');
@@ -35,6 +41,7 @@ export default function Login() {
   const [showPw, setShowPw] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
   const router = useRouter();
+  const signIn = useAuth((s) => s.signIn);
 
   // Nhớ email nếu user đã tick "Nhớ mật khẩu"
   useEffect(() => {
@@ -53,7 +60,7 @@ export default function Login() {
 
   const onSubmit = async () => {
     if (!email.trim() || !pw.trim()) {
-      Alert.alert('Thiếu thông tin', 'Vui lòng nhập email và mật khẩu.');
+      notifyError('Thiếu thông tin', 'Vui lòng nhập email và mật khẩu.');
       return;
     }
 
@@ -63,7 +70,7 @@ export default function Login() {
 
       if (__DEV__) console.log('[Login] API success:', res);
 
-      // 👉 LẤY TOKEN từ response (tuỳ backend, chỉnh lại nếu khác)
+      // 👉 LẤY TOKEN từ response
       const authToken =
         res?.token ||
         res?.data?.token ||
@@ -75,39 +82,55 @@ export default function Login() {
         throw new Error('Không lấy được token đăng nhập từ API.');
       }
 
+      // Ưu tiên message từ API
+      const apiMessage =
+        res?.message ||
+        res?.data?.message ||
+        'Đăng nhập thành công!';
+
+      notifySuccess('Đăng nhập thành công', apiMessage);
+
       // 🔐 Lưu token để các màn khác dùng
       await AsyncStorage.setItem('authToken', authToken);
 
-      // (Tuỳ chọn) Lưu email nếu nhớ
+      // ✅ CẬP NHẬT STATE USER
+      if (res.user) {
+        signIn(res.user);
+      } else {
+        try {
+          const me = await getCurrentUser();
+          signIn(me);
+        } catch (e) {
+          console.warn('[Login] Failed to fetch user info:', e);
+        }
+      }
+
+      // ✅ ĐĂNG KÝ FCM NGAY SAU KHI LOGIN THÀNH CÔNG
+      try {
+        const fcmToken = await registerForPushNotifications();
+        if (fcmToken) {
+          await AsyncStorage.setItem('fcmToken', fcmToken);
+          console.log('✅ Đăng ký FCM thành công sau login');
+        }
+      } catch (fcmErr) {
+        console.warn('⚠️ Không thể đăng ký FCM:', fcmErr);
+        // Không throw error, vì login vẫn thành công
+      }
+
+      // 💾 Lưu email nếu nhớ
       if (remember) {
         await AsyncStorage.setItem('remember_email', email.trim());
       } else {
         await AsyncStorage.removeItem('remember_email');
       }
 
-      // 🔔 Đăng ký push notifications với backend
-      try {
-        const fcmToken = await registerForPushNotifications(authToken);
-        if (fcmToken) {
-          await AsyncStorage.setItem('fcmToken', fcmToken);
-          if (__DEV__) console.log('[Login] FCM token saved:', fcmToken);
-        }
-      } catch (err) {
-        console.warn('[Login] Lỗi đăng ký push notification:', err);
-        // Không cần chặn login vì lỗi push
-      }
-
-      // Thông báo & điều hướng
-      const apiMessage =
-        res?.message ||
-        res?.data?.message ||
-        'Đăng nhập thành công!';
-
+      // Điều hướng
       Alert.alert('Đăng nhập thành công', apiMessage);
-      if(res?.user?.newUser == true)
+      if (res?.user?.newUser == true) {
         router.replace('/(tabs)/habits/HabitSurvey');
-      else 
-      router.replace('/(tabs)/home');
+      } else {
+        router.replace('/(tabs)/home');
+      }
     } catch (err: any) {
       if (__DEV__) console.error('[Login] API error:', err?.status, err?.data || err);
 
@@ -117,7 +140,7 @@ export default function Login() {
         err?.message ||
         'Đăng nhập thất bại. Vui lòng thử lại.';
 
-      Alert.alert('Đăng nhập thất bại', String(msg));
+      notifyError('Đăng nhập thất bại', String(msg));
     } finally {
       setLoading(false);
     }
@@ -308,8 +331,6 @@ export default function Login() {
               </Text>
               <Separator flex={1} backgroundColor="#E0E6EE" />
             </XStack>
-
-            {/* (Có thể thêm login Google ở đây) */}
 
             {/* Register */}
             <Text textAlign="center" marginTop={12} color="#585858" fontSize={14}>
