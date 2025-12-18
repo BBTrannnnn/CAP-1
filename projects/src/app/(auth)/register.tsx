@@ -23,6 +23,7 @@ import {
 
 import { register as apiRegister } from './../../server/users';
 import { Check } from '@tamagui/lucide-icons';
+import { registerForPushNotifications } from '../../utils/notifications';
 
 // Logo app
 const Logo = require('../../assets/images/FlowState.png');
@@ -54,7 +55,6 @@ export default function Register() {
     const yyyy = d.getFullYear();
     return `${dd}-${mm}-${yyyy}`;
   };
-
 
   const validate = () => {
     if (__DEV__) console.log('[Register] Validating form...');
@@ -110,6 +110,9 @@ export default function Register() {
       if (__DEV__) {
         console.log('[Register] API success:', res);
       }
+
+      // ✅ THÊM DÒNG 2: Đăng ký push notifications ngay sau khi register thành công
+      await registerForPushNotifications();
 
       // Ưu tiên message từ API
       const apiMessage =
