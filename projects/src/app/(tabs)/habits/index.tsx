@@ -1,4 +1,5 @@
-﻿import React, {
+﻿// app/(tabs)/habits/index.tsx
+import React, {
   useCallback,
   useEffect,
   useMemo,
@@ -14,7 +15,6 @@ import {
   Plus,
   BarChart3,
   ChevronLeft,
-  TrendingUp,
   Clock,
   Target,
   Eye,
@@ -22,6 +22,7 @@ import {
   Trash2,
   ChevronRight,
 } from 'lucide-react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import {
   View,
   Text,
@@ -32,6 +33,8 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  Platform,
+  Pressable,
 } from 'react-native';
 
 import {
@@ -51,9 +54,8 @@ import {
   // tracking habit check-mode
   getHabitTrackings as apiGetHabitTrackings,
 } from '../../../server/habits';
-import { Input } from 'tamagui';
-import api from '../../../server/notifi'
-import {notifiToast} from '../../../server/runningTracker'
+
+import { notifiToast } from '../../../server/runningTracker';
 
 /* ========================================================= */
 /* TYPES                                                     */
@@ -148,6 +150,376 @@ const labelFor = (d: Date) => {
 };
 
 /* ========================================================= */
+/* MOBILE TIME PICKER                                        */
+/* ========================================================= */
+
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+function TimePickerField({
+  value,
+  onChange,
+  placeholder = 'HH:MM',
+}: {
+  value?: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [hour, setHour] = useState<number>(() => {
+    if (!value) return new Date().getHours();
+    const [h] = value.split(':').map((x) => parseInt(x, 10));
+    return Number.isFinite(h) ? h : 0;
+  });
+  const [minute, setMinute] = useState<number>(() => {
+    if (!value) return new Date().getMinutes();
+    const parts = value.split(':');
+    const m = parseInt(parts[1] || '0', 10);
+    return Number.isFinite(m) ? m : 0;
+  });
+
+  const openPicker = () => {
+    if (value) {
+      const [h, m] = value.split(':').map((x) => parseInt(x, 10));
+      if (Number.isFinite(h)) setHour(h);
+      if (Number.isFinite(m)) setMinute(m);
+    }
+    setOpen(true);
+  };
+
+  const handleSave = () => {
+    onChange(`${pad2(hour)}:${pad2(minute)}`);
+    setOpen(false);
+  };
+
+  const adjustHour = (delta: number) => {
+    setHour((prev) => {
+      let newHour = prev + delta;
+      if (newHour < 0) newHour = 23;
+      if (newHour > 23) newHour = 0;
+      return newHour;
+    });
+  };
+
+  const adjustMinute = (delta: number) => {
+    setMinute((prev) => {
+      let newMin = prev + delta;
+      if (newMin < 0) newMin = 59;
+      if (newMin > 59) newMin = 0;
+      return newMin;
+    });
+  };
+
+  return (
+    <View>
+      <Pressable onPress={openPicker} style={styles.inputTime}>
+        <Clock size={16} color={value ? '#2563eb' : '#94a3b8'} />
+        <Text style={{ color: value ? '#0f172a' : '#94a3b8', fontSize: 14, marginLeft: 6 }}>
+          {value || placeholder}
+        </Text>
+      </Pressable>
+
+      <Modal
+        transparent
+        visible={open}
+        animationType="fade"
+        onRequestClose={() => setOpen(false)}
+      >
+        <Pressable style={tp.overlay} onPress={() => setOpen(false)}>
+          <Pressable style={tp.card} onPress={(e) => e.stopPropagation()}>
+            <View style={tp.header}>
+              <Clock size={24} color="#2563eb" />
+              <Text style={tp.title}>Chọn thời gian</Text>
+            </View>
+            
+            <View style={tp.pickerContainer}>
+              {/* Hour Picker */}
+              <View style={tp.timeColumn}>
+                <TouchableOpacity 
+                  onPress={() => adjustHour(1)} 
+                  style={[tp.arrowButton, tp.arrowButtonUp]}
+                  activeOpacity={0.7}
+                >
+                  <Text style={tp.arrowText}>+</Text>
+                </TouchableOpacity>
+                
+                <View style={tp.timeDisplay}>
+                  <Text style={tp.timeText}>{pad2(hour)}</Text>
+                  <View style={tp.timeUnderline} />
+                </View>
+                
+                <TouchableOpacity 
+                  onPress={() => adjustHour(-1)} 
+                  style={[tp.arrowButton, tp.arrowButtonDown]}
+                  activeOpacity={0.7}
+                >
+                  <Text style={tp.arrowText}>-</Text>
+                </TouchableOpacity>
+                
+                <Text style={tp.label}>Giờ</Text>
+              </View>
+
+              <View style={tp.separatorContainer}>
+                <Text style={tp.separator}>:</Text>
+                <View style={tp.separatorDots}>
+                  <View style={tp.dot} />
+                  <View style={tp.dot} />
+                </View>
+              </View>
+
+              {/* Minute Picker */}
+              <View style={tp.timeColumn}>
+                <TouchableOpacity 
+                  onPress={() => adjustMinute(1)} 
+                  style={[tp.arrowButton, tp.arrowButtonUp]}
+                  activeOpacity={0.7}
+                >
+                  <Text style={tp.arrowText}>+</Text>
+                </TouchableOpacity>
+                
+                <View style={tp.timeDisplay}>
+                  <Text style={tp.timeText}>{pad2(minute)}</Text>
+                  <View style={tp.timeUnderline} />
+                </View>
+                
+                <TouchableOpacity 
+                  onPress={() => adjustMinute(-1)} 
+                  style={[tp.arrowButton, tp.arrowButtonDown]}
+                  activeOpacity={0.7}
+                >
+                  <Text style={tp.arrowText}>-</Text>
+                </TouchableOpacity>
+                
+                <Text style={tp.label}>Phút</Text>
+              </View>
+            </View>
+
+            {/* Quick Time Buttons */}
+            <View style={tp.quickButtons}>
+              <TouchableOpacity
+                onPress={() => {
+                  const now = new Date();
+                  setHour(now.getHours());
+                  setMinute(now.getMinutes());
+                }}
+                style={tp.quickBtn}
+              >
+                <Text style={tp.quickBtnText}>Bây giờ</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                onPress={() => {
+                  setHour(6);
+                  setMinute(0);
+                }}
+                style={tp.quickBtn}
+              >
+                <Text style={tp.quickBtnText}>06:00</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                onPress={() => {
+                  setHour(12);
+                  setMinute(0);
+                }}
+                style={tp.quickBtn}
+              >
+                <Text style={tp.quickBtnText}>12:00</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                onPress={() => {
+                  setHour(18);
+                  setMinute(0);
+                }}
+                style={tp.quickBtn}
+              >
+                <Text style={tp.quickBtnText}>18:00</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Action Buttons */}
+            <View style={tp.btnRow}>
+              <TouchableOpacity
+                onPress={() => setOpen(false)}
+                style={styles.formCancelButton}
+              >
+                <Text style={styles.formCancelText}>Hủy</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleSave}
+                style={styles.formSaveButton}
+              >
+                <Text style={styles.formSaveText}>Xong</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </View>
+  );
+}
+
+const tp = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15,23,42,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+  },
+  card: {
+    width: '100%',
+    maxWidth: 380,
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(203,213,225,0.3)',
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 12,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+    gap: 8,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  pickerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+    paddingVertical: 16,
+    backgroundColor: '#f8fafc',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  timeColumn: {
+    alignItems: 'center',
+  },
+  arrowButton: {
+    width: 56,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 14,
+    marginVertical: 6,
+    borderWidth: 1,
+  },
+  arrowButtonUp: {
+    backgroundColor: '#dbeafe',
+    borderColor: '#93c5fd',
+  },
+  arrowButtonDown: {
+    backgroundColor: '#f1f5f9',
+    borderColor: '#cbd5e1',
+  },
+  arrowText: {
+    fontSize: 24,
+    color: '#2563eb',
+    fontWeight: '800',
+  },
+  timeDisplay: {
+    width: 90,
+    height: 90,
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: '#2563eb',
+    marginVertical: 12,
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  timeText: {
+    fontSize: 40,
+    fontWeight: '900',
+    color: '#2563eb',
+    letterSpacing: -1,
+  },
+  timeUnderline: {
+    width: 60,
+    height: 3,
+    backgroundColor: '#2563eb',
+    borderRadius: 2,
+    marginTop: 4,
+  },
+  separatorContainer: {
+    alignItems: 'center',
+    marginHorizontal: 16,
+  },
+  separator: {
+    fontSize: 40,
+    fontWeight: '900',
+    color: '#2563eb',
+    marginBottom: 8,
+  },
+  separatorDots: {
+    alignItems: 'center',
+    gap: 6,
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    backgroundColor: '#2563eb',
+    borderRadius: 3,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#64748b',
+    marginTop: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  quickButtons: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 20,
+    justifyContent: 'center',
+  },
+  quickBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: '#f1f5f9',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  quickBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  btnRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+    marginTop: 8,
+  },
+});
+
+/* ========================================================= */
 /* HORIZONTAL CALENDAR (TRONG CÙNG FILE, KHÔNG EXPORT)       */
 /* ========================================================= */
 
@@ -204,9 +576,7 @@ const HorizontalCalendar: React.FC<HorizontalCalendarProps> = ({
         const rep = res?.report;
 
         if (!rep || !Array.isArray(rep?.habitStats)) {
-          if (!cancelled) {
-            setDayStatusMap({});
-          }
+          if (!cancelled) setDayStatusMap({});
           return;
         }
 
@@ -228,7 +598,7 @@ const HorizontalCalendar: React.FC<HorizontalCalendarProps> = ({
             if (t?.status === 'completed' && t?.date) {
               const ds = String(t.date).split('T')[0];
               const dObj = new Date(ds);
-              dObj.setDate(dObj.getDate() - 1); // LÙI 1 NGÀY CHỈ TRÊN MÀU LỊCH
+              dObj.setDate(dObj.getDate() - 1);
               const shiftedKey = fmt(dObj);
               if (completedPerDay[shiftedKey] !== undefined) {
                 completedPerDay[shiftedKey] += 1;
@@ -244,7 +614,6 @@ const HorizontalCalendar: React.FC<HorizontalCalendarProps> = ({
             : rep.habitStats.length || 1;
 
         const statusMap: DayStatusMap = {};
-
         Object.keys(completedPerDay).forEach((key) => {
           const completed = completedPerDay[key] || 0;
           const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
@@ -256,11 +625,8 @@ const HorizontalCalendar: React.FC<HorizontalCalendarProps> = ({
           statusMap[key] = status;
         });
 
-        if (!cancelled) {
-          setDayStatusMap(statusMap);
-        }
+        if (!cancelled) setDayStatusMap(statusMap);
       } catch (err) {
-        //console.error('[HorizontalCalendar] weekly report error:', err);
         if (!cancelled) {
           setError('Không tải được dữ liệu lịch.');
           setDayStatusMap({});
@@ -271,95 +637,10 @@ const HorizontalCalendar: React.FC<HorizontalCalendarProps> = ({
     };
 
     fetchWeek();
-
     return () => {
       cancelled = true;
     };
   }, [weekOffset, currentWeekStart, refreshToken]);
-
-  // GỌI WEEKLY REPORT THEO weekOffset — KHÔNG LÙI MÀU NỮA
-// useEffect(() => {
-//   let cancelled = false;
-
-//   const fetchWeek = async () => {
-//     try {
-//       setLoading(true);
-//       setError(null);
-
-//       // offset > 0 = tuần quá khứ
-//       const res: any = await apiGetWeeklyReport(weekOffset);
-//       const rep = res?.report;
-
-//       if (!rep || !Array.isArray(rep?.habitStats)) {
-//         if (!cancelled) {
-//           setDayStatusMap({});
-//         }
-//         return;
-//       }
-
-//       const start = new Date(currentWeekStart);
-//       start.setHours(0, 0, 0, 0);
-//       const end = new Date(start);
-//       end.setDate(start.getDate() + 6);
-
-//       const fmt = (d: Date) => d.toISOString().split('T')[0];
-//       const completedPerDay: Record<string, number> = {};
-
-//       for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-//         completedPerDay[fmt(d)] = 0;
-//       }
-
-//       // Dùng đúng ngày từ BE, KHÔNG lùi 1 ngày nữa
-//       rep.habitStats.forEach((hs: any) => {
-//         (hs.trackings || []).forEach((t: any) => {
-//           if (t?.status === 'completed' && t?.date) {
-//             const ds = String(t.date).split('T')[0];
-//             if (completedPerDay[ds] !== undefined) {
-//               completedPerDay[ds] += 1;
-//             }
-//           }
-//         });
-//       });
-
-//       const total =
-//         typeof rep.overallStats?.activeHabits === 'number' &&
-//         rep.overallStats.activeHabits > 0
-//           ? rep.overallStats.activeHabits
-//           : rep.habitStats.length || 1;
-
-//       const statusMap: DayStatusMap = {};
-
-//       Object.keys(completedPerDay).forEach((key) => {
-//         const completed = completedPerDay[key] || 0;
-//         const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
-
-//         let status: TaskStatus = 'pending';
-//         if (pct >= 100) status = 'completed';
-//         else if (pct > 0) status = 'in-progress';
-
-//         statusMap[key] = status;
-//       });
-
-//       if (!cancelled) {
-//         setDayStatusMap(statusMap);
-//       }
-//     } catch (err) {
-//       //console.error('[HorizontalCalendar] weekly report error:', err);
-//       if (!cancelled) {
-//         setError('Không tải được dữ liệu lịch.');
-//         setDayStatusMap({});
-//       }
-//     } finally {
-//       if (!cancelled) setLoading(false);
-//     }
-//   };
-
-//   fetchWeek();
-
-//   return () => {
-//     cancelled = true;
-//   };
-// }, [weekOffset, currentWeekStart, refreshToken]);
 
   const isToday = (date: Date) => {
     const today = new Date();
@@ -370,8 +651,7 @@ const HorizontalCalendar: React.FC<HorizontalCalendarProps> = ({
     );
   };
 
-  const isSelected = (date: Date) =>
-    date.getTime() === selectedDate.getTime();
+  const isSelected = (date: Date) => date.getTime() === selectedDate.getTime();
 
   const getMonthYearLabel = () => {
     const endDate = new Date(currentWeekStart);
@@ -379,45 +659,48 @@ const HorizontalCalendar: React.FC<HorizontalCalendarProps> = ({
 
     if (currentWeekStart.getMonth() === endDate.getMonth()) {
       return `${monthNames[currentWeekStart.getMonth()]} ${currentWeekStart.getFullYear()}`;
-    } else {
-      return `${monthNames[currentWeekStart.getMonth()]} - ${
-        monthNames[endDate.getMonth()]
-      } ${currentWeekStart.getFullYear()}`;
     }
+    return `${monthNames[currentWeekStart.getMonth()]} - ${
+      monthNames[endDate.getMonth()]
+    } ${currentWeekStart.getFullYear()}`;
   };
 
   const handleDatePress = (date: Date) => {
-  const normalized = new Date(date);
-  normalized.setHours(0, 0, 0, 0);
-  
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+    const normalized = new Date(date);
+    normalized.setHours(0, 0, 0, 0);
 
-  // 🚨 Thêm kiểm tra để ngăn chọn ngày trong tương lai
-  if (normalized.getTime() > today.getTime()) {
-    Alert.alert('Không thể theo dõi', 'Bạn không thể ghi nhận thói quen cho ngày trong tương lai.');
-    return;
-  }
-  
-  setSelectedDate(normalized);
-  onDateSelect?.(normalized);
-};
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (normalized.getTime() > today.getTime()) {
+      Alert.alert(
+        'Không thể theo dõi',
+        'Bạn không thể ghi nhận thói quen cho ngày trong tương lai.',
+      );
+      return;
+    }
+
+    setSelectedDate(normalized);
+    onDateSelect?.(normalized);
+  };
 
   const goToToday = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     setSelectedDate(today);
-    setWeekOffset(0); // quay về tuần hiện tại
+    setWeekOffset(0);
     onDateSelect?.(today);
   };
 
   const changeWeek = (direction: 'prev' | 'next') => {
     if (isUpdatingWeek) return;
+    if (direction === 'next' && weekOffset === 0) return; // không cho xem tuần tương lai
+
     setIsUpdatingWeek(true);
 
     setTimeout(() => {
       setWeekOffset((prev) =>
-        direction === 'prev' ? prev + 1 : prev - 1,
+        direction === 'prev' ? prev + 1 : Math.max(0, prev - 1),
       );
       setTimeout(() => setIsUpdatingWeek(false), 80);
     }, 120);
@@ -440,8 +723,7 @@ const HorizontalCalendar: React.FC<HorizontalCalendarProps> = ({
     if (isSelectedDate) base.push(stylesCal.dayCircleSelected);
     else if (isTodayDate) base.push(stylesCal.dayCircleToday);
     else if (status === 'completed') base.push(stylesCal.dayCircleCompleted);
-    else if (status === 'in-progress')
-      base.push(stylesCal.dayCircleInProgress);
+    else if (status === 'in-progress') base.push(stylesCal.dayCircleInProgress);
     else if (isWeekend) base.push(stylesCal.dayCircleWeekend);
 
     return base;
@@ -496,8 +778,7 @@ const HorizontalCalendar: React.FC<HorizontalCalendarProps> = ({
                 <Text
                   style={[
                     stylesCal.dayLabel,
-                    (isTodayDate || isSelectedDate) &&
-                      stylesCal.dayLabelActive,
+                    (isTodayDate || isSelectedDate) && stylesCal.dayLabelActive,
                   ]}
                 >
                   {daysOfWeek[dayOfWeek]}
@@ -525,9 +806,7 @@ const HorizontalCalendar: React.FC<HorizontalCalendarProps> = ({
           <Text style={stylesCal.loadingText}>Đang tải dữ liệu...</Text>
         </View>
       )}
-      {error && !loading && (
-        <Text style={stylesCal.errorText}>{error}</Text>
-      )}
+      {error && !loading && <Text style={stylesCal.errorText}>{error}</Text>}
 
       {/* Legend */}
       <View style={stylesCal.legend}>
@@ -555,40 +834,34 @@ const HorizontalCalendar: React.FC<HorizontalCalendarProps> = ({
 export default function FlowStateHabits() {
   const TARGET_DAYS = 21;
 
-  // ngày đang chọn (nếu null thì dùng hôm nay)
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  // ✅ FIX: luôn lưu Date đã normalize, tránh null và tránh mutate state
+  const [selectedDate, setSelectedDate] = useState<Date>(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  });
 
   const getCurrentDateStr = () => {
-    const d = selectedDate ?? new Date();
+    // ✅ FIX: clone để không mutate selectedDate trong state
+    const d = new Date(selectedDate ?? new Date());
     d.setHours(0, 0, 0, 0);
     return formatDateYMD(d);
   };
 
-  const [habitStatus, setHabitStatus] = useState<
-    Record<number, StatusUI | undefined>
-  >({});
+  const [habitStatus, setHabitStatus] = useState<Record<number, StatusUI | undefined>>({});
   const [activeMenu, setActiveMenu] = useState<number | null>(null);
   const [notes, setNotes] = useState<Record<number, string>>({});
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailHabitId, setDetailHabitId] = useState<number | null>(null);
-  const [moods, setmoods] = useState<
-    Record<number, 'great' | 'good' | 'neutral' | 'bad' | undefined>
-  >({});
+  const [moods, setmoods] = useState<Record<number, 'great' | 'good' | 'neutral' | 'bad' | undefined>>({});
   const [quantities, setQuantities] = useState<Record<number, number>>({});
   const [timeStart, setTimeStart] = useState<Record<number, string>>({});
   const [timeEnd, setTimeEnd] = useState<Record<number, string>>({});
   const [activeRow, setActiveRow] = useState<number | null>(null);
   const [activeCountRow, setActiveCountRow] = useState<number | null>(null);
-  const [countViewOpen, setCountViewOpen] = useState<Record<number, boolean>>(
-    {},
-  );
-  const [countEntries, setCountEntries] = useState<Record<number, CountEntry[]>>(
-    {},
-  );
-  const [editingEntry, setEditingEntry] = useState<{
-    habitId: number;
-    entryId: number;
-  } | null>(null);
+  const [countViewOpen, setCountViewOpen] = useState<Record<number, boolean>>({});
+  const [countEntries, setCountEntries] = useState<Record<number, CountEntry[]>>({});
+  const [editingEntry, setEditingEntry] = useState<{ habitId: number; entryId: number } | null>(null);
 
   const [newCountForm, setNewCountForm] = useState<{
     habitId: number | null;
@@ -609,27 +882,25 @@ export default function FlowStateHabits() {
   const [b2n, setB2N] = useState<Record<string, number>>({});
   const [n2b, setN2B] = useState<Record<number, string>>({});
   const nextIdRef = useRef(1);
-  const [countHabitIds, setCountHabitIds] = useState<Record<number, boolean>>(
-    {},
-  );
+
+  const [countHabitIds, setCountHabitIds] = useState<Record<number, boolean>>({});
   const [overview, setOverview] = useState<{
     totalHabits: number;
     completedToday: number;
     completionRate: number;
   } | null>(null);
+
   const [weeklyBars, setWeeklyBars] = useState<
     { day: string; date: number; height: number }[] | null
   >(null);
+
   const [unitMap, setUnitMap] = useState<
     Record<number, { current: number; goal: number; unit: string }>
   >({});
-
   const [habitList, setHabitList] = useState<Habit[]>([]);
   const [refreshFlag, setRefreshFlag] = useState(0);
-  const refreshAll = useCallback(
-    () => setRefreshFlag((x) => x + 1),
-    [],
-  );
+
+  const refreshAll = useCallback(() => setRefreshFlag((x) => x + 1), []);
 
   const [editOpen, setEditOpen] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
@@ -642,20 +913,20 @@ export default function FlowStateHabits() {
   const [confirmId, setConfirmId] = useState<number | null>(null);
   const [typeForm, setTypeForm] = useState<string>('');
 
-
   const hhmmNow = () => {
     const d = new Date();
     const h = String(d.getHours()).padStart(2, '0');
     const m = String(d.getMinutes()).padStart(2, '0');
     return `${h}:${m}`;
   };
- // onChangeTime(e.target.value,newCountForm.start)
- const onChangeTime = (timeValue: string, fieldType: 'start' | 'end') => {
-  setNewCountForm(prev => ({ 
-    ...prev, 
-    [fieldType]: timeValue 
-  }));
-}
+
+  const onChangeTime = (timeValue: string, fieldType: 'start' | 'end') => {
+    setNewCountForm((prev) => ({
+      ...prev,
+      [fieldType]: timeValue,
+    }));
+  };
+
   const categoryToTag = (cat?: string): 'Mindful' | 'Energy' | 'Sleep' => {
     const c = String(cat || '').toLowerCase();
     if (c === 'mindful') return 'Mindful';
@@ -678,21 +949,18 @@ export default function FlowStateHabits() {
 
     (async () => {
       try {
-        
         const dateStr = getCurrentDateStr();
 
         // 1. Lấy danh sách habits
         const res: any = await apiGetHabits();
         await notifiToast();
+
         const items: any[] = Array.isArray(res?.habits) ? res.habits : [];
 
         const newB2N: Record<string, number> = {};
         const newN2B: Record<number, string> = {};
         const countIds: Record<number, boolean> = {};
-        const newUnitMap: Record<
-          number,
-          { current: number; goal: number; unit: string }
-        > = {};
+        const newUnitMap: Record<number, { current: number; goal: number; unit: string }> = {};
         const initialQuantities: Record<number, number> = {};
         let nextNum = 1;
 
@@ -712,7 +980,7 @@ export default function FlowStateHabits() {
               goal: h.targetCount || 1,
               unit: h.unit || 'lần',
             };
-            initialQuantities[nid] = 0; // sẽ set lại theo date sau
+            initialQuantities[nid] = 0;
           }
 
           const tag = categoryToTag(h.category);
@@ -739,9 +1007,9 @@ export default function FlowStateHabits() {
         setCountHabitIds(countIds);
         setUnitMap(newUnitMap);
         setQuantities(initialQuantities);
-        setHabitStatus({}); // reset status mỗi lần đổi ngày
+        setHabitStatus({});
 
-        // 2. Tổng quan hôm nay + báo cáo tuần (vẫn dùng "today", không phụ thuộc ngày chọn)
+        // 2. Tổng quan hôm nay + báo cáo tuần
         const [ovr, report] = await Promise.all([
           apiGetTodayOverview(),
           apiGetWeeklyReport(0),
@@ -761,6 +1029,8 @@ export default function FlowStateHabits() {
         }
 
         const rep = report?.report;
+
+        // ✅ FIX: render bars theo ngày trong THÁNG hiện tại (không bỏ ngày 1)
         if (rep?.week && Array.isArray(rep?.habitStats)) {
           const today = new Date();
           const start = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -768,7 +1038,7 @@ export default function FlowStateHabits() {
 
           const dayMap: Record<string, number> = {};
           const fmt = (d: Date) => d.toISOString().split('T')[0];
-          start.setDate(start.getDate() + 1);
+
           for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
             dayMap[fmt(d)] = 0;
           }
@@ -811,25 +1081,21 @@ export default function FlowStateHabits() {
             uiIds.map((nid) => {
               const bid = newN2B[nid];
               if (!bid) return Promise.resolve(null);
-              return apiGetHabitTrackings(bid, {
-                date: dateStr,
-                limit: 1,
-              }).catch(() => null);
+              return apiGetHabitTrackings(bid, { date: dateStr, limit: 1 }).catch(
+                () => null,
+              );
             }),
           );
 
           if (cancelled) return;
 
           const initialNotes: Record<number, string> = {};
-          const initialMoods: Record<
-            number,
-            'great' | 'good' | 'neutral' | 'bad' | undefined
-          > = {};
+          const initialMoods: Record<number, 'great' | 'good' | 'neutral' | 'bad' | undefined> = {};
           const overrideStatus: Record<number, StatusUI | undefined> = {};
 
           uiIds.forEach((nid, idx) => {
-            const res: any = trackResults[idx];
-            const arr = res?.trackings ?? res?.data ?? [];
+            const rr: any = trackResults[idx];
+            const arr = rr?.trackings ?? rr?.data ?? [];
             if (!Array.isArray(arr) || arr.length === 0) return;
 
             const t = arr[0];
@@ -842,48 +1108,36 @@ export default function FlowStateHabits() {
             overrideStatus[nid] = ui;
 
             const noteVal = t.notes ?? t.note;
-            if (noteVal) {
-              initialNotes[nid] = String(noteVal);
-            }
+            if (noteVal) initialNotes[nid] = String(noteVal);
 
             const moodRaw = (t.mood || '').toLowerCase();
             if (moodRaw) {
-              if (moodRaw === 'great' || moodRaw === 'awesome') {
-                initialMoods[nid] = 'great';
-              } else if (moodRaw === 'good' || moodRaw === 'ok') {
-                initialMoods[nid] = 'good';
-              } else if (moodRaw === 'okay' || moodRaw === 'neutral') {
-                initialMoods[nid] = 'neutral';
-              } else if (moodRaw === 'bad') {
-                initialMoods[nid] = 'bad';
-              }
+              if (moodRaw === 'great' || moodRaw === 'awesome') initialMoods[nid] = 'great';
+              else if (moodRaw === 'good' || moodRaw === 'ok') initialMoods[nid] = 'good';
+              else if (moodRaw === 'okay' || moodRaw === 'neutral') initialMoods[nid] = 'neutral';
+              else if (moodRaw === 'bad') initialMoods[nid] = 'bad';
             }
           });
 
           if (!cancelled) {
-            if (Object.keys(initialNotes).length > 0) {
-              setNotes(initialNotes);
-            }
-            if (Object.keys(initialMoods).length > 0) {
-              setmoods(initialMoods);
-            }
+            if (Object.keys(initialNotes).length > 0) setNotes(initialNotes);
+            if (Object.keys(initialMoods).length > 0) setmoods(initialMoods);
             if (Object.keys(overrideStatus).length > 0) {
               setHabitStatus((prev) => ({ ...prev, ...overrideStatus }));
             }
           }
         }
 
-        // 4. SUBTRACKINGS count-mode THEO NGÀY (dùng summary.totalQuantity)
+        // 4. SUBTRACKINGS count-mode THEO NGÀY
         const countNids = Object.keys(countIds).map((k) => Number(k));
         if (countNids.length > 0) {
           const results = await Promise.all(
             countNids.map((nid) => {
               const bid = newN2B[nid];
               if (!bid) return Promise.resolve(null);
-              return apiGetHabitSubTrackings(bid, {
-                date: dateStr,
-                limit: 500,
-              }).catch(() => null);
+              return apiGetHabitSubTrackings(bid, { date: dateStr, limit: 500 }).catch(
+                () => null,
+              );
             }),
           );
 
@@ -894,12 +1148,12 @@ export default function FlowStateHabits() {
           const newEntries: Record<number, CountEntry[]> = {};
 
           countNids.forEach((nid, idx) => {
-            const res: any = results[idx];
-            if (!res) return;
+            const rr: any = results[idx];
+            if (!rr) return;
 
-            const totalQty = res.summary?.totalQuantity ?? 0;
+            const totalQty = rr.summary?.totalQuantity ?? 0;
             const habitMeta = newUnitMap[nid];
-            const goal = habitMeta?.goal ?? res.habit?.targetCount ?? 1;
+            const goal = habitMeta?.goal ?? rr.habit?.targetCount ?? 1;
 
             newQuantitiesByHabit[nid] = totalQty;
 
@@ -910,8 +1164,8 @@ export default function FlowStateHabits() {
 
             newStatuses[nid] = s;
 
-            const arr = Array.isArray(res.subTrackings)
-              ? res.subTrackings.map((t: any, index: number) => ({
+            const arr = Array.isArray(rr.subTrackings)
+              ? rr.subTrackings.map((t: any, index: number) => ({
                   id: index + 1,
                   qty: t.quantity ?? 1,
                   start: t.time ?? t.startTime ?? undefined,
@@ -920,6 +1174,7 @@ export default function FlowStateHabits() {
                   beId: t.id ?? t._id,
                 }))
               : [];
+
             newEntries[nid] = arr;
           });
 
@@ -930,7 +1185,6 @@ export default function FlowStateHabits() {
           }
         }
       } catch (err) {
-        //console.error('[habits.index] load error:', err);
         if (!cancelled) {
           setHabitList([]);
           setOverview(null);
@@ -980,21 +1234,33 @@ export default function FlowStateHabits() {
   };
 
   const addCountEntry = (habitId: number) => {
-    const meta = unitMap[habitId];
-    const currentVal = getCurrentCountValue(habitId);
-    const baseQty = meta ? Math.max(1, currentVal || meta.current || 1) : 1;
+    //console.log('=== OPENING COUNT ENTRY FORM ===');
+    //console.log('Habit ID:', habitId);
+    //console.log('Backend ID:', n2b[habitId]);
+    //console.log('Unit Map:', unitMap[habitId]);
+    
+    const startVal = hhmmNow(); // Luôn dùng thời gian hiện tại
+    const endVal = '';
 
-    const startVal = timeStart[habitId] ?? hhmmNow();
-    const endVal = timeEnd[habitId] ?? '';
+    //console.log('Form data:', {
+    //   habitId,
+    //   qty: 1,
+    //   start: startVal,
+    //   end: endVal,
+    //   note: '',
+    //   mood: undefined,
+    // });
 
     setNewCountForm({
       habitId,
-      qty: baseQty,
+      qty: 1, // Luôn bắt đầu với 1
       start: startVal,
       end: endVal,
       note: '',
-      mood: moods[habitId],
+      mood: undefined,
     });
+    
+    //console.log('Form opened successfully');
   };
 
   const cancelNewCountEntry = () => {
@@ -1008,109 +1274,138 @@ export default function FlowStateHabits() {
     });
   };
 
- // Thay thế toàn bộ hàm saveNewCountEntry (khoảng dòng 1058 đến 1092)
-  const saveNewCountEntry = () => {
-    if (!newCountForm.habitId) return;
-    const habitId = newCountForm.habitId;
+  const [isSaving, setIsSaving] = useState(false);
 
-    const now = new Date();
-
-    // 1. Lấy thông tin ngày giờ theo UTC (Giờ của Server)
-    const utcY = now.getUTCFullYear();
-    const utcM = String(now.getUTCMonth() + 1).padStart(2, '0');
-    const utcD = String(now.getUTCDate()).padStart(2, '0');
-    const utcDateStr = `${utcY}-${utcM}-${utcD}`; // Ví dụ: 2025-12-08
-
-    const utcH = String(now.getUTCHours()).padStart(2, '0');
-    const utcMin = String(now.getUTCMinutes()).padStart(2, '0');
-    const utcTimeStr = `${utcH}:${utcMin}`; // Ví dụ: 17:30
-
-    // 2. Lấy ngày đang chọn trên giao diện (Local time)
-    const selectedDateStr = getCurrentDateStr(); // Ví dụ: 2025-12-09
-    const localTodayStr = formatDateYMD(now);
-
-    // --- LOGIC XỬ LÝ DATE ---
-    let finalDateToSend = selectedDateStr;
-    let finalTimeToSend = newCountForm.start;
-
-    // Nếu người dùng chọn ngày tương lai so với lịch máy -> Chặn luôn
-    if (selectedDateStr > localTodayStr) {
-      Alert.alert('Lỗi', 'Không thể nhập cho ngày tương lai.');
+  const saveNewCountEntry = async () => {
+    if (isSaving) return;
+    
+    //console.log('=== SAVE COUNT ENTRY START ===');
+    
+    if (!newCountForm.habitId) {
+      Alert.alert('Lỗi', 'Không có thói quen được chọn.');
       return;
     }
-
-    // NẾU ĐANG NHẬP CHO "HÔM NAY" (Của máy bạn)
-    if (selectedDateStr === localTodayStr) {
-        // Kiểm tra xem Local Date có lớn hơn UTC Date không?
-        // (Ví dụ: VN là ngày 9, UTC vẫn là ngày 8)
-        if (selectedDateStr > utcDateStr) {
-            //console.log(`[Timezone Fix] Local (${selectedDateStr}) > UTC (${utcDateStr}). Sending UTC instead.`);
-            // BẮT BUỘC gửi ngày UTC để Server không báo lỗi Future Time
-            finalDateToSend = utcDateStr;
-            
-            // Nếu đổi ngày sang UTC, thì giờ cũng phải đổi sang UTC tương ứng
-            // Trừ khi người dùng cố tình nhập giờ tay, lúc đó ta chấp nhận rủi ro hoặc ép về UTC
-            if (!newCountForm.start) {
-                finalTimeToSend = utcTimeStr;
-            } else {
-                // Nếu user nhập tay, ta vẫn ưu tiên dùng UTC Time hiện tại để an toàn nhất
-                // vì giờ nhập tay theo giờ VN (ví dụ 00:30) lắp vào ngày UTC (hôm qua) sẽ ra sai lệch logic
-                finalTimeToSend = utcTimeStr; 
-            }
-        } 
-        // Trường hợp ngày khớp nhau (VN ngày 8, UTC ngày 8)
-        else {
-             if (!finalTimeToSend) {
-                 // Nếu không nhập giờ, lấy giờ UTC cho chắc ăn
-                 finalTimeToSend = utcTimeStr;
-             }
-        }
+    
+    const habitId = newCountForm.habitId;
+    const bid = n2b[habitId];
+    
+    if (!bid) {
+      Alert.alert('Lỗi', 'Không tìm thấy thói quen trên máy chủ.');
+      return;
     }
-
-    // Fallback cuối cùng: Đảm bảo không bao giờ gửi startTime rỗng
-    if (!finalTimeToSend) finalTimeToSend = utcTimeStr;
-
-    (async () => {
-      try {
-        const bid = n2b[habitId];
-        if (!bid) {
-          Alert.alert('Lỗi', 'Không tìm thấy thói quen trên máy chủ.');
-          return;
-        }
-
-        const qty = newCountForm.qty > 0 ? newCountForm.qty : 1;
-        
-        // Gửi payload đã được "biến hình" sang UTC nếu cần thiết
-        const body: any = {
-          quantity: qty,
-          date: finalDateToSend, 
-          startTime: finalTimeToSend,
-        };
-
-        if (newCountForm.end) body.endTime = newCountForm.end;
-        if (newCountForm.note.trim()) body.note = newCountForm.note.trim();
-        if (newCountForm.mood) {
-          body.mood = newCountForm.mood === 'neutral' ? 'okay' : newCountForm.mood;
-        }
-
-        //console.log('[Debug] Sending Body:', body);
-        await apiAddHabitSubTracking(bid, body);
-
-        setNewCountForm({
-          habitId: null,
-          qty: 1,
-          start: '',
-          end: '',
-          note: '',
-          mood: undefined,
-        });
-
-        refreshAll();
-      } catch (err: any) {
-        //console.error('[habits.index] add subtrack error:', err);
-        Alert.alert('Lỗi Server', err?.message || 'Không thể lưu.');
+    
+    //console.log('📋 Current form data:', {
+    //   habitId,
+    //   bid,
+    //   qty: newCountForm.qty,
+    //   start: newCountForm.start,
+    //   end: newCountForm.end,
+    //   note: newCountForm.note,
+    //   mood: newCountForm.mood
+    // });
+    
+    //console.log('📅 Selected date info:', {
+    //   selectedDate: selectedDate,
+    //   selectedDateStr: getCurrentDateStr(),
+    //   today: formatDateYMD(new Date())
+    // });
+    
+    setIsSaving(true);
+    
+    try {
+      // Sử dụng dữ liệu từ form người dùng nhập
+      const selectedDateStr = getCurrentDateStr(); // Ngày được chọn trong lịch
+      const todayStr = formatDateYMD(new Date());
+      
+      // Kiểm tra không cho phép thêm cho ngày tương lai
+      if (selectedDateStr > todayStr) {
+        Alert.alert('Lỗi', 'Không thể thêm thói quen cho ngày trong tương lai.');
+        setIsSaving(false);
+        return;
       }
-    })();
+      
+      const payload = {
+        quantity: Math.max(1, newCountForm.qty || 1), // Số lượng từ form
+        date: selectedDateStr, // Ngày từ calendar
+        startTime: newCountForm.start || hhmmNow(), // Thời gian từ form hoặc hiện tại
+      };
+      
+      // Thêm các field optional nếu có
+      if (newCountForm.end && newCountForm.end.trim()) {
+        payload.endTime = newCountForm.end.trim();
+      }
+      
+      if (newCountForm.note && newCountForm.note.trim()) {
+        payload.note = newCountForm.note.trim();
+      }
+      
+      if (newCountForm.mood) {
+        payload.mood = newCountForm.mood === 'neutral' ? 'okay' : newCountForm.mood;
+      }
+      
+      // Validate payload trước khi gửi
+      if (!payload.startTime || !payload.date || !payload.quantity) {
+        throw new Error('Thiếu thông tin bắt buộc trong payload');
+      }
+      
+      // Validate time format
+      const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+      if (!timeRegex.test(payload.startTime)) {
+        throw new Error('Định dạng thời gian bắt đầu không hợp lệ');
+      }
+      
+      if (payload.endTime && !timeRegex.test(payload.endTime)) {
+        throw new Error('Định dạng thời gian kết thúc không hợp lệ');
+      }
+      
+      //console.log('✅ Validated payload:', payload);
+      //console.log('🎯 Backend ID:', bid);
+      //console.log('📅 Date validation:', {
+      //   selectedDate: selectedDateStr,
+      //   today: todayStr,
+      //   isFuture: selectedDateStr > todayStr
+      // });
+      
+      // Gọi API đơn giản
+      const result = await apiAddHabitSubTracking(bid, payload);
+      console.log(result);
+      
+      //console.log('Success result:', result);
+      
+      // Reset form
+      setNewCountForm({
+        habitId: null,
+        qty: 1,
+        start: '',
+        end: '',
+        note: '',
+        mood: undefined,
+      });
+      
+      // Refresh
+      refreshAll();
+      
+      Alert.alert('Thành công!', 'Đã thêm thành công');
+      
+    } catch (error: any) {
+      console.error('=== SAVE ERROR ===');
+      console.error('Error:', error);
+      console.error('Error message:', error?.message);
+      console.error('Error response:', error?.response);
+      console.error('Error data:', error?.response?.data);
+      
+      let msg = 'Có lỗi xảy ra';
+      if (error?.response?.data?.message) {
+        msg = error.response.data.message;
+      } else if (error?.message) {
+        msg = error.message;
+      }
+      
+      Alert.alert('Lỗi', msg);
+      
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const deleteCountEntry = (habitId: number, entryId: number) => {
@@ -1123,9 +1418,7 @@ export default function FlowStateHabits() {
           await apiDeleteHabitSubTrackings(bid, entry.beId);
           refreshAll();
         }
-      } catch (err) {
-        //console.error('[habits.index] delete subtrack error:', err);
-      }
+      } catch {}
     })();
   };
 
@@ -1137,8 +1430,7 @@ export default function FlowStateHabits() {
           await apiDeleteHabitTrackingDay(bid, getCurrentDateStr());
           refreshAll();
         }
-      } catch (err) {
-        //console.error('[habits.index] clear day error:', err);
+      } catch {
       } finally {
         setCountEntries((prev) => ({ ...prev, [habitId]: [] }));
         setCountViewOpen((v) => ({ ...v, [habitId]: false }));
@@ -1171,9 +1463,7 @@ export default function FlowStateHabits() {
           if (en.end !== undefined) body.endTime = en.end || null;
           if (en.qty !== undefined) body.quantity = en.qty;
           if (en.note !== undefined) body.note = en.note;
-          if (en.mood !== undefined) {
-            body.mood = en.mood === 'neutral' ? 'okay' : en.mood;
-          }
+          if (en.mood !== undefined) body.mood = en.mood === 'neutral' ? 'okay' : en.mood;
           body.date = dateStr;
           await apiUpdateHabitSubTracking(bid, en.beId, body);
         } else {
@@ -1188,8 +1478,7 @@ export default function FlowStateHabits() {
           await apiAddHabitSubTracking(bid, body);
         }
         refreshAll();
-      } catch (err) {
-        //console.error('[habits.index] save subtrack error:', err);
+      } catch {
       } finally {
         setEditingEntry(null);
       }
@@ -1239,19 +1528,12 @@ export default function FlowStateHabits() {
           date: getCurrentDateStr(),
         };
 
-        if (note && note.trim()) {
-          payload.notes = note.trim();
-        }
-
-        if (mood) {
-          payload.mood = mood;
-        }
+        if (note && note.trim()) payload.notes = note.trim();
+        if (mood) payload.mood = mood;
 
         await apiTrackHabit(bid, payload);
         refreshAll();
-      } catch (err) {
-        //console.error('[habits.index] track error:', err);
-      }
+      } catch {}
     })();
   };
 
@@ -1281,33 +1563,24 @@ export default function FlowStateHabits() {
         date: getCurrentDateStr(),
       };
 
-      if (note && note.trim()) {
-        payload.notes = note.trim();
-      }
-      if (mood) {
-        payload.mood = mood;
-      }
+      if (note && note.trim()) payload.notes = note.trim();
+      if (mood) payload.mood = mood;
 
       try {
-        await apiTrackHabit(bid, payload);
+        var res = await apiTrackHabit(bid, payload);
+        console.log(res);
+        
         refreshAll();
-      } catch (err) {
-        //console.error('[habits.index] syncHabitMeta error:', err);
-      }
+      } catch {}
     })();
   };
 
   const openEditModal = (h: Habit) => {
     const backendId = n2b[h.id];
-    if (!backendId) {
-      //console.warn('[habits.index] Missing backend id for habit', h);
-      return;
-    }
+    if (!backendId) return;
     router.push({
       pathname: '/(tabs)/habits/CreateHabitDetail',
-      params: {
-        templateId: backendId,
-      },
+      params: { templateId: backendId },
     });
   };
 
@@ -1345,14 +1618,12 @@ export default function FlowStateHabits() {
           if (t) {
             if (t.includes('mind')) updates.category = 'mindful';
             else if (t.includes('sleep')) updates.category = 'sleep';
-            else if (t.includes('ener') || t.includes('fit') || t.includes('health'))
-              updates.category = 'energy';
+            else if (t.includes('ener') || t.includes('fit') || t.includes('health')) updates.category = 'energy';
           }
           await apiUpdateHabit(bid, updates);
           refreshAll();
         }
-      } catch (err) {
-        //console.error('[habits.index] update error:', err);
+      } catch {
       } finally {
         closeEditModal();
       }
@@ -1365,8 +1636,7 @@ export default function FlowStateHabits() {
         const bid = n2b[id];
         if (bid) await apiDeleteHabit(bid);
         refreshAll();
-      } catch (err) {
-        //console.error('[habits.index] delete error:', err);
+      } catch {
       } finally {
         if (activeMenu === id) setActiveMenu(null);
         closeConfirm();
@@ -1393,8 +1663,8 @@ export default function FlowStateHabits() {
   const progressPercent =
     totalHabits > 0 ? Math.round((completedCount / totalHabits) * 100) : 0;
 
-  const openDetail = (h: Habit,type:string) => {
-    setTypeForm(type)
+  const openDetail = (h: Habit, type: string) => {
+    setTypeForm(type);
     setDetailHabitId(h.id);
     setDetailOpen(true);
   };
@@ -1428,11 +1698,8 @@ export default function FlowStateHabits() {
         if (end) body.endTime = end;
 
         await apiAddHabitSubTracking(bid, body);
-
         refreshAll();
-      } catch (err) {
-        //console.error('[habits.index] saveCountModal error:', err);
-      }
+      } catch {}
     })();
   };
 
@@ -1461,10 +1728,7 @@ export default function FlowStateHabits() {
         {/* Header */}
         <View style={styles.headerCard}>
           <View style={styles.headerLeft}>
-            <TouchableOpacity
-              onPress={() => router.back()}
-              style={styles.headerBackButton}
-            >
+            <TouchableOpacity onPress={() => router.back()} style={styles.headerBackButton}>
               <ChevronLeft size={20} color="#fff" />
             </TouchableOpacity>
 
@@ -1520,6 +1784,7 @@ export default function FlowStateHabits() {
               const m = (habit.duration || '').match(/\d+/);
               const currentDays = m ? parseInt(m[0], 10) : 0;
               const goalDays = TARGET_DAYS;
+
               const meta = unitMap[habit.id];
               const currentVal = meta ? getCurrentCountValue(habit.id) : undefined;
 
@@ -1527,11 +1792,17 @@ export default function FlowStateHabits() {
                 meta && meta.goal > 0
                   ? Math.max(
                       0,
-                      Math.min(100, Math.round(((currentVal ?? 0) / meta.goal) * 100)),
+                      Math.min(
+                        100,
+                        Math.round(((currentVal ?? 0) / meta.goal) * 100),
+                      ),
                     )
                   : Math.max(
                       0,
-                      Math.min(100, Math.round((currentDays / (goalDays || 1)) * 100)),
+                      Math.min(
+                        100,
+                        Math.round((currentDays / (goalDays || 1)) * 100),
+                      ),
                     );
 
               const emoji = habit.icon || '⭐';
@@ -1549,37 +1820,16 @@ export default function FlowStateHabits() {
 
               let chip = (() => {
                 if (status === 'success')
-                  return {
-                    label: 'Hoàn thành',
-                    bg: '#dcfce7',
-                    text: '#16a34a',
-                  };
+                  return { label: 'Hoàn thành', bg: '#dcfce7', text: '#16a34a' };
                 if (status === 'fail')
-                  return {
-                    label: 'Thất bại',
-                    bg: '#fee2e2',
-                    text: '#dc2626',
-                  };
+                  return { label: 'Thất bại', bg: '#fee2e2', text: '#dc2626' };
                 if (status === 'skip')
-                  return {
-                    label: 'Bỏ qua',
-                    bg: '#ffedd5',
-                    text: '#d97706',
-                  };
-                return {
-                  label: 'Chờ làm',
-                  bg: '#e5e7eb',
-                  text: '#334155',
-                };
+                  return { label: 'Bỏ qua', bg: '#ffedd5', text: '#d97706' };
+                return { label: 'Chờ làm', bg: '#e5e7eb', text: '#334155' };
               })();
 
-              if (status === 'in_progress') {
-                chip = {
-                  label: 'Đang làm',
-                  bg: '#e0f2fe',
-                  text: '#0284c7',
-                };
-              }
+              if (status === 'in_progress')
+                chip = { label: 'Đang làm', bg: '#e0f2fe', text: '#0284c7' };
 
               const isCountHabit = !!unitMap[habit.id];
 
@@ -1590,9 +1840,7 @@ export default function FlowStateHabits() {
                     activeOpacity={0.8}
                     onPress={() => {
                       if (isCountHabit) {
-                        setActiveCountRow(
-                          activeCountRow === habit.id ? null : habit.id,
-                        );
+                        setActiveCountRow(activeCountRow === habit.id ? null : habit.id);
                       } else {
                         setActiveRow(activeRow === habit.id ? null : habit.id);
                       }
@@ -1613,18 +1861,8 @@ export default function FlowStateHabits() {
                           </View>
                           <View>
                             <Text style={styles.habitTitle}>{habit.title}</Text>
-                            <View
-                              style={[
-                                styles.statusChip,
-                                { backgroundColor: chip.bg },
-                              ]}
-                            >
-                              <Text
-                                style={[
-                                  styles.statusChipText,
-                                  { color: chip.text },
-                                ]}
-                              >
+                            <View style={[styles.statusChip, { backgroundColor: chip.bg }]}>
+                              <Text style={[styles.statusChipText, { color: chip.text }]}>
                                 {chip.label}
                               </Text>
                             </View>
@@ -1632,11 +1870,7 @@ export default function FlowStateHabits() {
                         </View>
 
                         <TouchableOpacity
-                          onPress={() =>
-                            setActiveMenu(
-                              activeMenu === habit.id ? null : habit.id,
-                            )
-                          }
+                          onPress={() => setActiveMenu(activeMenu === habit.id ? null : habit.id)}
                           style={styles.moreButton}
                         >
                           <MoreVertical size={18} color="#0f172a" />
@@ -1658,16 +1892,12 @@ export default function FlowStateHabits() {
                             <View
                               style={[
                                 styles.habitProgressBarInner,
-                                {
-                                  width: `${itemPercent}%`,
-                                  backgroundColor: progressColor,
-                                },
+                                { width: `${itemPercent}%`, backgroundColor: progressColor },
                               ]}
                             />
                           </View>
                         </>
                       ) : (
-                        /* Nếu là thói quen thường (abc, tập yoga check-box) thì thêm khoảng trống nhỏ cho đẹp */
                         <View style={{ marginBottom: 4 }} />
                       )}
                     </View>
@@ -1683,16 +1913,15 @@ export default function FlowStateHabits() {
                         <Eye size={14} color="#1e40af" />
                         <Text style={styles.actionButtonBlueText}>Xem chi tiết</Text>
                       </TouchableOpacity>
+
                       <TouchableOpacity
                         onPress={() => addCountEntry(habit.id)}
-                        style={[
-                          styles.actionButton,
-                          styles.actionButtonGreenSoft,
-                        ]}
+                        style={[styles.actionButton, styles.actionButtonGreenSoft]}
                       >
                         <Plus size={14} color="#047857" />
                         <Text style={styles.actionButtonGreenText}>Thêm lần</Text>
                       </TouchableOpacity>
+
                       <TouchableOpacity
                         onPress={() => clearCountDay(habit.id)}
                         style={[styles.actionButton, styles.actionButtonRedSoft]}
@@ -1700,16 +1929,6 @@ export default function FlowStateHabits() {
                         <Trash2 size={14} color="#dc2626" />
                         <Text style={styles.actionButtonRedText}>Xóa ngày</Text>
                       </TouchableOpacity>
-                      {/* <TouchableOpacity
-                        onPress={() => openEditModal(habit)}
-                        style={[
-                          styles.actionButton,
-                          styles.actionButtonAmberSoft,
-                        ]}
-                      >
-                        <Pencil size={14} color="#b45309" />
-                        <Text style={styles.actionButtonAmberText}>Sửa</Text>
-                      </TouchableOpacity> */}
                     </View>
                   )}
 
@@ -1724,10 +1943,10 @@ export default function FlowStateHabits() {
                             keyboardType="numeric"
                             value={String(newCountForm.qty)}
                             onChangeText={(text) => {
-                              const val = parseInt(text || '0', 10) || 0;
+                              const val = parseInt(text || '1', 10) || 1;
                               setNewCountForm((prev) => ({
                                 ...prev,
-                                qty: Math.max(0, val),
+                                qty: Math.max(1, val),
                               }));
                             }}
                             style={styles.input}
@@ -1737,45 +1956,21 @@ export default function FlowStateHabits() {
                         {/* start */}
                         <View style={styles.formField}>
                           <Text style={styles.formLabel}>Bắt đầu *</Text>
-                          {/* <TextInput
-                            placeholder="HH:MM"
+                          <TimePickerField
                             value={newCountForm.start}
-                            onChangeText={(text) =>
-                              setNewCountForm((prev) => ({
-                                ...prev,
-                                start: text,
-                              }))
-                            }
-                            style={styles.input}
-                          /> */}
-                          <input
-        type="time"
-        value={newCountForm.start}
-        onChange={(e) => onChangeTime(e.target.value,"start")}
-        style={styles.inputTime}
-      />
+                            onChange={(v) => onChangeTime(v, 'start')}
+                            placeholder="HH:MM"
+                          />
                         </View>
 
                         {/* end */}
                         <View style={styles.formField}>
                           <Text style={styles.formLabel}>Kết thúc (tùy chọn)</Text>
-                          {/* <TextInput
-                            placeholder="HH:MM"
+                          <TimePickerField
                             value={newCountForm.end}
-                            onChangeText={(text) =>
-                              setNewCountForm((prev) => ({
-                                ...prev,
-                                end: text,
-                              }))
-                            }
-                            style={styles.input}
-                          /> */}
-                          <input
-        type="time"
-        value={newCountForm.end}
-        onChange={(e) => onChangeTime(e.target.value,"end")}
-        style={styles.inputTime}
-      />
+                            onChange={(v) => onChangeTime(v, 'end')}
+                            placeholder="HH:MM"
+                          />
                         </View>
                       </View>
 
@@ -1785,10 +1980,7 @@ export default function FlowStateHabits() {
                         <TextInput
                           value={newCountForm.note}
                           onChangeText={(text) =>
-                            setNewCountForm((prev) => ({
-                              ...prev,
-                              note: text,
-                            }))
+                            setNewCountForm((prev) => ({ ...prev, note: text }))
                           }
                           style={styles.input}
                           placeholder="Ghi chú thêm..."
@@ -1844,9 +2036,18 @@ export default function FlowStateHabits() {
                         </TouchableOpacity>
                         <TouchableOpacity
                           onPress={saveNewCountEntry}
-                          style={styles.formSaveButton}
+                          style={[
+                            styles.formSaveButton,
+                            (isSaving || !newCountForm.start || newCountForm.qty < 1) && {
+                              backgroundColor: '#94a3b8',
+                              opacity: 0.6
+                            }
+                          ]}
+                          disabled={isSaving || !newCountForm.start || newCountForm.qty < 1}
                         >
-                          <Text style={styles.formSaveText}>Lưu</Text>
+                          <Text style={styles.formSaveText}>
+                            {isSaving ? 'Đang lưu...' : 'Lưu'}
+                          </Text>
                         </TouchableOpacity>
                       </View>
                     </View>
@@ -1867,9 +2068,7 @@ export default function FlowStateHabits() {
                           return (
                             <View key={en.id} style={styles.entryBox}>
                               <View style={styles.entryHeaderRow}>
-                                <Text style={styles.entryTitle}>
-                                  📘 Lần {idx + 1}
-                                </Text>
+                                <Text style={styles.entryTitle}>📘 Lần {idx + 1}</Text>
                                 {en.start && en.end && (
                                   <Text style={styles.entryTime}>
                                     {en.start} - {en.end}
@@ -1877,26 +2076,24 @@ export default function FlowStateHabits() {
                                   </Text>
                                 )}
                               </View>
+
                               <Text style={styles.entryQty}>
                                 {en.qty} {unitMap[habit.id]?.unit || ''}
                               </Text>
-                              {en.note ? (
-                                <Text style={styles.entryNote}>“{en.note}”</Text>
-                              ) : null}
+
+                              {en.note ? <Text style={styles.entryNote}>“{en.note}”</Text> : null}
 
                               <View style={styles.entryButtonRow}>
                                 <TouchableOpacity
                                   onPress={() =>
-                                    setEditingEntry({
-                                      habitId: habit.id,
-                                      entryId: en.id,
-                                    })
+                                    setEditingEntry({ habitId: habit.id, entryId: en.id })
                                   }
                                   style={styles.entryEditButton}
                                 >
                                   <Pencil size={14} color="#b45309" />
                                   <Text style={styles.entryEditText}>Sửa</Text>
                                 </TouchableOpacity>
+
                                 <TouchableOpacity
                                   onPress={() => deleteCountEntry(habit.id, en.id)}
                                   style={styles.entryDeleteButton}
@@ -1927,30 +2124,26 @@ export default function FlowStateHabits() {
                                           style={styles.input}
                                         />
                                       </View>
+
                                       <View style={styles.formField}>
                                         <Text style={styles.formLabel}>Bắt đầu</Text>
-                                        <TextInput
-                                          placeholder="HH:MM"
+                                        <TimePickerField
                                           value={en.start || ''}
-                                          onChangeText={(text) =>
-                                            updateEntry(habit.id, en.id, {
-                                              start: text,
-                                            })
+                                          onChange={(v) =>
+                                            updateEntry(habit.id, en.id, { start: v })
                                           }
-                                          style={styles.input}
+                                          placeholder="HH:MM"
                                         />
                                       </View>
+
                                       <View style={styles.formField}>
                                         <Text style={styles.formLabel}>Kết thúc</Text>
-                                        <TextInput
-                                          placeholder="HH:MM"
+                                        <TimePickerField
                                           value={en.end || ''}
-                                          onChangeText={(text) =>
-                                            updateEntry(habit.id, en.id, {
-                                              end: text,
-                                            })
+                                          onChange={(v) =>
+                                            updateEntry(habit.id, en.id, { end: v })
                                           }
-                                          style={styles.input}
+                                          placeholder="HH:MM"
                                         />
                                       </View>
                                     </View>
@@ -1960,23 +2153,14 @@ export default function FlowStateHabits() {
                                       <TextInput
                                         value={en.note || ''}
                                         onChangeText={(text) =>
-                                          updateEntry(habit.id, en.id, {
-                                            note: text,
-                                          })
+                                          updateEntry(habit.id, en.id, { note: text })
                                         }
                                         style={styles.input}
                                       />
                                     </View>
 
                                     <View style={[styles.rowWrap, { marginTop: 10 }]}>
-                                      {(
-                                        [
-                                          'great',
-                                          'good',
-                                          'neutral',
-                                          'bad',
-                                        ] as const
-                                      ).map((f) => {
+                                      {(['great', 'good', 'neutral', 'bad'] as const).map((f) => {
                                         const selected = en.mood === f;
                                         const label =
                                           f === 'great'
@@ -2002,8 +2186,7 @@ export default function FlowStateHabits() {
                                             <Text
                                               style={[
                                                 styles.moodButtonText,
-                                                selected &&
-                                                  styles.moodButtonTextSelected,
+                                                selected && styles.moodButtonTextSelected,
                                               ]}
                                             >
                                               {label}
@@ -2040,25 +2223,21 @@ export default function FlowStateHabits() {
                   {!isCountHabit && activeRow === habit.id && (
                     <View style={styles.actionRow}>
                       <TouchableOpacity
-                        onPress={() => openDetail(habit,"Xong")}
+                        onPress={() => openDetail(habit, 'Xong')}
                         style={[styles.actionButton, styles.actionButtonBlueSoft]}
                       >
                         <Eye size={14} color="#1e40af" />
-                        <Text style={styles.actionButtonBlueText}>
-                          Đánh dấu
-                        </Text>
+                        <Text style={styles.actionButtonBlueText}>Đánh dấu</Text>
                       </TouchableOpacity>
+
                       <TouchableOpacity
-                      onPress={() => openDetail(habit,"Lưu")}
-                        //onPress={() => openEditModal(habit)}
-                        style={[
-                          styles.actionButton,
-                          styles.actionButtonAmberSoft,
-                        ]}
+                        onPress={() => openDetail(habit, 'Lưu')}
+                        style={[styles.actionButton, styles.actionButtonAmberSoft]}
                       >
                         <Pencil size={14} color="#b45309" />
                         <Text style={styles.actionButtonAmberText}>Sửa</Text>
                       </TouchableOpacity>
+
                       <TouchableOpacity
                         onPress={() => askDelete(habit.id, habit.title)}
                         style={[styles.actionButton, styles.actionButtonRedSoft]}
@@ -2081,6 +2260,7 @@ export default function FlowStateHabits() {
                       >
                         <Text style={styles.flyoutItemText}>Sửa</Text>
                       </TouchableOpacity>
+
                       <TouchableOpacity
                         onPress={() => {
                           setActiveMenu(null);
@@ -2088,10 +2268,9 @@ export default function FlowStateHabits() {
                         }}
                         style={styles.flyoutItem}
                       >
-                        <Text style={[styles.flyoutItemText, { color: '#dc2626' }]}>
-                          Xóa
-                        </Text>
+                        <Text style={[styles.flyoutItemText, { color: '#dc2626' }]}>Xóa</Text>
                       </TouchableOpacity>
+
                       <TouchableOpacity
                         onPress={() => {
                           setActiveMenu(null);
@@ -2107,9 +2286,7 @@ export default function FlowStateHabits() {
                         }}
                         style={styles.flyoutItem}
                       >
-                        <Text style={[styles.flyoutItemText, { color: '#2563eb' }]}>
-                          Thông tin
-                        </Text>
+                        <Text style={[styles.flyoutItemText, { color: '#2563eb' }]}>Thông tin</Text>
                       </TouchableOpacity>
                     </View>
                   )}
@@ -2133,18 +2310,15 @@ export default function FlowStateHabits() {
               (() => {
                 const h = habitList.find((x) => x.id === detailHabitId)!;
                 const status = computedStatus(h.id);
+
                 let chip = (() => {
-                  if (status === 'success')
-                    return { label: 'Hoàn thành', color: '#16a34a', bg: '#dcfce7' };
-                  if (status === 'fail')
-                    return { label: 'Thất bại', color: '#dc2626', bg: '#fee2e2' };
-                  if (status === 'skip')
-                    return { label: 'Bỏ qua', color: '#d97706', bg: '#ffedd5' };
+                  if (status === 'success') return { label: 'Hoàn thành', color: '#16a34a', bg: '#dcfce7' };
+                  if (status === 'fail') return { label: 'Thất bại', color: '#dc2626', bg: '#fee2e2' };
+                  if (status === 'skip') return { label: 'Bỏ qua', color: '#d97706', bg: '#ffedd5' };
                   return { label: 'Chờ làm', color: '#334155', bg: '#e5e7eb' };
                 })();
-                if (status === 'in_progress') {
-                  chip = { label: 'Đang làm', color: '#0284c7', bg: '#e0f2fe' };
-                }
+
+                if (status === 'in_progress') chip = { label: 'Đang làm', color: '#0284c7', bg: '#e0f2fe' };
 
                 const noteVal = notes[h.id] || '';
                 const meta = unitMap[h.id];
@@ -2159,26 +2333,18 @@ export default function FlowStateHabits() {
                       <View style={styles.habitIconBox}>
                         <Text style={{ fontSize: 22 }}>{h.icon || '⭐'}</Text>
                       </View>
+
                       <View style={{ flex: 1, marginLeft: 8 }}>
                         <Text style={styles.habitTitle}>{h.title}</Text>
                         {!meta && (
-                          <View
-                            style={[
-                              styles.statusChip,
-                              { backgroundColor: chip.bg, marginTop: 4 },
-                            ]}
-                          >
-                            <Text
-                              style={[
-                                styles.statusChipText,
-                                { color: chip.color },
-                              ]}
-                            >
+                          <View style={[styles.statusChip, { backgroundColor: chip.bg, marginTop: 4 }]}>
+                            <Text style={[styles.statusChipText, { color: chip.color }]}>
                               Chế độ: {chip.label}
                             </Text>
                           </View>
                         )}
                       </View>
+
                       {meta && (
                         <Text style={styles.detailQtyTop}>
                           {q}/{meta.goal} {meta.unit}
@@ -2196,10 +2362,7 @@ export default function FlowStateHabits() {
                               onPress={() =>
                                 setQuantities((prev) => ({
                                   ...prev,
-                                  [h.id]: Math.max(
-                                    0,
-                                    (prev[h.id] ?? meta.current ?? 0) - 1,
-                                  ),
+                                  [h.id]: Math.max(0, (prev[h.id] ?? meta.current ?? 0) - 1),
                                 }))
                               }
                               style={styles.detailCountBtnMinus}
@@ -2216,8 +2379,7 @@ export default function FlowStateHabits() {
                               onPress={() =>
                                 setQuantities((prev) => ({
                                   ...prev,
-                                  [h.id]:
-                                    (prev[h.id] ?? meta.current ?? 0) + 1,
+                                  [h.id]: (prev[h.id] ?? meta.current ?? 0) + 1,
                                 }))
                               }
                               style={styles.detailCountBtnPlus}
@@ -2228,42 +2390,27 @@ export default function FlowStateHabits() {
                         </View>
 
                         <View style={styles.detailTimeBox}>
-                          <View
-                            style={{
-                              flexDirection: 'row',
-                              alignItems: 'center',
-                              marginBottom: 8,
-                            }}
-                          >
+                          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
                             <Clock size={14} color="#0f172a" />
-                            <Text style={styles.detailTimeTitle}>
-                              {' '}
-                              Thời gian thực hiện *
-                            </Text>
+                            <Text style={styles.detailTimeTitle}> Thời gian thực hiện *</Text>
                           </View>
+
                           <View style={{ flexDirection: 'row', gap: 12 }}>
                             <View style={{ flex: 1 }}>
                               <Text style={styles.detailTimeLabel}>Bắt đầu *</Text>
-                              <TextInput
-                                placeholder="HH:MM"
+                              <TimePickerField
                                 value={startVal}
-                                onChangeText={(text) =>
-                                  setTimeStart((prev) => ({ ...prev, [h.id]: text }))
-                                }
-                                style={styles.input}
+                                onChange={(v) => setTimeStart((prev) => ({ ...prev, [h.id]: v }))}
+                                placeholder="HH:MM"
                               />
                             </View>
+
                             <View style={{ flex: 1 }}>
-                              <Text style={styles.detailTimeLabel}>
-                                Kết thúc (tùy chọn)
-                              </Text>
-                              <TextInput
-                                placeholder="HH:MM"
+                              <Text style={styles.detailTimeLabel}>Kết thúc (tùy chọn)</Text>
+                              <TimePickerField
                                 value={endVal}
-                                onChangeText={(text) =>
-                                  setTimeEnd((prev) => ({ ...prev, [h.id]: text }))
-                                }
-                                style={styles.input}
+                                onChange={(v) => setTimeEnd((prev) => ({ ...prev, [h.id]: v }))}
+                                placeholder="HH:MM"
                               />
                             </View>
                           </View>
@@ -2272,12 +2419,8 @@ export default function FlowStateHabits() {
                     ) : (
                       <>
                         {/* check-mode */}
-                        <Text style={[styles.formLabel, { marginTop: 10 }]}>
-                          Trạng thái *
-                        </Text>
+                        <Text style={[styles.formLabel, { marginTop: 10 }]}>Trạng thái *</Text>
                         <View style={styles.rowWrap}>
-                          
-
                           {(
                             [
                               { key: 'success', label: 'Hoàn thành', color: '#16a34a' },
@@ -2289,27 +2432,13 @@ export default function FlowStateHabits() {
                             return (
                               <TouchableOpacity
                                 key={opt.key}
-                                style={[
-                                  styles.statusBtn,
-                                  selected && { borderColor: opt.color },
-                                ]}
+                                style={[styles.statusBtn, selected && { borderColor: opt.color }]}
                                 onPress={() => handleStatusChange(h.id, opt.key)}
                               >
-                                {opt.key === 'success' && (
-                                  <Check size={16} color={opt.color} />
-                                )}
-                                {opt.key === 'skip' && (
-                                  <Minus size={16} color={opt.color} />
-                                )}
-                                {opt.key === 'fail' && (
-                                  <X size={16} color={opt.color} />
-                                )}
-                                <Text
-                                  style={[
-                                    styles.statusBtnText,
-                                    selected && { color: opt.color },
-                                  ]}
-                                >
+                                {opt.key === 'success' && <Check size={16} color={opt.color} />}
+                                {opt.key === 'skip' && <Minus size={16} color={opt.color} />}
+                                {opt.key === 'fail' && <X size={16} color={opt.color} />}
+                                <Text style={[styles.statusBtnText, selected && { color: opt.color }]}>
                                   {opt.label}
                                 </Text>
                               </TouchableOpacity>
@@ -2325,16 +2454,12 @@ export default function FlowStateHabits() {
                       <TextInput
                         placeholder="Thêm ghi chú về buổi thực hiện..."
                         value={noteVal}
-                        onChangeText={(text) =>
-                          setNotes((prev) => ({ ...prev, [h.id]: text }))
-                        }
+                        onChangeText={(text) => setNotes((prev) => ({ ...prev, [h.id]: text }))}
                         multiline
                         maxLength={200}
                         style={styles.textarea}
                       />
-                      <Text style={styles.noteCounter}>
-                        {noteVal.length}/200 ký tự
-                      </Text>
+                      <Text style={styles.noteCounter}>{noteVal.length}/200 ký tự</Text>
                     </View>
 
                     {/* Cảm giác */}
@@ -2366,12 +2491,7 @@ export default function FlowStateHabits() {
                               }
                             >
                               <Text style={{ fontSize: 18 }}>{opt.emoji}</Text>
-                              <Text
-                                style={[
-                                  styles.moodButtonText,
-                                  selected && styles.moodButtonTextSelected,
-                                ]}
-                              >
+                              <Text style={[styles.moodButtonText, selected && styles.moodButtonTextSelected]}>
                                 {opt.label}
                               </Text>
                             </TouchableOpacity>
@@ -2382,20 +2502,14 @@ export default function FlowStateHabits() {
 
                     {/* Buttons */}
                     <View style={styles.modalButtonsRow}>
-                      <TouchableOpacity
-                        onPress={closeDetail}
-                        style={styles.formCancelButton}
-                      >
+                      <TouchableOpacity onPress={closeDetail} style={styles.formCancelButton}>
                         <Text style={styles.formCancelText}>Hủy</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         onPress={() => {
                           const metaLocal = unitMap[h.id];
-                          if (metaLocal) {
-                            saveCountModal(h.id);
-                          } else {
-                            syncHabitMeta(h.id);
-                          }
+                          if (metaLocal) saveCountModal(h.id);
+                          else syncHabitMeta(h.id);
                           closeDetail();
                         }}
                         style={styles.formSaveButton}
@@ -2411,44 +2525,19 @@ export default function FlowStateHabits() {
       </Modal>
 
       {/* Modal chỉnh sửa */}
-      <Modal
-        visible={editOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={closeEditModal}
-      >
+      <Modal visible={editOpen} transparent animationType="fade" onRequestClose={closeEditModal}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
             <Text style={styles.modalTitle}>Chỉnh sửa thói quen</Text>
-            <TextInput
-              style={styles.input}
-              value={editTitle}
-              onChangeText={setEditTitle}
-              placeholder="Tên thói quen"
-            />
-            <TextInput
-              style={styles.input}
-              value={editSubtitle}
-              onChangeText={setEditSubtitle}
-              placeholder="Mô tả / ghi chú"
-            />
-            <TextInput
-              style={styles.input}
-              value={editTag}
-              onChangeText={setEditTag}
-              placeholder="Tag (Mindful, Energy, ...)"
-            />
+            <TextInput style={styles.input} value={editTitle} onChangeText={setEditTitle} placeholder="Tên thói quen" />
+            <TextInput style={styles.input} value={editSubtitle} onChangeText={setEditSubtitle} placeholder="Mô tả / ghi chú" />
+            <TextInput style={styles.input} value={editTag} onChangeText={setEditTag} placeholder="Tag (Mindful, Energy, ...)" />
             <View style={styles.modalFooterRow}>
-              <TouchableOpacity
-                onPress={() => editId != null && askDelete(editId, editTitle || '')}
-              >
+              <TouchableOpacity onPress={() => editId != null && askDelete(editId, editTitle || '')}>
                 <Text style={styles.deleteText}>Xóa</Text>
               </TouchableOpacity>
               <View style={{ flexDirection: 'row', gap: 8 }}>
-                <TouchableOpacity
-                  onPress={closeEditModal}
-                  style={styles.formCancelButton}
-                >
+                <TouchableOpacity onPress={closeEditModal} style={styles.formCancelButton}>
                   <Text style={styles.formCancelText}>Hủy</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={saveEdit} style={styles.formSaveButton}>
@@ -2461,25 +2550,13 @@ export default function FlowStateHabits() {
       </Modal>
 
       {/* Modal xác nhận xóa */}
-      <Modal
-        visible={confirmOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={closeConfirm}
-      >
+      <Modal visible={confirmOpen} transparent animationType="fade" onRequestClose={closeConfirm}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>
-              Xóa thói quen &quot;{confirmName}&quot;?
-            </Text>
-            <Text style={styles.modalSubText}>
-              Hành động này không thể hoàn tác.
-            </Text>
+            <Text style={styles.modalTitle}>Xóa thói quen &quot;{confirmName}&quot;?</Text>
+            <Text style={styles.modalSubText}>Hành động này không thể hoàn tác.</Text>
             <View style={styles.modalButtonsRow}>
-              <TouchableOpacity
-                onPress={closeConfirm}
-                style={styles.formCancelButton}
-              >
+              <TouchableOpacity onPress={closeConfirm} style={styles.formCancelButton}>
                 <Text style={styles.formCancelText}>Hủy</Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -2502,20 +2579,15 @@ export default function FlowStateHabits() {
 
 const styles = StyleSheet.create({
   inputTime: {
-    width: "calc(100% - 20px)",
-    height : "36.36px",
-    borderLeftWidth: "1px",
-    borderRightWidth: "1px",
-    borderStyle: "solid",
-    borderTopWidth: "1px",
-    borderBottomWidth: "1px",
-    borderColor: "rgba(203, 213, 225, 1.00)",
+    width: '100%',
+    height: 36,
+    borderWidth: 1,
+    borderColor: 'rgba(203, 213, 225, 1)',
     borderRadius: 10,
-    outline: "none",
-    background : "none",
-    paddingLeft : "10px",
-    paddingRight : "10px",
-    color : "rgba(15, 23, 42, 1.00)"
+    paddingHorizontal: 10,
+    backgroundColor: '#fff',
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   page: {
     flex: 1,
@@ -3046,9 +3118,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 8,
     backgroundColor: '#fff',
-  },
-  statusBtnSelectedBlue: {
-    borderColor: '#0284c7',
   },
   statusBtnText: {
     fontSize: 13,

@@ -1,6 +1,6 @@
 // app/(tabs)/habits/RunningHabitTracker.tsx
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import {
   SafeAreaView,
   View,
@@ -11,7 +11,10 @@ import {
   Modal,
   TextInput,
   StyleSheet,
+  Platform,
+  Dimensions,
 } from 'react-native';
+import { Animated } from 'react-native';
 import {
   Plus,
   Bell,
@@ -25,6 +28,8 @@ import {
   Check,
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+
+import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 
 import {
   getHabitReminders,
@@ -126,14 +131,370 @@ const ModalSheet: React.FC<ModalSheetProps> = ({ visible, onClose, title, childr
   </Modal>
 );
 
+const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
+
 const toDateOnly = (iso?: string) => {
   if (!iso) return '';
-  // ISO => YYYY-MM-DD
   if (typeof iso === 'string' && iso.length >= 10) return iso.slice(0, 10);
   return '';
 };
 
-const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
+// ====== TIME/DATE HELPERS ======
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+const dateToHHMM = (d: Date) => `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+
+const hhmmToDate = (hhmm?: string) => {
+  const now = new Date();
+  const s = (hhmm || '').trim();
+  const m = s.match(/^(\d{1,2}):(\d{2})$/);
+  if (!m) return now;
+  const h = Math.max(0, Math.min(23, parseInt(m[1], 10) || 0));
+  const mi = Math.max(0, Math.min(59, parseInt(m[2], 10) || 0));
+  const d = new Date(now);
+  d.setHours(h, mi, 0, 0);
+  return d;
+};
+
+const dateToYMD = (d: Date) =>
+  `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+
+const ymdToDate = (ymd?: string) => {
+  const now = new Date();
+  const s = (ymd || '').trim();
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return now;
+  const y = parseInt(m[1], 10);
+  const mo = parseInt(m[2], 10) - 1;
+  const da = parseInt(m[3], 10);
+  const d = new Date(y, mo, da, 12, 0, 0, 0);
+  return isNaN(d.getTime()) ? now : d;
+};
+
+const isValidDateInput = (s: string) => {
+  const t = (s || '').trim();
+  if (!t) return true; // optional
+  return /^\d{4}-\d{2}-\d{2}$/.test(t);
+};
+
+// ====== PICKER COMPONENTS (MOBILE) ======
+const pickerStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15,23,42,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+  },
+  card: {
+    width: '100%',
+    maxWidth: 520,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    overflow: 'hidden',
+    padding: 12,
+  },
+  btnRow: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingTop: 12,
+  },
+});
+
+function TimePickerField({
+  value,
+  onChange,
+  placeholder = '07:00',
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [hour, setHour] = useState<number>(() => {
+    if (!value) return 7;
+    const [h] = value.split(':').map((x) => parseInt(x, 10));
+    return Number.isFinite(h) ? h : 7;
+  });
+  const [minute, setMinute] = useState<number>(() => {
+    if (!value) return 0;
+    const parts = value.split(':');
+    const m = parseInt(parts[1] || '0', 10);
+    return Number.isFinite(m) ? m : 0;
+  });
+
+  const pad2 = (n: number) => String(n).padStart(2, '0');
+
+  const openPicker = () => {
+    if (value) {
+      const [h, m] = value.split(':').map((x) => parseInt(x, 10));
+      if (Number.isFinite(h)) setHour(h);
+      if (Number.isFinite(m)) setMinute(m);
+    }
+    setOpen(true);
+  };
+
+  const handleSave = () => {
+    onChange(`${pad2(hour)}:${pad2(minute)}`);
+    setOpen(false);
+  };
+
+  const adjustHour = (delta: number) => {
+    setHour((prev) => {
+      let newHour = prev + delta;
+      if (newHour < 0) newHour = 23;
+      if (newHour > 23) newHour = 0;
+      return newHour;
+    });
+  };
+
+  const adjustMinute = (delta: number) => {
+    setMinute((prev) => {
+      let newMin = prev + delta;
+      if (newMin < 0) newMin = 59;
+      if (newMin > 59) newMin = 0;
+      return newMin;
+    });
+  };
+
+  return (
+    <View>
+      <Pressable onPress={openPicker} style={styles.inputPickerBtn}>
+        <Bell size={16} color={value ? '#8b5cf6' : '#94a3b8'} />
+        <Text style={{ 
+          color: value ? '#0f172a' : '#94a3b8', 
+          fontWeight: '800',
+          marginLeft: 8,
+          fontSize: 16
+        }}>
+          {value || placeholder}
+        </Text>
+      </Pressable>
+
+      <Modal
+        transparent
+        visible={open}
+        animationType="fade"
+        onRequestClose={() => setOpen(false)}
+      >
+        <Pressable style={timePickerStyles.overlay} onPress={() => setOpen(false)}>
+          <Pressable style={timePickerStyles.card} onPress={(e) => e.stopPropagation()}>
+            <View style={timePickerStyles.header}>
+              <Bell size={24} color="#8b5cf6" />
+              <Text style={timePickerStyles.title}>Chọn thời gian nhắc nhở</Text>
+            </View>
+            
+            <View style={timePickerStyles.pickerContainer}>
+              {/* Hour Picker */}
+              <View style={timePickerStyles.timeColumn}>
+                <TouchableOpacity 
+                  onPress={() => adjustHour(1)} 
+                  style={[timePickerStyles.arrowButton, timePickerStyles.arrowButtonUp]}
+                  activeOpacity={0.7}
+                >
+                  <Text style={timePickerStyles.arrowText}>+</Text>
+                </TouchableOpacity>
+                
+                <View style={timePickerStyles.timeDisplay}>
+                  <Text style={timePickerStyles.timeText}>{pad2(hour)}</Text>
+                  <View style={timePickerStyles.timeUnderline} />
+                </View>
+                
+                <TouchableOpacity 
+                  onPress={() => adjustHour(-1)} 
+                  style={[timePickerStyles.arrowButton, timePickerStyles.arrowButtonDown]}
+                  activeOpacity={0.7}
+                >
+                  <Text style={timePickerStyles.arrowText}>-</Text>
+                </TouchableOpacity>
+                
+                <Text style={timePickerStyles.label}>Giờ</Text>
+              </View>
+
+              <View style={timePickerStyles.separatorContainer}>
+                <Text style={timePickerStyles.separator}>:</Text>
+                <View style={timePickerStyles.separatorDots}>
+                  <View style={timePickerStyles.dot} />
+                  <View style={timePickerStyles.dot} />
+                </View>
+              </View>
+
+              {/* Minute Picker */}
+              <View style={timePickerStyles.timeColumn}>
+                <TouchableOpacity 
+                  onPress={() => adjustMinute(1)} 
+                  style={[timePickerStyles.arrowButton, timePickerStyles.arrowButtonUp]}
+                  activeOpacity={0.7}
+                >
+                  <Text style={timePickerStyles.arrowText}>+</Text>
+                </TouchableOpacity>
+                
+                <View style={timePickerStyles.timeDisplay}>
+                  <Text style={timePickerStyles.timeText}>{pad2(minute)}</Text>
+                  <View style={timePickerStyles.timeUnderline} />
+                </View>
+                
+                <TouchableOpacity 
+                  onPress={() => adjustMinute(-1)} 
+                  style={[timePickerStyles.arrowButton, timePickerStyles.arrowButtonDown]}
+                  activeOpacity={0.7}
+                >
+                  <Text style={timePickerStyles.arrowText}>-</Text>
+                </TouchableOpacity>
+                
+                <Text style={timePickerStyles.label}>Phút</Text>
+              </View>
+            </View>
+
+            {/* Quick Time Buttons */}
+            <View style={timePickerStyles.quickButtons}>
+              <TouchableOpacity
+                onPress={() => {
+                  setHour(6);
+                  setMinute(0);
+                }}
+                style={timePickerStyles.quickBtn}
+              >
+                <Text style={timePickerStyles.quickBtnText}>06:00</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                onPress={() => {
+                  setHour(7);
+                  setMinute(0);
+                }}
+                style={timePickerStyles.quickBtn}
+              >
+                <Text style={timePickerStyles.quickBtnText}>07:00</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                onPress={() => {
+                  setHour(12);
+                  setMinute(0);
+                }}
+                style={timePickerStyles.quickBtn}
+              >
+                <Text style={timePickerStyles.quickBtnText}>12:00</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                onPress={() => {
+                  setHour(18);
+                  setMinute(0);
+                }}
+                style={timePickerStyles.quickBtn}
+              >
+                <Text style={timePickerStyles.quickBtnText}>18:00</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                onPress={() => {
+                  setHour(21);
+                  setMinute(0);
+                }}
+                style={timePickerStyles.quickBtn}
+              >
+                <Text style={timePickerStyles.quickBtnText}>21:00</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Action Buttons */}
+            <View style={timePickerStyles.btnRow}>
+              <TouchableOpacity
+                onPress={() => setOpen(false)}
+                style={styles.btnOutline}
+              >
+                <Text style={styles.btnOutlineText}>Hủy</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleSave}
+                style={[styles.btnSolid, styles.btnSolidViolet]}
+              >
+                <Text style={styles.btnSolidText}>Xong</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </View>
+  );
+}
+
+function DatePickerField({
+  value,
+  onChange,
+  placeholder = 'YYYY-MM-DD',
+}: {
+  value?: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [temp, setTemp] = useState<Date>(() => ymdToDate(value));
+
+  const openPicker = () => {
+    const base = ymdToDate(value);
+
+    // ✅ ANDROID: calendar dialog luôn
+    if (Platform.OS === 'android') {
+      DateTimePickerAndroid.open({
+        value: base,
+        mode: 'date',
+        display: 'calendar',
+        onChange: (_event, selected) => {
+          if (selected) onChange(dateToYMD(selected));
+        },
+      });
+      return;
+    }
+
+    // ✅ IOS: hiển thị lịch inline
+    setTemp(base);
+    setOpen(true);
+  };
+
+  return (
+    <View>
+      <Pressable onPress={openPicker} style={styles.inputPickerBtn}>
+        <Text style={{ color: value ? '#0f172a' : '#94a3b8', fontWeight: '800' }}>
+          {value || placeholder}
+        </Text>
+      </Pressable>
+
+      {Platform.OS === 'ios' && (
+        <Modal transparent visible={open} animationType="fade" onRequestClose={() => setOpen(false)}>
+          <View style={pickerStyles.overlay}>
+            <View style={pickerStyles.card}>
+              <DateTimePicker
+                value={temp}
+                mode="date"
+                // iOS: inline = lịch
+                display="inline"
+                onChange={(_e, selected) => selected && setTemp(selected)}
+              />
+
+              <View style={pickerStyles.btnRow}>
+                <TouchableOpacity onPress={() => setOpen(false)} style={styles.btnOutline}>
+                  <Text style={styles.btnOutlineText}>Hủy</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => {
+                    onChange(dateToYMD(temp));
+                    setOpen(false);
+                  }}
+                  style={[styles.btnSolid, styles.btnSolidPink]}
+                >
+                  <Text style={styles.btnSolidText}>Chọn</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
+    </View>
+  );
+}
 
 const HabitTracker: React.FC = () => {
   const { habitId } = useLocalSearchParams<{ habitId?: string }>();
@@ -161,6 +522,19 @@ const HabitTracker: React.FC = () => {
 
   const [name, setName] = useState('');
   const [frequency, setFrequency] = useState('');
+
+  // ====== LOADING & NOTIFICATION STATE ======
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [notification, setNotification] = useState<{
+    visible: boolean;
+    message: string;
+    type: 'error' | 'success' | 'warning';
+  }>({
+    visible: false,
+    message: '',
+    type: 'error'
+  });
+  const slideAnim = useState(new Animated.Value(Dimensions.get('window').width))[0];
 
   // ✅ GOAL MODAL STATE (đầy đủ field)
   const [showGoalModal, setShowGoalModal] = useState(false);
@@ -222,9 +596,9 @@ const HabitTracker: React.FC = () => {
     const target = Number(g.target ?? 0) || 0;
     const current = Number(g.current ?? 0) || 0;
 
-    const unit = String(g.unit ?? '').trim() || (
-      GOAL_TYPES.find(x => x.value === type)?.defaultUnit ?? 'lần'
-    );
+    const unit =
+      String(g.unit ?? '').trim() ||
+      (GOAL_TYPES.find(x => x.value === type)?.defaultUnit ?? 'lần');
 
     const description = String(g.description ?? '').trim();
     const deadline = toDateOnly(g.deadline);
@@ -232,7 +606,6 @@ const HabitTracker: React.FC = () => {
 
     const isCompleted = Boolean(g.isCompleted ?? false);
 
-    // progress/remaining nếu API có thì dùng, không có thì tự tính
     const progressFromApi = Number(g.progress);
     const progress =
       Number.isFinite(progressFromApi)
@@ -294,7 +667,7 @@ const HabitTracker: React.FC = () => {
 
     const loadGoals = async () => {
       try {
-        const res: any = await getHabitGoals(habitId as string, 'active');
+        const res: any = await getHabitGoals(habitId as string, null);
         const arr = extractGoalsArray(res);
         if (!cancelled) setChallenges(arr.map(normalizeGoal));
       } catch (e) {
@@ -367,11 +740,18 @@ const HabitTracker: React.FC = () => {
   }, [habitId]);
 
   const refetchAll = useCallback(async () => {
-    if (!habitId) return;
+    if (!habitId) {
+      console.log('⚠️ No habitId, skipping refetch');
+      return;
+    }
+    
+    console.log('🔄 Starting refetchAll for habitId:', habitId);
+    setIsRefreshing(true);
+    
     try {
       const [r, g, s]: any[] = await Promise.all([
         getHabitReminders(habitId as string),
-        getHabitGoals(habitId as string, 'active'),
+        getHabitGoals(habitId as string, null),
         getHabitStats(habitId as string, {}),
       ]);
 
@@ -417,10 +797,37 @@ const HabitTracker: React.FC = () => {
       else if (total > 0) successRate = (completed / total) * 100;
 
       setHabitStats({ currentStreak, bestStreak, successRate: Math.round(successRate) });
+      
+      console.log('✅ RefetchAll completed successfully:', {
+        reminders: rlist.length,
+        goals: glist.length,
+        habitName: name,
+        stats: { currentStreak, bestStreak, successRate: Math.round(successRate) }
+      });
+      
     } catch (e) {
-      console.error('[HabitTracker] refetchAll error:', e);
+      console.error('❌ RefetchAll error:', e);
+      showNotification('Không thể tải dữ liệu. Vui lòng thử lại.', 'error');
+    } finally {
+      setIsRefreshing(false);
     }
   }, [habitId]);
+
+  // ====== RELOAD API KHI CHUYỂN TAB (FOCUS EFFECT) ======
+  useFocusEffect(
+    useCallback(() => {
+      console.log('🔄 RunningHabitTracker focused - reloading all APIs...');
+      
+      if (habitId) {
+        // Reload tất cả API khi màn hình được focus
+        refetchAll().then(() => {
+          console.log('✅ All APIs reloaded successfully');
+        }).catch((error) => {
+          console.error('❌ Error reloading APIs:', error);
+        });
+      }
+    }, [habitId, refetchAll])
+  );
 
   // ====== UPDATE FIELD LOCAL ======
   const updateReminderField = useCallback((field: keyof Reminder, value: any) => {
@@ -430,6 +837,35 @@ const HabitTracker: React.FC = () => {
   const updateGoalField = useCallback((field: keyof Challenge, value: any) => {
     setNewGoal(prev => ({ ...prev, [field]: value }));
   }, []);
+
+  // ====== CUSTOM NOTIFICATION FUNCTIONS ======
+  const showNotification = useCallback((message: string, type: 'error' | 'success' | 'warning' = 'error') => {
+    setNotification({ visible: true, message, type });
+    
+    // Slide in from right
+    slideAnim.setValue(Dimensions.get('window').width);
+    Animated.timing(slideAnim, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+
+    // Auto hide after 4 seconds
+    setTimeout(() => {
+      hideNotification();
+    }, 4000);
+  }, [slideAnim]);
+
+  const hideNotification = useCallback(() => {
+    // Slide out to right
+    Animated.timing(slideAnim, {
+      toValue: Dimensions.get('window').width,
+      duration: 250,
+      useNativeDriver: true,
+    }).start(() => {
+      setNotification(prev => ({ ...prev, visible: false }));
+    });
+  }, [slideAnim]);
 
   const openConfirm = (message: string, action: () => void) => {
     setConfirmMessage(message);
@@ -472,7 +908,18 @@ const HabitTracker: React.FC = () => {
 
   const handleSaveReminder = async () => {
     try {
+      // Kiểm tra xem có ít nhất 1 ngày được chọn không
+      const hasSelectedDays = newReminder.days.some(day => day === true);
+      
+      if (!hasSelectedDays) {
+        showNotification('Vui lòng chọn ít nhất 1 ngày trong tuần để nhận thông báo.', 'warning');
+        return; // Không gọi API
+      }
+
+      console.log('✅ Validation passed, creating reminder...');
       const payload: any = buildReminderPayload(newReminder);
+      
+      console.log('📤 Reminder payload:', payload);
 
       if (habitId) {
         if (editingReminder) {
@@ -491,8 +938,13 @@ const HabitTracker: React.FC = () => {
           setReminders(prev => [...prev, { ...newReminder, id: Date.now().toString() }]);
         }
       }
+      
+      console.log('✅ Reminder saved successfully');
+      showNotification('Nhắc nhở đã được lưu thành công!', 'success');
+      
     } catch (e) {
       console.error('[HabitTracker] saveReminder error:', e);
+      showNotification('Không thể lưu nhắc nhở. Vui lòng thử lại.', 'error');
     } finally {
       setShowReminderModal(false);
       resetReminderForm();
@@ -518,13 +970,6 @@ const HabitTracker: React.FC = () => {
   };
 
   // ====== GOALS PAYLOADS ======
-  const isValidDateInput = (s: string) => {
-    const t = (s || '').trim();
-    if (!t) return true; // optional
-    // YYYY-MM-DD
-    return /^\d{4}-\d{2}-\d{2}$/.test(t);
-  };
-
   const buildCreateGoalPayload = (g: Challenge) => {
     const target = Math.max(1, Number(g.target) || 1);
     const payload: any = {
@@ -547,35 +992,22 @@ const HabitTracker: React.FC = () => {
     return payload;
   };
 
-  const buildUpdateGoalPayload = (g: Challenge, original?: Challenge | null) => {
+  const buildUpdateGoalPayload = (g: Challenge) => {
     const payload: any = {};
 
-    // target/current
     if (Number.isFinite(Number(g.target))) payload.target = Math.max(1, Number(g.target) || 1);
     if (Number.isFinite(Number(g.current))) payload.current = Math.max(0, Number(g.current) || 0);
 
-    // description / reward / deadline / unit (unit update không nằm trong testcase nhưng thường backend sẽ accept)
-    const desc = (g.description || '').trim();
-    payload.description = desc;
-
-    const reward = (g.reward || '').trim();
-    payload.reward = reward;
+    payload.description = (g.description || '').trim();
+    payload.reward = (g.reward || '').trim();
 
     const unit = (g.unit || '').trim();
     if (unit) payload.unit = unit;
 
     const deadline = (g.deadline || '').trim();
-    if (deadline === '') {
-      // nếu user xóa deadline -> gửi null để backend clear (tuỳ BE), nếu BE không hỗ trợ thì bỏ
-      payload.deadline = null;
-    } else if (isValidDateInput(deadline)) {
-      payload.deadline = deadline;
-    }
+    if (deadline === '') payload.deadline = null;
+    else if (isValidDateInput(deadline)) payload.deadline = deadline;
 
-    // nếu original có isCompleted=true thì backend sẽ reject update (theo testcase)
-    // FE không tự chặn, để backend trả message.
-
-    // loại bỏ field undefined
     Object.keys(payload).forEach((k) => {
       if (payload[k] === undefined) delete payload[k];
     });
@@ -606,14 +1038,12 @@ const HabitTracker: React.FC = () => {
 
   const handleSaveGoal = async () => {
     try {
-      // validate deadline format (optional)
       if (!isValidDateInput(newGoal.deadline || '')) {
         console.error('[HabitTracker] invalid deadline format. Use YYYY-MM-DD');
         return;
       }
 
       if (!habitId) {
-        // fallback local (demo)
         if (editingGoal) {
           setChallenges(prev => prev.map(c => (c.id === editingGoal.id ? { ...newGoal } : c)));
         } else {
@@ -627,16 +1057,19 @@ const HabitTracker: React.FC = () => {
       const isUpdate = !!editingGoal;
 
       if (isUpdate) {
-        const payload = buildUpdateGoalPayload(newGoal, editingGoal);
+        const payload = buildUpdateGoalPayload(newGoal);
         await updateHabitGoal(habitId as string, editingGoal!.id, payload);
         await refetchAll();
+        showNotification('Mục tiêu đã được cập nhật thành công!', 'success');
       } else {
         const payload = buildCreateGoalPayload(newGoal);
         await createHabitGoal(habitId as string, payload);
         await refetchAll();
+        showNotification('Mục tiêu mới đã được tạo thành công!', 'success');
       }
     } catch (e) {
       console.error('[HabitTracker] saveGoal error:', e);
+      showNotification('Không thể lưu mục tiêu. Vui lòng thử lại.', 'error');
     } finally {
       setShowGoalModal(false);
       resetGoalForm();
@@ -648,12 +1081,14 @@ const HabitTracker: React.FC = () => {
     try {
       await completeHabitGoal(habitId as string, goalId);
       await refetchAll();
+      showNotification('🎉 Chúc mừng! Mục tiêu đã hoàn thành!', 'success');
     } catch (e) {
       console.error('[HabitTracker] completeGoal error:', e);
+      showNotification('Không thể đánh dấu hoàn thành mục tiêu. Vui lòng thử lại.', 'error');
     }
   };
 
-  // ====== UI COMPONENTS CON ======
+  // ====== UI COMPONENTS ======
   const StatCards: React.FC<{ stats: HabitStats }> = ({ stats }) => (
     <View style={styles.statCards}>
       <View style={[styles.statCard, styles.statCardRose]}>
@@ -716,11 +1151,16 @@ const HabitTracker: React.FC = () => {
                     if (habitId) {
                       try {
                         await deleteHabitReminder(habitId as string, r.id);
+                        await refetchAll();
+                        showNotification('Nhắc nhở đã được xóa thành công!', 'success');
                       } catch (e) {
                         console.error('[HabitTracker] deleteReminder error:', e);
+                        showNotification('Không thể xóa nhắc nhở. Vui lòng thử lại.', 'error');
                       }
+                    } else {
+                      await refetchAll();
+                      showNotification('Nhắc nhở đã được xóa thành công!', 'success');
                     }
-                    await refetchAll();
                   })
                 }
                 style={[styles.iconAction, styles.iconActionDelete]}
@@ -803,13 +1243,9 @@ const HabitTracker: React.FC = () => {
                     <GoalTypeBadge type={c.type} completed={c.isCompleted} />
                   </View>
 
-                  {subtitleParts.length > 0 && (
-                    <Text style={styles.goalMeta}>{subtitleParts.join(' • ')}</Text>
-                  )}
+                  
 
-                  {!!c.reward && c.reward.trim().length > 0 && (
-                    <Text style={styles.goalNote}>🎁 {c.reward}</Text>
-                  )}
+                  
                 </View>
               </View>
 
@@ -845,12 +1281,16 @@ const HabitTracker: React.FC = () => {
                         try {
                           await deleteHabitGoal(habitId as string, c.id);
                           await refetchAll();
+                          showNotification('Mục tiêu đã được xóa thành công!', 'success');
                           return;
                         } catch (e) {
                           console.error('[HabitTracker] deleteGoal error:', e);
+                          showNotification('Không thể xóa mục tiêu. Vui lòng thử lại.', 'error');
+                          return;
                         }
                       }
                       setChallenges(prev => prev.filter(x => x.id !== c.id));
+                      showNotification('Mục tiêu đã được xóa thành công!', 'success');
                     })
                   }
                   style={[styles.iconAction, styles.iconActionDelete]}
@@ -863,7 +1303,7 @@ const HabitTracker: React.FC = () => {
             <View style={styles.cardBody}>
               <View style={styles.progressHead}>
                 <Text style={styles.sectionLabel}>Tiến độ hoàn thành</Text>
-                <Text style={styles.progressPercent}>{Math.round(progress)}%</Text>
+                <Text style={styles.progressPercent}>{Math.round(c.isCompleted?100:progress)}%</Text>
               </View>
 
               <View style={styles.progressBar}>
@@ -871,7 +1311,7 @@ const HabitTracker: React.FC = () => {
                   colors={c.isCompleted ? ['#16a34a', '#22c55e', '#4ade80'] : ['#d946ef', '#ec4899', '#f43f5e']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
-                  style={[styles.progressFill, { width: `${progress}%` }]}
+                  style={[styles.progressFill, { width: `${c.isCompleted?100:progress}%` }]}
                 />
               </View>
 
@@ -880,7 +1320,7 @@ const HabitTracker: React.FC = () => {
                   {c.isCompleted ? 'Đã hoàn thành' : 'Còn lại'}
                 </Text>
                 <Text style={styles.goalCount}>
-                  <Text style={styles.accent}>{c.current}</Text> / {c.target} {c.unit || ''}
+                  <Text style={styles.accent}>{c.isCompleted?c.target:c.current}</Text> / {c.target} {c.unit || ''}
                   {!c.isCompleted && (
                     <Text style={{ color: '#64748b', fontWeight: '700' }}>
                       {'  '}({c.remaining} còn lại)
@@ -888,6 +1328,25 @@ const HabitTracker: React.FC = () => {
                   )}
                 </Text>
               </View>
+              {
+                !c.isCompleted && (
+                  <View>
+                { c.type !== "total_completions" &&
+                (<Text style={styles.goalMeta}>Duy trì {c.target} {c.unit} liên tục</Text>)
+                }
+                { c.type == "total_completions" &&
+                (<Text style={styles.goalMeta}>Hoàn thành {c.target} {c.unit} liên tục</Text>)
+                }
+                {c.deadline != null && (
+                    <Text style={styles.goalMeta}>Hạn {c.deadline}</Text>
+                  )}
+                  {!!c.reward && c.reward.trim().length > 0 && (
+                    <Text style={styles.goalNote}>🎁 {c.reward}</Text>
+                  )}
+              </View>
+                )
+              }
+              
             </View>
           </View>
         );
@@ -1050,12 +1509,12 @@ const HabitTracker: React.FC = () => {
         <View style={styles.form}>
           <View>
             <Text style={styles.label}>Thời gian</Text>
-            <TextInput
+
+            {/* ✅ BẤM LÀ HIỆN TIME PICKER */}
+            <TimePickerField
               value={newReminder.time}
-              onChangeText={(text) => updateReminderField('time', text)}
-              style={[styles.input, styles.inputTime]}
+              onChange={(t) => updateReminderField('time', t)}
               placeholder="07:00"
-              keyboardType="numeric"
             />
           </View>
 
@@ -1081,6 +1540,17 @@ const HabitTracker: React.FC = () => {
                 );
               })}
             </View>
+            {/* Hint text */}
+            <Text style={{
+              fontSize: 12,
+              color: newReminder.days.some(day => day === true) ? '#10b981' : '#ef4444',
+              marginTop: 6,
+              fontWeight: '600'
+            }}>
+              {newReminder.days.some(day => day === true) 
+                ? '✓ Đã chọn ngày nhắc nhở' 
+                : '⚠️ Vui lòng chọn ít nhất 1 ngày'}
+            </Text>
           </View>
 
           <View>
@@ -1104,7 +1574,19 @@ const HabitTracker: React.FC = () => {
             >
               <Text style={styles.btnOutlineText}>Hủy bỏ</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={handleSaveReminder} style={[styles.btnSolid, styles.btnSolidViolet]}>
+            <TouchableOpacity 
+              onPress={handleSaveReminder} 
+              style={[
+                styles.btnSolid, 
+                styles.btnSolidViolet,
+                // Disabled style nếu chưa chọn ngày nào
+                !newReminder.days.some(day => day === true) && {
+                  backgroundColor: '#94a3b8',
+                  opacity: 0.6
+                }
+              ]}
+              disabled={!newReminder.days.some(day => day === true)}
+            >
               <Text style={styles.btnSolidText}>Lưu lại</Text>
             </TouchableOpacity>
           </View>
@@ -1141,7 +1623,6 @@ const HabitTracker: React.FC = () => {
                     key={t.value}
                     onPress={() => {
                       updateGoalField('type', t.value);
-                      // auto fill unit nếu user chưa nhập hoặc đang đúng default cũ
                       const currentUnit = (newGoal.unit || '').trim();
                       if (!currentUnit || currentUnit === goalTypeSelected.defaultUnit) {
                         updateGoalField('unit', t.defaultUnit);
@@ -1207,12 +1688,14 @@ const HabitTracker: React.FC = () => {
                 placeholder="VD: lần / ngày / lần/tuần"
               />
             </View>
+
             <View>
               <Text style={styles.label}>Deadline (YYYY-MM-DD)</Text>
-              <TextInput
+
+              {/* ✅ BẤM LÀ HIỆN LỊCH */}
+              <DatePickerField
                 value={newGoal.deadline || ''}
-                onChangeText={(text) => updateGoalField('deadline', text)}
-                style={styles.input}
+                onChange={(d) => updateGoalField('deadline', d)}
                 placeholder="2025-01-31"
               />
             </View>
@@ -1280,6 +1763,35 @@ const HabitTracker: React.FC = () => {
           </View>
         </View>
       </ModalSheet>
+
+      {/* Custom Notification */}
+      {notification.visible && (
+        <Animated.View
+          style={[
+            notificationStyles.container,
+            notificationStyles[notification.type],
+            {
+              transform: [{ translateX: slideAnim }],
+            },
+          ]}
+        >
+          <View style={notificationStyles.content}>
+            <View style={notificationStyles.iconContainer}>
+              <Text style={notificationStyles.icon}>
+                {notification.type === 'error' ? '❌' : 
+                 notification.type === 'success' ? '✅' : '⚠️'}
+              </Text>
+            </View>
+            <Text style={notificationStyles.message}>{notification.message}</Text>
+            <TouchableOpacity
+              onPress={hideNotification}
+              style={notificationStyles.closeButton}
+            >
+              <Text style={notificationStyles.closeText}>×</Text>
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+      )}
     </SafeAreaView>
   );
 };
@@ -1562,7 +2074,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#0f172a',
   },
-  inputTime: {},
   textarea: {
     width: '100%',
     paddingHorizontal: 16,
@@ -1605,6 +2116,19 @@ const styles = StyleSheet.create({
   btnSolidViolet: { backgroundColor: '#7c3aed' },
   btnSolidPink: { backgroundColor: '#d946ef' },
   btnSolidText: { fontWeight: '800', color: '#fff' },
+
+  /* ✅ Picker input button (thay cho TextInput thời gian/ngày) */
+  inputPickerBtn: {
+    width: '100%',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderWidth: 2,
+    borderColor: '#e2e8f0',
+    borderRadius: 12,
+    backgroundColor: '#fff',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
 
   /* Emoji grid */
   emojiGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
@@ -1666,4 +2190,239 @@ const styles = StyleSheet.create({
   },
   typeChipText: { fontSize: 12, fontWeight: '900', color: '#475569' },
   typeChipTextActive: { color: '#fff' },
+});
+
+/* ========================================================= */
+/* TIME PICKER STYLES                                        */
+/* ========================================================= */
+
+const timePickerStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15,23,42,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+  },
+  card: {
+    width: '100%',
+    maxWidth: 380,
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(203,213,225,0.3)',
+    shadowColor: '#8b5cf6',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 12,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+    gap: 8,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  pickerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+    paddingVertical: 16,
+    backgroundColor: '#f8fafc',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  timeColumn: {
+    alignItems: 'center',
+  },
+  arrowButton: {
+    width: 56,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 14,
+    marginVertical: 6,
+    borderWidth: 1,
+  },
+  arrowButtonUp: {
+    backgroundColor: '#ede9fe',
+    borderColor: '#c4b5fd',
+  },
+  arrowButtonDown: {
+    backgroundColor: '#f1f5f9',
+    borderColor: '#cbd5e1',
+  },
+  arrowText: {
+    fontSize: 24,
+    color: '#8b5cf6',
+    fontWeight: '800',
+  },
+  timeDisplay: {
+    width: 90,
+    height: 90,
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: '#8b5cf6',
+    marginVertical: 12,
+    shadowColor: '#8b5cf6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  timeText: {
+    fontSize: 40,
+    fontWeight: '900',
+    color: '#8b5cf6',
+    letterSpacing: -1,
+  },
+  timeUnderline: {
+    width: 60,
+    height: 3,
+    backgroundColor: '#8b5cf6',
+    borderRadius: 2,
+    marginTop: 4,
+  },
+  separatorContainer: {
+    alignItems: 'center',
+    marginHorizontal: 16,
+  },
+  separator: {
+    fontSize: 40,
+    fontWeight: '900',
+    color: '#8b5cf6',
+    marginBottom: 8,
+  },
+  separatorDots: {
+    alignItems: 'center',
+    gap: 6,
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    backgroundColor: '#8b5cf6',
+    borderRadius: 3,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#64748b',
+    marginTop: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  quickButtons: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 20,
+    justifyContent: 'center',
+  },
+  quickBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: '#f1f5f9',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  quickBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  btnRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+    marginTop: 8,
+  },
+});
+
+/* ========================================================= */
+/* CUSTOM NOTIFICATION STYLES                                */
+/* ========================================================= */
+
+const notificationStyles = StyleSheet.create({
+  container: {
+    position: 'absolute',
+    top: 60,
+    right: 16,
+    left: 16,
+    zIndex: 9999,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  error: {
+    backgroundColor: '#fef2f2',
+    borderWidth: 1,
+    borderColor: '#fecaca',
+  },
+  success: {
+    backgroundColor: '#f0fdf4',
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
+  },
+  warning: {
+    backgroundColor: '#fffbeb',
+    borderWidth: 1,
+    borderColor: '#fed7aa',
+  },
+  content: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    gap: 12,
+  },
+  iconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  icon: {
+    fontSize: 18,
+  },
+  message: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    lineHeight: 20,
+  },
+  closeButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(107, 114, 128, 0.1)',
+  },
+  closeText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#6b7280',
+  },
 });

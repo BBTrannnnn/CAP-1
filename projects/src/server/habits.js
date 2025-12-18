@@ -4,6 +4,7 @@
 // ⬇️ Import apiRequest đã chuẩn hóa từ users.js
 import { apiRequest, buildQuery } from './users';
 import api from './notifi';
+import { Alert } from 'react-native';
 
 /* ------------------------------------------------------------------ */
 /* HABITS CRUD                                                        */
@@ -53,14 +54,27 @@ export function deleteHabit(habitId) {
 /* TRACKING - CHECK MODE                                              */
 /* ------------------------------------------------------------------ */
 
-export function trackHabit(habitId, payload) {
-  // POST /api/habits/:habitId/track
-  // payload: { status, notes?, date?, mood? }
-  return apiRequest(`/api/habits/${habitId}/track`, {
-    method: 'POST',
-    body: payload,
-    auth: true,
-  });
+export async function trackHabit(habitId, payload) {
+  try {
+    const res = await apiRequest(`/api/habits/${habitId}/track`, {
+      method: 'POST',
+      body: payload,
+      auth: true,
+    });
+    console.log(res);
+    
+    if (res?.newAchievements) {
+      Alert.alert(
+        '🎉 Thành tích mới!',
+        res.newAchievements.description ?? 'Hoàn thiện chuỗi 7 ngày'
+      );
+    }
+
+    return res;
+  } catch (error) {
+    console.error('trackHabit error:', error);
+    throw error;
+  }
 }
 
 export function getHabitTrackings(habitId, query) {
@@ -115,7 +129,7 @@ export function getSubTrackings(habitId, query = {}) {
   const url = `/api/habits/${habitId}/subtrack${dateSegment}`;
 
   const res = apiRequest(url, { auth: true });
-  console.log('subtrack url:', url, 'res:', res);
+  //console.log('subtrack url:', url, 'res:', res);
   return res;
 }
 
@@ -132,7 +146,7 @@ export function addSubTracking(habitId, payload) {
 export function submitSurvey(ans) {
   // POST /api/habits/:habitId/subtrack
   // payload: { quantity?, date?, startTime, endTime?, note?, mood?, override? }
-  console.log(ans);
+  //console.log(ans);
   
   return apiRequest(`/api/survey/submit`, {
     method: 'POST',
@@ -365,7 +379,7 @@ export function recommendHabits(answers, limit = 5) {
   const q = buildQuery({ limit });
   // This route might not need auth, but we add it for consistency.
   // If it fails, change auth to false.
-  console.log(answers);
+  //console.log(answers);
   
   return apiRequest(`/api/ai-habit/recommend${q}`, {
     method: 'POST',

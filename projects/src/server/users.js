@@ -12,9 +12,9 @@ let BASE_URL = 'http://192.168.1.155:5000';
 
 export function setBaseUrl(url) {
   BASE_URL = url;
-  console.log('[API BASE]', BASE_URL);
+  ////console.log.log('[API BASE]', BASE_URL);
   BASE_URL = url;
-  console.log('[API BASE]', BASE_URL);
+  ////console.log.log('[API BASE]', BASE_URL);
 }
 
 export function getFullImageUrl(path) {
@@ -81,14 +81,14 @@ export async function apiRequest(path, { method = 'GET', body, auth = false } = 
     } catch { }
   }
 
-  console.groupCollapsed?.(label);
-  console.log('request:', { method, path, auth, body: maskedBody });
+  //console.log.groupCollapsed?.(label);
+  ////console.log.log('request:', { method, path, auth, body: maskedBody });
 
   try {
     if (auth) {
       const token = await getToken();
       if (!token) {
-        console.groupEnd?.();
+        //console.log.groupEnd?.();
         throw new Error('No auth token, please login first');
       }
       headers.Authorization = `Bearer ${token}`;
@@ -108,7 +108,7 @@ export async function apiRequest(path, { method = 'GET', body, auth = false } = 
       try {
         json = text ? JSON.parse(text) : null;
       } catch (e) {
-        console.warn('Cannot parse JSON, raw text:', text);
+        //console.log.warn('Cannot parse JSON, raw text:', text);
         throw new Error(`Invalid JSON from server: ${e.message}`);
       }
     } else {
@@ -116,8 +116,8 @@ export async function apiRequest(path, { method = 'GET', body, auth = false } = 
       throw new Error(`Invalid JSON from server: ${text ? String(text).slice(0, 100) : 'Empty response'}`);
     }
 
-    console.log('response status:', res.status);
-    console.log('response body:', json);
+    ////console.log.log('response status:', res.status);
+    ////console.log.log('response body:', json);
 
     if (!res.ok) {
       const msg =
@@ -126,11 +126,11 @@ export async function apiRequest(path, { method = 'GET', body, auth = false } = 
       throw new Error(msg);
     }
 
-    console.groupEnd?.();
+    //console.log.groupEnd?.();
     return json;
   } catch (err) {
-    console.error('API error:', err);
-    console.groupEnd?.();
+    //console.log.error('API error:', err);
+    //console.log.groupEnd?.();
     throw err;
   }
 }
