@@ -1,10 +1,18 @@
 // src/app/(tabs)/home.tsx
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ScrollView,
   View,
   StyleSheet,
+  Animated,
+  ImageBackground,
+  Image,
+  FlatList,
+  Dimensions,
+  NativeScrollEvent,
+  NativeSyntheticEvent
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   YStack,
   XStack,
@@ -14,7 +22,6 @@ import {
 } from 'tamagui';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
-import { SafeAreaView, Image } from 'react-native';
 
 const PRIMARY_COLOR = '#9B59FF';
 const LIGHT_BACKGROUND_COLOR = '#F5F7FF';
@@ -28,17 +35,102 @@ const HEALTH_TIPS = [
   "Ngủ đủ 7-8 tiếng mỗi đêm giúp cơ thể phục hồi năng lượng và tinh thần minh mẫn."
 ];
 
+type SlideType = 'city' | 'landscape' | 'river';
+
+const SLIDES: { image: any; type: SlideType }[] = [
+  // 🌃 Thành phố về đêm (2 ảnh)
+  { image: require('../../assets/inspiration/city_night_01.jpg'), type: 'city' },
+  { image: require('../../assets/inspiration/city_night_02.jpg'), type: 'city' },
+
+  // 🌿 Phong cảnh (3 ảnh)
+  { image: require('../../assets/inspiration/landscape_01.jpg'), type: 'landscape' },
+  { image: require('../../assets/inspiration/landscape_02.jpg'), type: 'landscape' },
+  { image: require('../../assets/inspiration/landscape_03.jpg'), type: 'landscape' },
+
+  // 🌊 Dòng sông (2 ảnh)
+  { image: require('../../assets/inspiration/river_01.jpg'), type: 'river' },
+  { image: require('../../assets/inspiration/river_02.jpg'), type: 'river' },
+];
+
+const QUOTES: Record<SlideType, string[]> = {
+  city: [
+    "Thành phố chậm lại khi đêm xuống.",
+    "Giữa ánh đèn, vẫn có khoảng lặng.",
+    "Một ngày dài đã qua — bạn làm tốt rồi.",
+    "Đêm là lúc mọi thứ dịu lại.",
+    "Chậm lại một nhịp, bạn xứng đáng được nghỉ.",
+  ],
+  landscape: [
+    "Hít một hơi thật sâu.",
+    "Mọi thứ đều rộng hơn khi nhìn ra xa.",
+    "Thiên nhiên không vội, và bạn cũng không cần.",
+    "Đứng yên một chút cũng không sao.",
+    "Bình yên đôi khi chỉ là một khung cảnh.",
+  ],
+  river: [
+    "Dòng sông vẫn chảy, dù ngày dài đến đâu.",
+    "Hãy để mọi thứ trôi đi.",
+    "Không cần giữ lại điều gì.",
+    "Nước không vội, nhưng luôn đi tới.",
+    "Chậm lại một nhịp, như dòng sông.",
+  ],
+};
+
+const TYPE_META = {
+  city: { label: 'Thành phố đêm', icon: '🌃' },
+  landscape: { label: 'Phong cảnh', icon: '🌿' },
+  river: { label: 'Dòng sông', icon: '🌊' },
+} as const;
+
+const MICRO_ACTIONS = {
+  city: ["Đi bộ 3 phút để đổi gió", "Nhìn lên bầu trời 10 giây", "Thả lỏng vai và thở chậm"],
+  landscape: ["Hít sâu 3 hơi", "Nhìn xa để mắt nghỉ", "Uống một ngụm nước"],
+  river: ["Thở chậm như dòng nước", "Buông một suy nghĩ", "Thả lỏng hàm và vai"],
+} as const;
+
 export default function HomeScreen() {
   const router = useRouter();
   const FLOW_STATE_LOGO = require('../../assets/images/FlowState.png');
   const [tipIndex, setTipIndex] = useState(0);
+  const [slideIndex, setSlideIndex] = useState(0);
+  const [isInteracting, setIsInteracting] = useState(false);
+
+  const listRef = useRef<FlatList>(null);
+
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const screenW = Dimensions.get('window').width;
+  const cardW = useMemo(() => screenW - 32, [screenW]);
+
+  useEffect(() => {
+    if (isInteracting) return;
+
+    const timer = setInterval(() => {
+      const next = (slideIndex + 1) % SLIDES.length;
+
+      listRef.current?.scrollToIndex({
+        index: next,
+        animated: true,
+      });
+
+      setSlideIndex(next);
+    }, 5000);
+
+    return () => clearInterval(timer);
+  }, [slideIndex, isInteracting]);
+
+  const onMomentumEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const x = e.nativeEvent.contentOffset.x;
+    const index = Math.round(x / cardW);
+    setSlideIndex(index);
+    setIsInteracting(false);
+  };
 
   const handleNextTip = () => {
     setTipIndex((prev) => (prev + 1) % HEALTH_TIPS.length);
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: LIGHT_BACKGROUND_COLOR }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: LIGHT_BACKGROUND_COLOR }} edges={['top', 'left', 'right']}>
       <View style={styles.container}>
         <ScrollView
           style={{ flex: 1 }}
@@ -82,86 +174,75 @@ export default function HomeScreen() {
             </Text>
           </XStack>
 
-          {/* RIVERS CỦA BẠN */}
+          {/* KHOẢNH KHẮC THIÊN NHIÊN (vuốt qua lại + auto 5s) */}
           <Text
             fontSize={16}
             fontWeight="700"
             color="#1F1F1F"
             style={{ marginBottom: 10 }}
           >
-            Rivers của bạn
+            🌙 Khoảnh khắc thiên nhiên
           </Text>
 
-          {/* Mindful River */}
-          <Card style={[styles.card, { padding: 14 }]}>
-            <XStack
-              justifyContent="space-between"
-              alignItems="center"
-              style={{ marginBottom: 8 }}
-            >
-              <XStack alignItems="center" style={{ columnGap: 8 }}>
-                <Ionicons name="leaf-outline" size={20} color="#27AE60" />
-                <YStack>
-                  <Text fontSize={15} fontWeight="700" color="#1F1F1F">
-                    Mindful River
-                  </Text>
-                  <Text fontSize={12} color="#6B6B6B">
-                    Thiền định &amp; Chánh niệm
-                  </Text>
-                </YStack>
-              </XStack>
-              <Text fontSize={13} fontWeight="600" color="#27AE60">
-                75%
-              </Text>
-            </XStack>
+          <FlatList
+            ref={listRef}
+            data={SLIDES}
+            keyExtractor={(_, i) => String(i)}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            snapToAlignment="start"
+            decelerationRate="fast"
+            getItemLayout={(_, index) => ({
+              length: cardW,
+              offset: cardW * index,
+              index,
+            })}
+            onScrollBeginDrag={() => setIsInteracting(true)}
+            onMomentumScrollEnd={onMomentumEnd}
+            renderItem={({ item, index }) => {
+              const quoteList = QUOTES[item.type];
+              const quote = quoteList[index % quoteList.length];
 
-            <View style={styles.progressTrack}>
+              return (
+                <View style={{ width: cardW }}>
+                  <ImageBackground
+                    source={item.image}
+                    style={styles.slideImage}
+                    imageStyle={{ borderRadius: 16 }}
+                    resizeMode="cover"
+                  >
+                    <View style={styles.slideOverlay} />
+                    <Text style={styles.slideQuote}>{quote}</Text>
+                    <Text style={styles.slideSub}>
+                      Vuốt để xem ảnh trước/sau
+                    </Text>
+                  </ImageBackground>
+                  {/* Info row dưới ảnh */}
+                  <View style={styles.slideInfoRow}>
+                    <Text style={styles.slideType}>
+                      {TYPE_META[SLIDES[slideIndex].type].icon} {TYPE_META[SLIDES[slideIndex].type].label}
+                    </Text>
+                  </View>
+
+                  <Text style={styles.microAction}>
+                    ✨ {MICRO_ACTIONS[SLIDES[slideIndex].type][slideIndex % MICRO_ACTIONS[SLIDES[slideIndex].type].length]}
+                  </Text>
+
+                </View>
+              );
+            }}
+          />
+
+          {/* Dots indicator */}
+          <View style={styles.dotsRow}>
+            {SLIDES.map((_, i) => (
               <View
-                style={[
-                  styles.progressFill,
-                  { width: '75%', backgroundColor: '#27AE60' },
-                ]}
+                key={i}
+                style={[styles.dot, i === slideIndex ? styles.dotActive : styles.dotInactive]}
               />
-            </View>
-          </Card>
-
-          {/* Sleep River */}
-          <Card
-            style={[
-              styles.card,
-              { padding: 14, marginTop: 10 },
-            ]}
-          >
-            <XStack
-              justifyContent="space-between"
-              alignItems="center"
-              style={{ marginBottom: 8 }}
-            >
-              <XStack alignItems="center" style={{ columnGap: 8 }}>
-                <Ionicons name="bed-outline" size={20} color="#3498DB" />
-                <YStack>
-                  <Text fontSize={15} fontWeight="700" color="#1F1F1F">
-                    Sleep River
-                  </Text>
-                  <Text fontSize={12} color="#6B6B6B">
-                    Giấc ngủ chất lượng
-                  </Text>
-                </YStack>
-              </XStack>
-              <Text fontSize={13} fontWeight="600" color="#3498DB">
-                60%
-              </Text>
-            </XStack>
-
-            <View style={styles.progressTrack}>
-              <View
-                style={[
-                  styles.progressFill,
-                  { width: '60%', backgroundColor: '#3498DB' },
-                ]}
-              />
-            </View>
-          </Card>
+            ))}
+          </View>
 
           {/* HÀNH ĐỘNG NHANH */}
           <Text
@@ -364,5 +445,54 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  slideImage: {
+    height: 200,
+    justifyContent: 'flex-end',
+    padding: 14,
+    marginBottom: 10,
+  },
+  slideOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.18)',
+    borderRadius: 16,
+  },
+  slideQuote: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  slideSub: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  slideInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 10,
+    marginBottom: 6,
+  },
+  slideType: {
+    fontSize: 12,
+    color: '#6B6B6B',
+    fontWeight: '600',
+  },
+  dotsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 6,
+    marginBottom: 18,
+    marginTop: -6,
+  },
+  dot: { width: 6, height: 6, borderRadius: 999 },
+  dotActive: { backgroundColor: '#9B59FF' },
+  dotInactive: { backgroundColor: '#D7DCEC' },
+  microAction: {
+    fontSize: 12,
+    color: '#4A4A4A',
+    marginBottom: 18,
   },
 });
