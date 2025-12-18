@@ -196,7 +196,8 @@ const updateHabit = asyncHandler(async (req, res) => {
     'name', 'description', 'icon', 'color',
     'frequency', 'customFrequency',
     'category', 'habitType',
-    'trackingMode', 'targetCount', 'unit',
+    // 'trackingMode', // ❌ XÓA DÒNG NÀY - không cho sửa trackingMode
+    'targetCount', 'unit',
     'startDate', 'endDate',
     'isActive',
   ];
@@ -209,35 +210,45 @@ const updateHabit = asyncHandler(async (req, res) => {
     }
   });
 
-  // Determine resulting trackingMode after update
-  const resultingTrackingMode = updates.trackingMode || habit.trackingMode || 'check';
-  if (!['check', 'count'].includes(resultingTrackingMode)) {
+  // ✅ THÊM: Kiểm tra nếu user cố đổi trackingMode
+  if (body.trackingMode !== undefined && body.trackingMode !== habit.trackingMode) {
     return res.status(400).json({
       success: false,
-      message: 'trackingMode must be "check" or "count"'
+      message: 'Cannot change tracking mode after habit creation',
+      currentMode: habit.trackingMode,
+      hint: 'Tracking mode is locked to prevent data conflicts. Create a new habit if you need a different tracking mode.'
     });
   }
+
+  // ✅ Sử dụng trackingMode hiện tại (không thể thay đổi)
+  const trackingMode = habit.trackingMode || 'check';
 
   // Frequency/customFrequency consistency
   if (updates.frequency) {
     const freq = updates.frequency;
     if (!['daily', 'weekly', 'monthly', 'custom'].includes(freq)) {
-      return res.status(400).json({ success: false, message: 'frequency must be one of daily, weekly, monthly, custom' });
+      return res.status(400).json({ 
+        success: false, 
+        message: 'frequency must be one of daily, weekly, monthly, custom' 
+      });
     }
     if (freq !== 'custom') {
-      // Clear customFrequency if switching away from custom
       updates.customFrequency = undefined;
     } else {
-      // Require customFrequency when using custom
       if (body.customFrequency === undefined && habit.customFrequency === undefined) {
-        return res.status(400).json({ success: false, message: 'customFrequency is required when frequency is custom' });
+        return res.status(400).json({ 
+          success: false, 
+          message: 'customFrequency is required when frequency is custom' 
+        });
       }
     }
   } else if (updates.customFrequency !== undefined) {
-    // If client sends customFrequency without setting frequency to custom, ensure current or updated is custom
     const effFreq = updates.frequency || habit.frequency;
     if (effFreq !== 'custom') {
-      return res.status(400).json({ success: false, message: 'customFrequency can only be set when frequency is custom' });
+      return res.status(400).json({ 
+        success: false, 
+        message: 'customFrequency can only be set when frequency is custom' 
+      });
     }
   }
 
@@ -246,44 +257,56 @@ const updateHabit = asyncHandler(async (req, res) => {
     const s = new Date(updates.startDate);
     const e = new Date(updates.endDate);
     if (!isNaN(s) && !isNaN(e) && s > e) {
-      return res.status(400).json({ success: false, message: 'startDate must be before or equal to endDate' });
+      return res.status(400).json({ 
+        success: false, 
+        message: 'startDate must be before or equal to endDate' 
+      });
     }
   }
 
-  // Enforce rules based on trackingMode
-  if (resultingTrackingMode === 'check') {
-    // Disallow targetCount/unit when in check mode
+  // ✅ Enforce rules dựa trên trackingMode HIỆN TẠI (không cho đổi)
+  if (trackingMode === 'check') {
+    // ❌ Không cho sửa targetCount/unit khi ở mode check
     if (body.targetCount !== undefined || body.unit !== undefined) {
       return res.status(400).json({
         success: false,
-        message: 'targetCount and unit are not allowed for check trackingMode'
+        message: 'Cannot update targetCount or unit for check tracking mode',
+        hint: 'This habit uses simple check tracking. targetCount and unit are not applicable.'
       });
     }
-    // Normalize: ensure DB fields are reset for check mode
+    // Đảm bảo giá trị mặc định
     updates.targetCount = 1;
     updates.unit = '';
-  } else if (resultingTrackingMode === 'count') {
-    // Require positive targetCount if changing to or already in count mode and client tries to set it
-    const tc = body.targetCount !== undefined ? body.targetCount : habit.targetCount;
-    if (tc === undefined || tc === null || Number(tc) <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'targetCount must be a positive number for count trackingMode'
-      });
-    }
-    updates.targetCount = Number(tc);
 
-    // Validate unit (allow some common values but keep flexible)
-    const allowedUnits = ['times', 'reps', 'pages', 'ml', 'km', 'minute', 'phút', 'lần', 'custom', ''];
-    const effUnit = body.unit !== undefined ? String(body.unit) : (habit.unit || '');
-    if (effUnit === '') {
-      // unit is optional; keep empty allowed but client can provide
-      updates.unit = '';
-    } else {
-      updates.unit = effUnit;
-      // If you want strict list, uncomment below:
-      // if (!allowedUnits.includes(effUnit)) {
-      //   return res.status(400).json({ success: false, message: `unit must be one of: ${allowedUnits.join(', ')}` });
+  } else if (trackingMode === 'count') {
+    // ✅ Cho phép sửa targetCount/unit khi ở mode count
+    
+    // Nếu có cố gắng sửa targetCount
+    if (body.targetCount !== undefined) {
+      const tc = Number(body.targetCount);
+      if (isNaN(tc) || tc <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'targetCount must be a positive number for count tracking mode'
+        });
+      }
+      updates.targetCount = tc;
+    }
+
+    // Nếu có cố gắng sửa unit
+    if (body.unit !== undefined) {
+      const allowedUnits = ['times', 'reps', 'pages', 'ml', 'km', 'minute', 'phút', 'lần', 'custom', ''];
+      const unitValue = String(body.unit).trim();
+      
+      // Cho phép unit rỗng hoặc bất kỳ giá trị nào (tùy bạn)
+      updates.unit = unitValue;
+      
+      // Nếu muốn kiểm tra strict, bỏ comment dòng dưới:
+      // if (unitValue !== '' && !allowedUnits.includes(unitValue)) {
+      //   return res.status(400).json({ 
+      //     success: false, 
+      //     message: `unit must be one of: ${allowedUnits.join(', ')}` 
+      //   });
       // }
     }
   }
@@ -1077,7 +1100,7 @@ const addHabitSubTracking = async (req, res) => {
       });
     }
 
-    // ✅ SỬA: Parse date ĐÚNG - tạo UTC date giống trackHabit
+    // Parse date
     let trackingDate;
     if (date) {
       const parts = date.split('-');
@@ -1097,7 +1120,7 @@ const addHabitSubTracking = async (req, res) => {
       ));
     }
 
-    // ✅ SỬA: So sánh date phải cùng format UTC
+    // Validate date
     if (date) {
       const today = new Date();
       const todayUTC = new Date(Date.UTC(
@@ -1124,10 +1147,10 @@ const addHabitSubTracking = async (req, res) => {
       }
     }
 
-    // ✅ Parse time và tạo timestamp UTC
+    // Parse startTime
     const [startH, startM] = startTime.split(':').map(Number);
     const actualStartTime = new Date(trackingDate);
-    actualStartTime.setUTCHours(startH, startM, 0, 0); // ✅ Dùng setUTCHours thay vì setHours
+    actualStartTime.setUTCHours(startH, startM, 0, 0);
 
     const now = new Date();
 
@@ -1138,6 +1161,36 @@ const addHabitSubTracking = async (req, res) => {
       });
     }
 
+    // ✅ THÊM: Kiểm tra lần tracking trước đó
+    const lastSubTracking = await HabitSubTracking.findOne({
+      habitId,
+      userId,
+      startTime: { 
+        $gte: trackingDate, // Cùng ngày hoặc sau
+        $lt: new Date(trackingDate.getTime() + 24 * 60 * 60 * 1000) // Trước ngày hôm sau
+      }
+    }).sort({ startTime: -1 }); // Lấy lần tracking gần nhất
+
+    if (lastSubTracking) {
+      // Nếu có lần tracking trước, startTime mới phải sau endTime (hoặc startTime) của lần trước
+      const lastEndTime = lastSubTracking.endTime || lastSubTracking.startTime;
+      
+      if (actualStartTime <= lastEndTime) {
+        return res.status(400).json({
+          success: false,
+          message: 'Start time must be after the previous tracking session',
+          previousTracking: {
+            startTime: lastSubTracking.startTime.toISOString().slice(11, 16),
+            endTime: lastSubTracking.endTime 
+              ? lastSubTracking.endTime.toISOString().slice(11, 16) 
+              : null,
+            suggestion: `Your new start time must be after ${lastEndTime.toISOString().slice(11, 16)}`
+          }
+        });
+      }
+    }
+
+    // Parse endTime
     let actualEndTime = null;
     if (endTime) {
       if (!timeRegex.test(endTime)) {
@@ -1149,7 +1202,7 @@ const addHabitSubTracking = async (req, res) => {
 
       const [endH, endM] = endTime.split(':').map(Number);
       actualEndTime = new Date(trackingDate);
-      actualEndTime.setUTCHours(endH, endM, 0, 0); // ✅ Dùng setUTCHours
+      actualEndTime.setUTCHours(endH, endM, 0, 0);
 
       if (actualEndTime <= actualStartTime) {
         return res.status(400).json({
@@ -1238,7 +1291,6 @@ const addHabitSubTracking = async (req, res) => {
     const unitLabel = habit.unit ? habit.unit : 'lần';
     const progress = `${habitTracking.completedCount}/${habitTracking.targetCount}`;
 
-    // ✅ Check isToday với UTC
     const today = new Date();
     const todayUTC = new Date(Date.UTC(
       today.getFullYear(),
@@ -1248,7 +1300,6 @@ const addHabitSubTracking = async (req, res) => {
     ));
     const isToday = trackingDate.getTime() === todayUTC.getTime();
 
-    // ✅ Format response giống như getHabitSubTrackings
     const duration = actualEndTime
       ? Math.round((actualEndTime - actualStartTime) / 60000)
       : null;
