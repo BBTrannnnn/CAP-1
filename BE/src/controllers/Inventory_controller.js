@@ -54,7 +54,7 @@ const useShield = asyncHandler(async (req, res) => {
         });
     }
 
-    // 3. Parse date (default = today)
+    // 3. ✅ Parse date (default = today)
     let targetDate;
     if (date) {
         const parts = date.split('-');
@@ -74,7 +74,7 @@ const useShield = asyncHandler(async (req, res) => {
         ));
     }
 
-    // 4. Kiểm tra không được shield ngày tương lai
+    // 4. ✅ Kiểm tra không được shield ngày tương lai
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
     if (targetDate > today) {
@@ -84,22 +84,22 @@ const useShield = asyncHandler(async (req, res) => {
         });
     }
 
-    // 5. Tìm tracking của ngày đó
+    // 5. ✅ Tìm tracking của ngày đó
     let tracking = await HabitTracking.findOne({
         userId: req.user.id,
         habitId: habitId,
         date: targetDate
     });
 
-    // 6. Nếu chưa có tracking, tạo mới với status failed
+    // 6. ✅ Nếu chưa có tracking, tạo mới với status failed
     if (!tracking) {
         tracking = new HabitTracking({
             userId: req.user.id,
             habitId: habitId,
             date: targetDate,
             status: 'failed',
-            isProtected: true,
-            notes: 'Protected by shield (manual)'
+            isProtected: true, // ✅ Đánh dấu được shield
+            notes: 'Protected by shield'
         });
     } else {
         // 7. Kiểm tra điều kiện
@@ -117,15 +117,12 @@ const useShield = asyncHandler(async (req, res) => {
             });
         }
 
-        tracking.isProtected = true;
-        tracking.notes = tracking.notes 
-            ? `${tracking.notes} (Protected by shield - manual)`
-            : 'Protected by shield (manual)';
+        tracking.isProtected = true; // ✅ Đánh dấu được shield
     }
 
     await tracking.save();
 
-    // 8. Trừ shield từ user
+    // 8. ✅ Trừ shield từ user
     const updatedUser = await User.findByIdAndUpdate(
         req.user.id,
         {
@@ -136,7 +133,7 @@ const useShield = asyncHandler(async (req, res) => {
                     habitId: habitId,
                     usedAt: new Date(),
                     autoUsed: false,
-                    protectedDate: targetDate
+                    protectedDate: targetDate // ✅ Lưu ngày được bảo vệ
                 }
             }
         },
@@ -146,7 +143,7 @@ const useShield = asyncHandler(async (req, res) => {
         }
     );
 
-    // 9. Cập nhật habit protection status
+    // 9. ✅ Cập nhật habit protection status
     const tomorrow = new Date(targetDate);
     tomorrow.setDate(tomorrow.getDate() + 1);
     tomorrow.setHours(23, 59, 59, 999);
@@ -158,7 +155,7 @@ const useShield = asyncHandler(async (req, res) => {
     habit.streakProtection.warningSent = false;
     await habit.save();
 
-    // 10. Tính lại streak
+    // 10. ✅ Tính lại streak
     const newAchievements = await updateHabitStats(habitId, req.user.id);
 
     res.json({
@@ -292,7 +289,7 @@ const useFreezeToken = asyncHandler(async (req, res) => {
                     { userId: req.user.id, habitId, date: freezeDate },
                     {
                         $set: {
-                            status: 'frozen',
+status: 'frozen',
                             notes: `Đóng băng bằng Freeze Token (${days} ngày)`,
                             completedCount: 0,
                             targetCount: 1
@@ -309,6 +306,7 @@ const useFreezeToken = asyncHandler(async (req, res) => {
     // Cập nhật streak sau khi freeze
     await updateHabitStats(habitId, req.user.id);
 
+    // SỬA TẠI ĐÂY - Đảm bảo habitId được convert đúng
     const updatedUser = await User.findByIdAndUpdate(
         req.user.id,
         {
@@ -316,7 +314,7 @@ const useFreezeToken = asyncHandler(async (req, res) => {
             $push: {
                 itemUsageHistory: {
                     itemType: 'freezeToken',
-                    habitId,
+                    habitId: habit._id, // SỬA: Dùng habit._id thay vì habitId
                     usedAt: new Date(),
                     autoUsed: false,
                     freezeDays: days,
@@ -368,6 +366,15 @@ const useReviveToken = asyncHandler(async (req, res) => {
         return res.status(400).json({
             success: false,
             message: 'Không đủ Revive Token để sử dụng'
+        });
+    }
+
+    // Validate habit tồn tại
+    const habit = await Habit.findById(habitId);
+    if (!habit) {
+        return res.status(404).json({
+            success: false,
+            message: 'Habit not found'
         });
     }
 
@@ -437,7 +444,7 @@ const useReviveToken = asyncHandler(async (req, res) => {
 
     // ĐÁNH DẤU NGÀY ĐÓ ĐƯỢC BẢO VỆ
     tracking.isProtected = true;
-    tracking.notes = tracking.notes 
+tracking.notes = tracking.notes 
         ? `${tracking.notes} (Hồi sinh bằng Revive Token)`
         : 'Hồi sinh bằng Revive Token';
     await tracking.save();
@@ -445,7 +452,7 @@ const useReviveToken = asyncHandler(async (req, res) => {
     // CẬP NHẬT STREAK
     await updateHabitStats(habitId, req.user.id);
 
-    // TRỪ TOKEN VÀ LƯU LỊCH SỬ
+    // TRỪ TOKEN VÀ LƯU LỊCH SỬ - SỬA TẠI ĐÂY
     const updatedUser = await User.findByIdAndUpdate(
         req.user.id,
         {
@@ -453,7 +460,7 @@ const useReviveToken = asyncHandler(async (req, res) => {
             $push: {
                 itemUsageHistory: {
                     itemType: 'reviveToken',
-                    habitId: habitId,
+                    habitId: habit._id, // SỬA: Dùng habit._id thay vì habitId
                     usedAt: new Date(),
                     autoUsed: false,
                     protectedDate: targetDate
@@ -479,35 +486,41 @@ const getProtectionSettings = asyncHandler(async (req, res) => {
 
     res.json({
         success: true,
-        settings: {
-            enabled: user.streakProtectionSettings?.enabled ?? true
-        }
+        settings: user.streakProtectionSettings
     });
 });
 
 const updateProtectionSettings = asyncHandler(async (req, res) => {
-    const { enabled } = req.body;
-
-    if (enabled === undefined) {
-        return res.status(400).json({
-            success: false,
-            message: 'enabled is required (true/false)'
-        });
-    }
+    const { enabled, autoUseShield, minStreakToAutoProtect, notificationTime } = req.body;
 
     const user = await User.findById(req.user.id);
-    
-    user.streakProtectionSettings = user.streakProtectionSettings || {};
-    user.streakProtectionSettings.enabled = enabled;
-    
+
+    if (enabled !== undefined) {
+        user.streakProtectionSettings.enabled = enabled;
+    }
+    if (autoUseShield !== undefined) {
+        user.streakProtectionSettings.autoUseShield = autoUseShield;
+    }
+    if (minStreakToAutoProtect !== undefined) {
+        user.streakProtectionSettings.minStreakToAutoProtect = Math.max(1, minStreakToAutoProtect);
+    }
+    if (notificationTime !== undefined) {
+        const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+        if (!timeRegex.test(notificationTime)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid time format. Use HH:MM (e.g., 21:00)'
+            });
+        }
+        user.streakProtectionSettings.notificationTime = notificationTime;
+    }
+
     await user.save();
 
     res.json({
         success: true,
-        message: `Cảnh báo streak ${enabled ? 'đã bật' : 'đã tắt'}`,
-        settings: {
-            enabled: user.streakProtectionSettings.enabled
-        }
+        message: 'Settings updated successfully',
+        settings: user.streakProtectionSettings
     });
 });
 
@@ -523,7 +536,7 @@ const testAllItems = asyncHandler(async (req, res) => {
         },
         {
             new: true,
-            runValidators: false
+            runValidators: false  // ✅ Bỏ qua validation
         }
     );
 
