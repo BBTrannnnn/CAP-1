@@ -16,15 +16,15 @@ const dreamSchema = new mongoose.Schema({
   },
   category: {
     type: String,
-    required: true,
     enum: ['stress', 'fear', 'anxiety', 'sadness', 'happy', 'neutral', 'confusion'],
     index: true,
+    required: false,
   },
   confidence: {
     type: Number,
-    required: true,
     min: 0,
     max: 100,
+    required: false,
   },
   probabilities: {
     stress: { type: Number, min: 0, max: 1 },
@@ -37,7 +37,7 @@ const dreamSchema = new mongoose.Schema({
   },
   interpretation: {
     type: String,
-    required: true,
+    required: false,
   },
   tips: {
     type: String,
@@ -55,6 +55,19 @@ const dreamSchema = new mongoose.Schema({
   lastTrainedAt: {
     type: Date,
     default: null,
+  },
+  // Cluster fields
+  clusterId: {
+    type: Number,
+    index: true,
+  },
+  clusterName: {
+    type: String,
+    default: '',
+  },
+  clusterDesc: {
+    type: String,
+    default: '',
   },
   isValidatedByUser: {
     type: Boolean,

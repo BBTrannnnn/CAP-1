@@ -9,10 +9,8 @@ const SleepLogSchema = new mongoose.Schema({
   sleepAt: { type: Date, required: true },
   wakeAt:  { type: Date, required: true },
   durationMin: { type: Number, required: true }, // tính ở controller / hook
-  quality: { type: Number, min:1, max:5, required: true },
-  wakeMood: { type: String, enum: MOODS, default: "thu_gian" },
-  factors: [{ type: String, enum: FACTORS }],
-  notes: { type: String, maxlength: 1000 },
+  // quality, wakeMood, factors đã bỏ, chỉ giữ notes
+  notes: { type: String, maxlength: 5000 },
   // Dự phòng cho tương lai
   // isNap: { type: Boolean, default: false }
 }, { timestamps: true });

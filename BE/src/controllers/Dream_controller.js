@@ -1,11 +1,4 @@
-import * as tf from '@tensorflow/tfjs';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import Dream from '../models/Dream.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import child_process from 'child_process';
 
 //LOAD MODEL, CONFIG 
 let model = null;
@@ -308,7 +301,7 @@ function generateInterpretation(category, confidence, dreamText) {
             keywords.chase.test(dreamText)
               ? 'Việc bị đuổi bởi thứ gì đó đáng sợ trong mơ thường biểu thị việc bạn đang trốn tránh một nỗi sợ hoặc vấn đề trong đời thực - có thể là sợ thất bại, sợ bị từ chối, hoặc sợ đối mặt với sự thật nào đó.'
               : ''
-          } Đây là dấu hiệu quan trọng cần được quan tâm. Nỗi sợ không được giải quyết có thể ảnh hưởng đến chất lượng cuộc sống, gây lo lắng, tránh né, và hạn chế khả năng phát triển của bạn. Hãy nhớ: phần lớn những gì chúng ta sợ hãi không bao giờ xảy ra, và ngay cả khi xảy ra, chúng ta thường có khả năng đối phó tốt hơn mình nghĩ. Hãy từng bước nhỏ đối mặt với nỗi sợ, hoặc tìm sự hỗ trợ từ chuyên gia nếu cảm thấy quá tải.`,
+          } Đây là dấu hiệu quan trọng cần được quan tâm. Nỗi sợ không được giải quyết có thể ảnh hưởng đến chất lượng cuộc sống, gây lo âu, tránh né, và hạn chế khả năng phát triển của bạn. Hãy nhớ: phần lớn những gì chúng ta sợ hãi không bao giờ xảy ra, và ngay cả khi xảy ra, chúng ta thường có khả năng đối phó tốt hơn mình nghĩ. Hãy từng bước nhỏ đối mặt với nỗi sợ, hoặc tìm sự hỗ trợ từ chuyên gia nếu cảm thấy quá tải.`,
           
           `Nỗi sợ hãi này đang ảnh hưởng sâu sắc đến giấc ngủ của bạn. Khi chúng ta sợ hãi, bộ não vào chế độ "đối mặt hoặc trốn chạy" ngay cả khi ngủ, khiến giấc mơ trở nên căng thẳng và đáng sợ. Điều quan trọng là phải nhận ra: nỗi sợ trong mơ thường không phản ánh nguy hiểm thực tế, mà là cách tâm trí xử lý lo lắng. Hãy tìm nguồn gốc của nỗi sợ và đối mặt từng bước nhỏ.`,
         ],
@@ -397,7 +390,7 @@ function generateInterpretation(category, confidence, dreamText) {
       low: [
         `Có một chút lo âu nhẹ, điều này hoàn toàn bình thường trong cuộc sống hàng ngày. ${
           keywords.late.test(dreamText)
-            ? 'Sợ trễ hẹn, lỡ deadline là lo lắng phổ biến, thường xuất phát từ mong muốn làm tốt và không muốn làm người khác thất vọng. Đây là dấu hiệu của trách nhiệm và sự cẩn thận.'
+            ? 'Sợ trễ hẹn, lỡ deadline là lo âu phổ biến, thường xuất phát từ mong muốn làm tốt và không muốn làm người khác thất vọng. Đây là dấu hiệu của trách nhiệm và sự cẩn thận.'
             : 'Lo âu ở mức độ này thường là phản ứng tự nhiên với những thay đổi nhỏ hoặc những việc cần hoàn thành.'
         } Mức độ lo âu này không đáng lo ngại, nhưng vẫn cần chú ý không để nó tích tụ. Hãy duy trì các thói quen tốt như ngủ đủ giấc, vận động đều đặn, và có khoảng thời gian thư giãn mỗi ngày. Những hoạt động này là "lá chắn" giúp ngăn lo âu nhẹ phát triển thành lo âu nặng.`,
         
@@ -590,7 +583,7 @@ function generateTips(category, language = 'vi') {
     },
     anxiety: {
       vi: [
-        'Lập kế hoạch cụ thể: Viết ra công việc/học tập cần làm, chia thành checklist nhỏ. Mỗi item hoàn thành = giảm lo lắng.',
+        'Lập kế hoạch cụ thể: Viết ra công việc/học tập cần làm, chia thành checklist nhỏ. Mỗi item hoàn thành = giảm lo âu.',
         'Chia nhỏ mục tiêu: Mục tiêu lớn gây choáng ngợp. Chia thành 3-5 bước nhỏ, tập trung hoàn thành từng bước một.',
         'Kiểm soát được gì: Tập trung vào những gì trong tầm kiểm soát (chuẩn bị tốt), buông những gì không kiểm soát được (kết quả).',
         'Thở 4-7-8: Hít vào 4 giây, giữ 7 giây, thở ra 8 giây. Lặp lại 4 lần. Kích hoạt hệ thần kinh phó giao cảm, giảm lo âu ngay lập tức.',
@@ -690,7 +683,7 @@ export const analyzeDream = async (req, res, next) => {
   try {
     const dreamText = req.body.dreamText || req.body.dream;
     const userId = req.user._id;
-    
+
     // Validate
     if (!dreamText || dreamText.trim().length < 10) {
       return res.status(400).json({
@@ -698,55 +691,58 @@ export const analyzeDream = async (req, res, next) => {
         message: 'Dream text must be at least 10 characters',
       });
     }
-    
     if (dreamText.length > 2000) {
       return res.status(400).json({
         success: false,
         message: 'Dream text cannot exceed 2000 characters',
       });
     }
-    
-    // Predict
-    const prediction = await predictCategory(dreamText);
-    
-    // Detect language for tips
-    const language = detectLanguage(dreamText);
-    
-    // Generate interpretation & tips (truyền dreamText để phân tích từ khóa)
-    const interpretation = generateInterpretation(prediction.category, prediction.confidence, dreamText);
-    const tips = generateTips(prediction.category, language);
-    
-    // Save to database
-    const dream = await Dream.create({
-      userId,
-      dreamText: dreamText.trim(),
-      category: prediction.category,
-      confidence: prediction.confidence,
-      probabilities: {
-        stress: prediction.probabilities.stress / 100,
-        fear: prediction.probabilities.fear / 100,
-        anxiety: prediction.probabilities.anxiety / 100,
-        sadness: prediction.probabilities.sadness / 100,
-        happy: prediction.probabilities.happy / 100,
-        neutral: prediction.probabilities.neutral / 100,
-        confusion: prediction.probabilities.confusion / 100,
-      },
-      interpretation,
-      tips,
-    });
-    
-    res.status(201).json({
-      success: true,
-      data: {
-        _id: dream._id,
-        category: dream.category,
-        confidence: dream.confidence,
-        probabilities: prediction.probabilities,
-        interpretation: dream.interpretation,
-        tips: dream.tips,
-        analyzedAt: dream.analyzedAt,
-      },
-      message: 'Dream analyzed successfully',
+
+    // Gọi script Python predict_cluster.py để lấy clusterId, clusterName, clusterDesc
+    const pyPath = `${process.cwd()}/ai_model/scripts/predict_cluster.py`;
+    const py = child_process.spawn('python', [pyPath, dreamText]);
+
+    let result = '';
+    let error = '';
+    py.stdout.on('data', (data) => { result += data.toString(); });
+    py.stderr.on('data', (data) => { error += data.toString(); });
+
+    // Đưa logic lưu DB vào hàm async riêng
+    async function handleClusterResult(cluster) {
+      // Import Dream model trong scope callback để chắc chắn luôn có
+      const DreamModel = (await import('../models/Dream.js')).default;
+      const dream = await DreamModel.create({
+        userId,
+        dreamText: dreamText.trim(),
+        clusterId: cluster.clusterId,
+        clusterName: cluster.clusterName,
+        clusterDesc: cluster.clusterDesc,
+      });
+      res.status(201).json({
+        success: true,
+        data: {
+          _id: dream._id,
+          dreamText: dream.dreamText,
+          clusterId: cluster.clusterId,
+          clusterName: cluster.clusterName,
+          clusterDesc: cluster.clusterDesc,
+          analyzedAt: dream.analyzedAt,
+        },
+        message: 'Dream clustered successfully',
+      });
+    }
+
+    py.on('close', (code) => {
+      if (error) {
+        return res.status(500).json({ success: false, message: error });
+      }
+      let cluster = {};
+      try {
+        cluster = JSON.parse(result);
+      } catch (e) {
+        return res.status(500).json({ success: false, message: 'Python script error', detail: result });
+      }
+      handleClusterResult(cluster).catch(next);
     });
   } catch (error) {
     next(error);
