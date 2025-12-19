@@ -1099,7 +1099,7 @@ const addHabitSubTracking = async (req, res) => {
       });
     }
 
-    // Parse date
+    // ✅ Parse date - giữ UTC cho consistency với DB
     let trackingDate;
     if (date) {
       const parts = date.split('-');
@@ -1146,50 +1146,77 @@ const addHabitSubTracking = async (req, res) => {
       }
     }
 
-    // Parse startTime
+    // ✅ FIX: Parse startTime - User nhập theo LOCAL time
     const [startH, startM] = startTime.split(':').map(Number);
-    const actualStartTime = new Date(trackingDate);
-    actualStartTime.setUTCHours(startH, startM, 0, 0);
+    
+    // Tạo local time từ input của user
+    const localStartTime = new Date(trackingDate);
+    localStartTime.setUTCHours(startH, startM, 0, 0);
+    
+    // Chuyển sang local datetime để so sánh với now
+    const localYear = localStartTime.getUTCFullYear();
+    const localMonth = localStartTime.getUTCMonth();
+    const localDay = localStartTime.getUTCDate();
+    const actualStartTime = new Date(localYear, localMonth, localDay, startH, startM, 0, 0);
 
     const now = new Date();
 
+    // ✅ So sánh local time với local time
     if (actualStartTime > now) {
       return res.status(400).json({
         success: false,
-        message: 'Cannot track future time'
+        message: 'Cannot track future time',
+        debug: {
+          yourInput: startTime,
+          parsedTime: actualStartTime.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }),
+          currentTime: now.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })
+        }
       });
     }
 
     // ✅ THÊM: Kiểm tra lần tracking trước đó
+    // Query theo range của ngày trong DB (UTC)
     const lastSubTracking = await HabitSubTracking.findOne({
       habitId,
       userId,
       startTime: { 
-        $gte: trackingDate, // Cùng ngày hoặc sau
-        $lt: new Date(trackingDate.getTime() + 24 * 60 * 60 * 1000) // Trước ngày hôm sau
+        $gte: trackingDate,
+        $lt: new Date(trackingDate.getTime() + 24 * 60 * 60 * 1000)
       }
-    }).sort({ startTime: -1 }); // Lấy lần tracking gần nhất
+    }).sort({ startTime: -1 });
 
     if (lastSubTracking) {
-      // Nếu có lần tracking trước, startTime mới phải sau endTime (hoặc startTime) của lần trước
       const lastEndTime = lastSubTracking.endTime || lastSubTracking.startTime;
       
+      // So sánh với actualStartTime (đã chuyển về local)
       if (actualStartTime <= lastEndTime) {
         return res.status(400).json({
           success: false,
           message: 'Start time must be after the previous tracking session',
           previousTracking: {
-            startTime: lastSubTracking.startTime.toISOString().slice(11, 16),
+            startTime: lastSubTracking.startTime.toLocaleString('vi-VN', { 
+              hour: '2-digit', 
+              minute: '2-digit',
+              timeZone: 'Asia/Ho_Chi_Minh'
+            }),
             endTime: lastSubTracking.endTime 
-              ? lastSubTracking.endTime.toISOString().slice(11, 16) 
+              ? lastSubTracking.endTime.toLocaleString('vi-VN', { 
+                  hour: '2-digit', 
+                  minute: '2-digit',
+                  timeZone: 'Asia/Ho_Chi_Minh'
+                })
               : null,
-            suggestion: `Your new start time must be after ${lastEndTime.toISOString().slice(11, 16)}`
+            suggestion: `Your new start time must be after ${lastEndTime.toLocaleString('vi-VN', { 
+              hour: '2-digit', 
+              minute: '2-digit',
+              timeZone: 'Asia/Ho_Chi_Minh'
+            })}`
           }
         });
       }
     }
 
-    // Parse endTime
+    // ✅ FIX: Parse endTime - User nhập theo LOCAL time
     let actualEndTime = null;
     if (endTime) {
       if (!timeRegex.test(endTime)) {
@@ -1200,8 +1227,15 @@ const addHabitSubTracking = async (req, res) => {
       }
 
       const [endH, endM] = endTime.split(':').map(Number);
-      actualEndTime = new Date(trackingDate);
-      actualEndTime.setUTCHours(endH, endM, 0, 0);
+      
+      // Tạo local end time
+      const localEndTimeBase = new Date(trackingDate);
+      localEndTimeBase.setUTCHours(endH, endM, 0, 0);
+      
+      const endYear = localEndTimeBase.getUTCFullYear();
+      const endMonth = localEndTimeBase.getUTCMonth();
+      const endDay = localEndTimeBase.getUTCDate();
+      actualEndTime = new Date(endYear, endMonth, endDay, endH, endM, 0, 0);
 
       if (actualEndTime <= actualStartTime) {
         return res.status(400).json({
@@ -1227,6 +1261,7 @@ const addHabitSubTracking = async (req, res) => {
       }
     }
 
+    // Query HabitTracking theo date (UTC)
     let habitTracking = await HabitTracking.findOne({
       habitId,
       userId,
@@ -1253,12 +1288,13 @@ const addHabitSubTracking = async (req, res) => {
       });
     }
 
+    // ✅ Lưu vào DB - MongoDB sẽ tự động convert local time sang UTC
     const sub = await HabitSubTracking.create({
       habitTrackingId: habitTracking._id,
       habitId,
       userId,
-      startTime: actualStartTime,
-      endTime: actualEndTime,
+      startTime: actualStartTime, // Local time, MongoDB sẽ lưu dưới dạng UTC
+      endTime: actualEndTime,      // Local time, MongoDB sẽ lưu dưới dạng UTC
       quantity,
       note,
       mood
@@ -1303,13 +1339,24 @@ const addHabitSubTracking = async (req, res) => {
       ? Math.round((actualEndTime - actualStartTime) / 60000)
       : null;
 
+    // ✅ Response với format đẹp cho user
     res.status(201).json({
       success: true,
-      message: `Đã ghi nhận ${quantity} ${unitLabel}${!isToday ? ' cho ngày ' + new Date(trackingDate).toISOString().split('T')[0] : ''}`,
+      message: `Đã ghi nhận ${quantity} ${unitLabel}${!isToday ? ' cho ngày ' + trackingDate.toISOString().split('T')[0] : ''}`,
       tracking: {
-        date: new Date(trackingDate).toISOString().split('T')[0],
-        startTime: new Date(actualStartTime).toISOString().slice(11, 16),
-        endTime: actualEndTime ? new Date(actualEndTime).toISOString().slice(11, 16) : null,
+        date: trackingDate.toISOString().split('T')[0],
+        startTime: actualStartTime.toLocaleTimeString('vi-VN', { 
+          hour: '2-digit', 
+          minute: '2-digit',
+          hour12: false 
+        }),
+        endTime: actualEndTime 
+          ? actualEndTime.toLocaleTimeString('vi-VN', { 
+              hour: '2-digit', 
+              minute: '2-digit',
+              hour12: false 
+            })
+          : null,
         duration: duration ? `${duration} phút` : null,
         isToday,
         progress,
