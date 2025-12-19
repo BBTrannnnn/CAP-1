@@ -1820,6 +1820,8 @@ export async function updateHabitStats(habitId, userId) {
       .sort({ date: -1 })
       .lean();
 
+    console.log('📊 Total trackings:', trackings.length);
+
     if (trackings.length === 0) {
       habit.currentStreak = 0;
       habit.longestStreak = 0;
@@ -1845,15 +1847,14 @@ export async function updateHabitStats(habitId, userId) {
       trackingMap.set(key, t);
     });
 
-    // ❌ ĐÃ BỎ: Kiểm tra isProtectedToday vì không còn auto-protect
-    // Freeze vẫn giữ để tính streak đúng
-    const isFrozen =
-      habit.streakProtection?.isFrozen &&
-      habit.streakProtection?.frozenEndDate > new Date();
-
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
     const todayKey = today.toISOString().split('T')[0];
+
+    // Frozen period check
+    const isFrozen =
+      habit.streakProtection?.isFrozen &&
+      habit.streakProtection?.frozenEndDate > new Date();
 
     // ✅ Tính streak: Bắt đầu từ hôm nay, đếm ngược về trước
     let currentStreak = 0;
@@ -1863,11 +1864,8 @@ export async function updateHabitStats(habitId, userId) {
     for (let i = 0; i < 365; i++) {
       const dateKey = checkDate.toISOString().split('T')[0];
       const tracking = trackingMap.get(dateKey);
-
       const isCompleted = tracking && tracking.status === 'completed';
       const isFrozenDay = tracking && tracking.status === 'frozen';
-      
-      // ✅ CHỈ CÒN: Shield được dùng thủ công (isProtected = true trong tracking)
       const isShieldProtected = tracking && 
                                 tracking.status === 'failed' && 
                                 tracking.isProtected === true;
@@ -1879,29 +1877,31 @@ export async function updateHabitStats(habitId, userId) {
         checkDate >= habit.streakProtection.frozenStartDate &&
         checkDate <= habit.streakProtection.frozenEndDate;
 
-      // ✅ ĐIỀU KIỆN ĐẾM STREAK: completed HOẶC shield protected
       const countAsCompleted = isCompleted || isShieldProtected;
 
       if (countAsCompleted) {
         currentStreak++;
         hasStartedStreak = true;
+        console.log(`✅ Count: ${currentStreak}`);
         checkDate.setDate(checkDate.getDate() - 1);
         continue;
       }
 
-      // Nếu gặp frozen, skip qua (không đếm, không break)
+      // Nếu gặp frozen, skip qua
       if (isFrozenDay || isInFrozenPeriod) {
         if (hasStartedStreak) {
+          console.log(`⏭️ Skip frozen day`);
           checkDate.setDate(checkDate.getDate() - 1);
           continue;
         } else {
-          // Chưa bắt đầu streak thì break
           break;
         }
       }
 
-      // Gặp failed không protected → break
-      break;
+      // Gặp ngày không có tracking hoặc failed không protected
+      if (!tracking || (tracking.status === 'failed' && !tracking.isProtected)) {
+        break;
+      }
     }
 
     habit.currentStreak = currentStreak;
@@ -1930,7 +1930,7 @@ export async function updateHabitStats(habitId, userId) {
     return newAchievements;
 
   } catch (error) {
-    console.error('❌ Update stats error:', error);
+    console.error(error);
     return [];
   }
 }

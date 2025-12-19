@@ -275,38 +275,66 @@ const useFreezeToken = asyncHandler(async (req, res) => {
         });
     }
     
-    // Tạo tracking records với status "frozen"
-    const freezePromises = [];
-    
+    // ✅ SỬA: Tạo danh sách các ngày cần freeze
+    const freezeDates = [];
     for (let i = 0; i < days; i++) {
         const freezeDate = new Date(freezeStartDate);
         freezeDate.setDate(freezeDate.getDate() + i);
         
-        // Chỉ freeze các ngày <= hôm nay
         if (freezeDate <= today) {
+            freezeDates.push(freezeDate);
+        }
+    }
+
+    // ✅ SỬA: Kiểm tra các ngày đã có tracking
+    const existingTrackings = await HabitTracking.find({
+        userId: req.user.id,
+        habitId,
+        date: { $in: freezeDates }
+    });
+
+    // Tạo Set các ngày đã có tracking
+    const existingDates = new Set(
+        existingTrackings.map(t => t.date.toISOString().split('T')[0])
+    );
+
+    // ✅ SỬA: CHỈ tạo frozen cho ngày CHƯA CÓ tracking
+    const freezePromises = [];
+    let actualFrozenDays = 0;
+
+    for (const freezeDate of freezeDates) {
+        const dateStr = freezeDate.toISOString().split('T')[0];
+        
+        // Chỉ freeze nếu ngày này chưa có tracking
+        if (!existingDates.has(dateStr)) {
             freezePromises.push(
-                HabitTracking.findOneAndUpdate(
-                    { userId: req.user.id, habitId, date: freezeDate },
-                    {
-                        $set: {
-status: 'frozen',
-                            notes: `Đóng băng bằng Freeze Token (${days} ngày)`,
-                            completedCount: 0,
-                            targetCount: 1
-                        }
-                    },
-                    { upsert: true, new: true }
-                )
+                HabitTracking.create({
+                    userId: req.user.id,
+                    habitId,
+                    date: freezeDate,
+                    status: 'frozen',
+                    notes: 'Đóng băng bằng Freeze Token',
+                    completedCount: 0,
+                    targetCount: 1
+                })
             );
+            actualFrozenDays++;
         }
     }
     
+    // ✅ SỬA: Thông báo nếu không có ngày nào được freeze
+    if (freezePromises.length === 0) {
+        return res.status(400).json({
+            success: false,
+            message: 'Tất cả các ngày đã có tracking rồi. Không thể đóng băng.'
+        });
+    }
+
     await Promise.all(freezePromises);
 
     // Cập nhật streak sau khi freeze
     await updateHabitStats(habitId, req.user.id);
 
-    // SỬA TẠI ĐÂY - Đảm bảo habitId được convert đúng
     const updatedUser = await User.findByIdAndUpdate(
         req.user.id,
         {
@@ -314,10 +342,10 @@ status: 'frozen',
             $push: {
                 itemUsageHistory: {
                     itemType: 'freezeToken',
-                    habitId: habit._id, // SỬA: Dùng habit._id thay vì habitId
+                    habitId: habit._id,
                     usedAt: new Date(),
                     autoUsed: false,
-                    freezeDays: days,
+                    freezeDays: actualFrozenDays, // ✅ Số ngày thực sự bị freeze
                     cost,
                     startDate: freezeStartDate
                 }
@@ -331,7 +359,9 @@ status: 'frozen',
 
     res.json({
         success: true,
-        message: `Đã đóng băng habit ${days} ngày (tốn ${cost} token)`,
+        message: `Đã đóng băng ${actualFrozenDays} ngày (tốn ${cost} token)`,
+        frozenDays: actualFrozenDays,
+        requestedDays: days,
         inventory: updatedUser.inventory
     });
 });
