@@ -560,8 +560,8 @@ const testAllItems = asyncHandler(async (req, res) => {
         {
             $inc: { 
                 'inventory.streakShields': 5,
-                'inventory.freezeTokens': 3,
-                'inventory.reviveTokens': 2
+                'inventory.freezeTokens': 5,
+                'inventory.reviveTokens': 5
             }
         },
         {

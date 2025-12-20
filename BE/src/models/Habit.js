@@ -242,7 +242,7 @@ habitSchema.pre('save', async function (next) {
 });
 
 
-userSchema.pre('deleteOne', { document: true, query: false }, async function(next) {
+habitSchema.pre('deleteOne', { document: true, query: false }, async function(next) {
     try {
         const HabitTracking = mongoose.model('HabitTracking');
         const HabitSubTracking = mongoose.model('HabitSubTracking');
