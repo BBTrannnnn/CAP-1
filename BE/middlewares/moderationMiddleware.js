@@ -21,91 +21,52 @@ import Comment from '../src/models/Comment.js';
 
 // ========== RATE LIMITING ==========
 
-// Post rate limiter
 export const postRateLimit = rateLimit({
-    windowMs: 60 * 1000, // 1 minute
-    max: async (req) => {
-        const policy = getUserModerationPolicy(req.user);
-        return Math.ceil(policy.maxPostsPerDay / (24 * 60)); // Per minute limit
-    },
+    windowMs: 60 * 1000,
+    max: async (req) => Math.ceil(getUserModerationPolicy(req.user).maxPostsPerDay / (24 * 60)),
     message: 'Bạn đang đăng bài quá nhanh. Vui lòng chờ một chút.',
     standardHeaders: true,
     legacyHeaders: false,
 });
 
-// Comment rate limiter
 export const commentRateLimit = rateLimit({
-    windowMs: 5 * 1000, // 5 seconds
-    max: async (req) => {
-        const policy = getUserModerationPolicy(req.user);
-        return Math.ceil(policy.maxCommentsPerDay / (24 * 60 * 10)); // Much faster
-    },
-    message: 'Bạn đang bình luận quá nhanh. Vui lòng chờ một chút.',
+    windowMs: 5 * 1000,
+    max: async (req) => Math.ceil(getUserModerationPolicy(req.user).maxCommentsPerDay / (24 * 60 * 10)),
+    message: 'Bạn đang bình luận quá nhanh.',
     standardHeaders: true,
     legacyHeaders: false,
 });
 
 // ========== MODERATION MIDDLEWARE ==========
 
-/**
- * Moderate post content
- * Layer 1: Instant checks (synchronous)
- * Layer 2: AI checks (asynchronous background job)
- */
 export const moderatePost = async (req, res, next) => {
     try {
         const user = req.user;
-        const { content, images, visibility } = req.body;
+        const { content, images } = req.body;
 
-        // Check if user is banned
         const banStatus = checkUserBanStatus(user);
         if (banStatus.banned) {
             return res.status(403).json({
                 success: false,
                 message: `Tài khoản của bạn đã bị khóa${banStatus.until ? ' đến ' + banStatus.until.toLocaleDateString('vi-VN') : ' vĩnh viễn'}`,
-                details: {
-                    reason: banStatus.reason,
-                    until: banStatus.until,
-                    appeal: 'Bạn có thể gửi kháng cáo nếu cho rằng đây là sai lầm'
-                }
+                details: { reason: banStatus.reason }
             });
         }
 
-        // Get user's moderation policy
         const policy = getUserModerationPolicy(user);
 
-        // Check if user can upload images
         if (images && images.length > 0) {
             if (!policy.canUploadImages) {
-                return res.status(403).json({
-                    success: false,
-                    message: 'Tài khoản của bạn chưa được phép đăng hình ảnh',
-                    details: {
-                        reason: 'Cần tăng điểm uy tín',
-                        currentTrustScore: user.trustScore,
-                        requiredTrustScore: 60
-                    }
-                });
-            }
-
-            if (images.length > 1 && !policy.canUploadMultipleImages) {
-                return res.status(403).json({
-                    success: false,
-                    message: 'Tài khoản mới chỉ được đăng 1 hình ảnh mỗi bài',
-                    details: {
-                        maxImages: 1,
-                        currentImages: images.length
-                    }
-                });
+                return res.status(403).json({ success: false, message: 'Chưa đủ uy tín đăng ảnh' });
             }
         }
 
-        // === LAYER 1: INSTANT CHECKS (Synchronous) ===
+        // === LAYER 1: INSTANT CHECKS ===
 
-        // Check text profanity
-        const textCheck = checkTextProfanity(content);
+        // 1. Text Check (SỬ DỤNG AWAIT CHO API)
+        const textCheck = await checkTextProfanity(content);
+        
         if (textCheck.blocked) {
-            // Log violation
             await updateTrustScore(user._id, 'violation_severe', {
                 content: content.substring(0, 100),
                 score: textCheck.score,
@@ -118,61 +79,29 @@ export const moderatePost = async (req, res, next) => {
                 action: 'auto_rejected',
                 reason: textCheck.reason,
                 scores: { profanity: textCheck.score },
-                detectedIssues: textCheck.matches.map(m => ({
-                    type: 'profanity',
-                    severity: m.type === 'severe' ? 'severe' : 'medium',
-                    details: `Detected: "${m.word}"`
-                })),
+                detectedIssues: textCheck.matches,
                 trustScoreChange: -15
             });
 
             return res.status(400).json({
                 success: false,
                 message: textCheck.reason,
-                details: {
-                    type: 'profanity',
-                    score: textCheck.score,
-                    trustScoreDeducted: 15,
-                    action: 'Vui lòng chỉnh sửa nội dung và thử lại'
-                }
+                details: { type: 'profanity', matches: textCheck.matches }
             });
         }
 
-        // Check URLs
+        // 2. Check URLs
         const urlCheck = checkUrls(content);
         if (urlCheck.blocked) {
-            return res.status(400).json({
-                success: false,
-                message: urlCheck.reason,
-                details: {
-                    type: 'url',
-                    urls: urlCheck.urls
-                }
-            });
+            return res.status(400).json({ success: false, message: urlCheck.reason });
         }
 
-        // Check spam/duplicate
+        // 3. Check Spam
         const spamCheck = checkDuplicateContent(user._id, content);
         if (spamCheck.blocked) {
-            await updateTrustScore(user._id, 'violation_minor', {
-                content: content.substring(0, 100),
-                moderationAction: 'spam_rejected'
-            });
-
-            return res.status(429).json({
-                success: false,
-                message: spamCheck.reason,
-                details: {
-                    type: 'spam',
-                    similarity: spamCheck.similarity,
-                    action: 'Vui lòng đăng nội dung khác biệt'
-                }
-            });
+            return res.status(429).json({ success: false, message: spamCheck.reason });
         }
 
-        // === PASS LAYER 1 - Prepare for Layer 2 ===
-
-        // Store moderation results for async processing
         req.moderationResults = {
             textCheck,
             urlCheck,
@@ -181,7 +110,6 @@ export const moderatePost = async (req, res, next) => {
             needsImageCheck: images && images.length > 0
         };
 
-        // Allow request to proceed
         next();
 
     } catch (error) {
@@ -190,31 +118,21 @@ export const moderatePost = async (req, res, next) => {
     }
 };
 
-/**
- * Moderate comment content
- * Similar to post but simplified (no images)
- */
 export const moderateComment = async (req, res, next) => {
     try {
         const user = req.user;
         const { content } = req.body;
 
-        // Check ban status
         const banStatus = checkUserBanStatus(user);
         if (banStatus.banned) {
-            return res.status(403).json({
-                success: false,
-                message: `Tài khoản của bạn đã bị khóa${banStatus.until ? ' đến ' + banStatus.until.toLocaleDateString('vi-VN') : ''}`,
-                details: {
-                    reason: banStatus.reason
-                }
-            });
+            return res.status(403).json({ success: false, message: 'Tài khoản bị khóa' });
         }
 
         const policy = getUserModerationPolicy(user);
 
-        // Check text profanity
-        const textCheck = checkTextProfanity(content);
+        // 1. Text Check (SỬ DỤNG AWAIT)
+        const textCheck = await checkTextProfanity(content);
+
         if (textCheck.blocked) {
             await updateTrustScore(user._id, 'violation_severe', {
                 content: content.substring(0, 100),
@@ -226,45 +144,23 @@ export const moderateComment = async (req, res, next) => {
                 contentType: 'comment',
                 action: 'auto_rejected',
                 reason: textCheck.reason,
-                scores: { profanity: textCheck.score },
                 trustScoreChange: -15
             });
 
-            return res.status(400).json({
-                success: false,
-                message: textCheck.reason,
-                details: {
-                    type: 'profanity',
-                    trustScoreDeducted: 15
-                }
-            });
+            return res.status(400).json({ success: false, message: textCheck.reason });
         }
 
-        // Check URLs
         const urlCheck = checkUrls(content);
         if (urlCheck.blocked) {
-            return res.status(400).json({
-                success: false,
-                message: urlCheck.reason
-            });
+            return res.status(400).json({ success: false, message: urlCheck.reason });
         }
 
-        // Check spam
         const spamCheck = checkDuplicateContent(user._id, content);
         if (spamCheck.blocked) {
-            return res.status(429).json({
-                success: false,
-                message: spamCheck.reason
-            });
+            return res.status(429).json({ success: false, message: spamCheck.reason });
         }
 
-        req.moderationResults = {
-            textCheck,
-            urlCheck,
-            spamCheck,
-            policy
-        };
-
+        req.moderationResults = { textCheck, urlCheck, spamCheck, policy };
         next();
 
     } catch (error) {
@@ -273,99 +169,65 @@ export const moderateComment = async (req, res, next) => {
     }
 };
 
-/**
- * Process moderation after content is saved
- * This runs asynchronously - Layer 2 AI checks
- */
+// Layer 2: Quét ảnh ngầm
 export async function processModerationAsync(contentType, contentId, userId, images = []) {
     try {
         console.log(`🔍 [Layer 2] Processing ${contentType} ${contentId}...`);
         const user = await import('../src/models/User.js').then(m => m.default.findById(userId));
         if (!user) return;
 
-        const policy = getUserModerationPolicy(user);
         const moderationResults = {
-            textCheck: { score: 0 }, // Already checked in Layer 1
+            textCheck: { score: 0 }, 
             imageCheck: null,
             urlCheck: { blocked: false },
             spamCheck: { blocked: false }
         };
 
-        // Check images with NSFW.js (this takes 1-3 seconds)
+        // Check images (API Call)
         if (images && images.length > 0) {
-            console.log(`🖼️  [Layer 2] Checking ${images.length} images for ${contentType} ${contentId}...`);
             const imageUrls = images.map(img => img.url || img);
             moderationResults.imageCheck = await checkImagesNSFW(imageUrls);
-            console.log(`🖼️  [Layer 2] Image check result:`, moderationResults.imageCheck);
 
             if (moderationResults.imageCheck.blocked) {
-                // Image failed - reject content
+                // Reject logic
                 const Model = contentType === 'post' ? Post : Comment;
                 await Model.findByIdAndUpdate(contentId, {
                     moderationStatus: 'rejected',
                     moderationReason: moderationResults.imageCheck.reason,
-                    'moderationScore.nsfw': moderationResults.imageCheck.results[0]?.scores?.porn || 0
+                    isActive: false
                 });
 
-                await updateTrustScore(userId, 'violation_severe', {
-                    content: 'Image violation',
-                    score: 100
-                });
-
+                await updateTrustScore(userId, 'violation_severe', { content: 'Image violation', score: 100 });
                 await ModerationLog.create({
-                    userId,
-                    contentType,
-                    contentId,
+                    userId, contentType, contentId,
                     action: 'auto_rejected',
                     reason: moderationResults.imageCheck.reason,
-                    scores: {
-                        nsfw: moderationResults.imageCheck.results[0]?.scores?.porn || 0
-                    },
-                    detectedIssues: [{
-                        type: 'nsfw',
-                        severity: 'high',
-                        details: moderationResults.imageCheck.reason
-                    }],
                     trustScoreChange: -15
                 });
-
-                console.log(`🚫 ${contentType} ${contentId} rejected: NSFW image detected`);
+                console.log(`🚫 ${contentType} rejected due to image violation.`);
                 return;
             }
         }
 
-        // Calculate moderation decision
+        // Approve Logic
         const decision = calculateModerationDecision(user, moderationResults);
-
-        // Update content status
         const Model = contentType === 'post' ? Post : Comment;
+        
         await Model.findByIdAndUpdate(contentId, {
             moderationStatus: decision.status,
             moderationReason: decision.reason,
-            autoApproved: decision.autoApproved,
-            'moderationScore.profanity': decision.scores?.text || 0,
-            'moderationScore.nsfw': moderationResults.imageCheck?.results?.[0]?.scores?.porn || 0
+            autoApproved: decision.autoApproved
         });
 
-        // Log decision
         await ModerationLog.create({
-            userId,
-            contentType,
-            contentId,
+            userId, contentType, contentId,
             action: decision.action,
-            reason: decision.reason || 'Content approved',
-            scores: {
-                profanity: decision.scores?.text || 0,
-                nsfw: moderationResults.imageCheck?.results?.[0]?.scores?.porn || 0
-            }
+            reason: decision.reason || 'Approved'
         });
 
-        // Clear spam cache if approved
         if (decision.status === 'approved') {
             clearSpamCache(userId);
         }
-
-        console.log(`✅ ${contentType} ${contentId} moderation: ${decision.status} (auto: ${decision.autoApproved})`);
 
     } catch (error) {
         console.error('Async moderation error:', error);

@@ -10,7 +10,7 @@ const SleepLogSchema = new mongoose.Schema({
   wakeAt:  { type: Date, required: true },
   durationMin: { type: Number, required: true }, // tính ở controller / hook
   // quality, wakeMood, factors đã bỏ, chỉ giữ notes
-  notes: { type: String, maxlength: 5000 },
+  // notes: { type: String, maxlength: 5000 }, // Đã tách sang Note
   // Dự phòng cho tương lai
   // isNap: { type: Boolean, default: false }
 }, { timestamps: true });

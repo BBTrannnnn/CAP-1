@@ -1,5 +1,52 @@
+// Đánh giá giấc ngủ riêng cho từng ngày
+export const evaluateSleepByDate = async (req, res, next) => {
+  try {
+    const userId = toObjectId(getUserId(req));
+    if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
+    const { date } = req.query;
+    if (!date) return res.status(400).json({ success: false, message: "Thiếu ngày" });
+    // Tìm sleep log của ngày đó
+    const d = new Date(date);
+    if (isNaN(d)) return res.status(400).json({ success: false, message: "Ngày không hợp lệ" });
+    const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+    const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+    const log = await SleepLog.findOne({ userId, sleepAt: { $gte: start, $lte: end } }).lean();
+    if (!log) return res.status(404).json({ success: false, message: "Không có sleep log cho ngày này" });
+    // Lấy thông tin user
+    const user = await User.findById(userId).lean();
+    let gender = user?.gender || null;
+    let dateOfBirth = user?.dateOfBirth || null;
+    let age = null;
+    if (dateOfBirth) {
+      const dob = new Date(dateOfBirth);
+      age = d.getFullYear() - dob.getFullYear();
+      const m = d.getMonth() - dob.getMonth();
+      if (m < 0 || (m === 0 && d.getDate() < dob.getDate())) age--;
+    }
+    // Chuẩn khuyến nghị chi tiết theo tuổi
+    let recommendedMin = 420, recommendedMax = 540, group = "Người trưởng thành";
+    if (age !== null) {
+      if (age < 13) { recommendedMin = 540; recommendedMax = 660; group = "Trẻ em đi học"; }
+      else if (age < 18) { recommendedMin = 480; recommendedMax = 600; group = "Thanh thiếu niên"; }
+      else if (age < 65) { recommendedMin = 420; recommendedMax = 540; group = "Người trưởng thành"; }
+      else { recommendedMin = 420; recommendedMax = 480; group = "Người cao tuổi"; }
+    }
+    const durationMin = log.durationMin;
+    let quality = "Tốt";
+    let message = `Bạn ngủ ${Math.floor(durationMin/60)} giờ ${durationMin%60} phút. Nhóm tuổi: ${group}. Khuyến nghị: ${Math.floor(recommendedMin/60)}-${Math.floor(recommendedMax/60)} giờ/ngày.`;
+    if (durationMin < recommendedMin) {
+      quality = "Thiếu ngủ";
+      message = `Bạn ngủ ${Math.floor(durationMin/60)} giờ ${durationMin%60} phút (< ${Math.floor(recommendedMin/60)}h). Nhóm tuổi: ${group}. Khuyến nghị: ${Math.floor(recommendedMin/60)}-${Math.floor(recommendedMax/60)} giờ/ngày. Nên ngủ đủ để đảm bảo sức khỏe.`;
+    } else if (durationMin > recommendedMax) {
+      quality = "Ngủ quá nhiều";
+      message = `Bạn ngủ ${Math.floor(durationMin/60)} giờ ${durationMin%60} phút (> ${Math.floor(recommendedMax/60)}h). Nhóm tuổi: ${group}. Khuyến nghị: ${Math.floor(recommendedMin/60)}-${Math.floor(recommendedMax/60)} giờ/ngày. Nên cân đối thời gian ngủ.`;
+    }
+    res.json({ success: true, data: { log, gender, age, recommendedMin, recommendedMax, group, quality, message } });
+  } catch (e) { next(e); }
+};
 import SleepLog from "../models/SleepLog.js";
 import mongoose from "mongoose";
+import User from "../models/User.js";
 
 // Tính durationMin từ sleepAt & wakeAt
 const calcDurationMin = (sleepAt, wakeAt) => {
@@ -59,16 +106,16 @@ const buildTrend = async (userIdObj, days) => {
   const since = new Date(now - days * 864e5);
   const raw = await SleepLog.aggregate([
     { $match: { userId: userIdObj, wakeAt: { $gte: since } } },
-    { $project: { date: { $dateToString: { date: "$wakeAt", format: "%Y-%m-%d" } }, durationMin: 1, notes: 1 } },
-    { $group: { _id: "$date", durationMin: { $avg: "$durationMin" }, nights: { $sum: 1 }, notes: { $push: "$notes" } } },
+    { $project: { date: { $dateToString: { date: "$wakeAt", format: "%Y-%m-%d" } }, durationMin: 1 } },
+    { $group: { _id: "$date", durationMin: { $avg: "$durationMin" }, nights: { $sum: 1 } } },
     { $sort: { _id: 1 } }
   ]);
   const map = new Map();
-  raw.forEach(r => map.set(r._id, { date: r._id, durationMin: Math.round(r.durationMin), durationFormatted: fmtHM(Math.round(r.durationMin)), nights: r.nights, notes: r.notes }));
+  raw.forEach(r => map.set(r._id, { date: r._id, durationMin: Math.round(r.durationMin), durationFormatted: fmtHM(Math.round(r.durationMin)), nights: r.nights }));
   const out = [];
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(now - i * 864e5).toISOString().slice(0,10);
-    out.push(map.get(d) || { date: d, durationMin: 0, durationFormatted: fmtHM(0), nights: 0, notes: [] });
+    out.push(map.get(d) || { date: d, durationMin: 0, durationFormatted: fmtHM(0), nights: 0 });
   }
   return out;
 };
@@ -116,29 +163,88 @@ export const createSleepLog = async (req, res, next) => {
   try {
     const userId = toObjectId(getUserId(req));
     if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
-    let parsedTimes; try { parsedTimes = parseUiTimes(req.body); } catch (err) { return res.status(400).json({ success: false, message: err.message }); }
+    let parsedTimes;
+    try {
+      parsedTimes = parseUiTimes(req.body);
+    } catch (err) {
+      return res.status(400).json({ success: false, message: err.message });
+    }
     const { sleepAt, wakeAt } = parsedTimes;
-    const { notes } = req.body;
     let durationMin;
-    try { durationMin = calcDurationMin(sleepAt, wakeAt); } catch (err) { return res.status(400).json({ success: false, message: err.message }); }
+    try {
+      durationMin = calcDurationMin(sleepAt, wakeAt);
+    } catch (err) {
+      return res.status(400).json({ success: false, message: err.message });
+    }
     const nowTs = Date.now();
     const sTs = new Date(sleepAt).getTime();
     const wTs = new Date(wakeAt).getTime();
-    if (sTs > nowTs || wTs > nowTs) return res.status(400).json({ success: false, message: "Không được nhập thời gian trong tương lai" });
+    if (sTs > nowTs || wTs > nowTs)
+      return res.status(400).json({ success: false, message: "Không được nhập thời gian trong tương lai" });
     // Giới hạn chỉ cho phép lưu nhật ký trong 7 ngày gần đây (dựa theo wakeAt)
     const cutoffTs = nowTs - 7 * 864e5; // 7 ngày tính theo mili-giây
     if (wTs < cutoffTs) {
       return res.status(400).json({ success: false, message: "Chỉ được lưu nhật ký trong 7 ngày gần đây (wakeAt phải trong 7 ngày gần nhất)" });
     }
-    if (durationMin < 15) return res.status(400).json({ success: false, message: "Thời lượng quá ngắn (<15 phút)" });
-    if (durationMin > 12 * 60) return res.status(400).json({ success: false, message: "Thời lượng quá dài (>12 giờ)" });
+    if (durationMin < 15)
+      return res.status(400).json({ success: false, message: "Thời lượng quá ngắn (<15 phút)" });
+    if (durationMin > 12 * 60)
+      return res.status(400).json({ success: false, message: "Thời lượng quá dài (>12 giờ)" });
     const overlap = await SleepLog.findOne({ userId, sleepAt: { $lt: new Date(wakeAt) }, wakeAt: { $gt: new Date(sleepAt) } });
-    if (overlap) return res.status(409).json({ success: false, message: "Khoảng thời gian bị trùng với bản ghi khác" });
-    const doc = await SleepLog.create({ userId, sleepAt, wakeAt, durationMin, notes });
-    const [summary, trend] = await Promise.all([ buildStats(userId, 7), buildTrend(userId, 7) ]);
+    if (overlap)
+      return res.status(409).json({ success: false, message: "Khoảng thời gian bị trùng với bản ghi khác" });
+
+    // Lấy thông tin user để xác định giới tính và tuổi
+    const user = await User.findById(userId).lean();
+    let gender = user?.gender || null;
+    let dateOfBirth = user?.dateOfBirth || null;
+    let age = null;
+    if (dateOfBirth) {
+      const dob = new Date(dateOfBirth);
+      const today = new Date();
+      age = today.getFullYear() - dob.getFullYear();
+      const m = today.getMonth() - dob.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+        age--;
+      }
+    }
+
+    // Hàm xác định khoảng thời lượng ngủ khuyến nghị (phút) theo tuổi
+    function getRecommendedSleepRange(age, gender) {
+      if (age == null) return { min: 420, max: 540 }; // default 7-9h
+      if (age < 6) return { min: 660, max: 780 }; // 11-13h
+      if (age < 13) return { min: 540, max: 660 }; // 9-11h
+      if (age < 14) return { min: 480, max: 600 }; // 8-10h (giáp ranh)
+      if (age < 18) return { min: 480, max: 600 }; // 8-10h
+      if (age < 65) return { min: 420, max: 540 }; // 7-9h
+      return { min: 420, max: 480 }; // >=65: 7-8h
+    }
+    const { min: recommendedSleepMin, max: recommendedSleepMax } = getRecommendedSleepRange(age, gender);
+    let sleepStatus = "enough";
+    if (durationMin < recommendedSleepMin) sleepStatus = "lack";
+    else if (durationMin > recommendedSleepMax) sleepStatus = "over";
+
+    // Lưu nhật ký ngủ
+    const doc = await SleepLog.create({ userId, sleepAt, wakeAt, durationMin });
+    const [summary, trend] = await Promise.all([
+      buildStats(userId, 7),
+      buildTrend(userId, 7)
+    ]);
     const evaluation = evaluateSleep(summary);
-    res.status(201).json({ success: true, data: doc, weekly: { summary, trend }, evaluation });
-  } catch (e) { next(e); }
+
+    res.status(201).json({
+      success: true,
+      data: doc,
+      recommendedSleepMin,
+      recommendedSleepMax,
+      sleepStatus, // "lack", "enough", "over"
+      weekly: { summary, trend },
+      evaluation,
+      userProfile: { gender, age }
+    });
+  } catch (e) {
+    next(e);
+  }
 };
 
 export const listSleepLogs = async (req, res, next) => {
