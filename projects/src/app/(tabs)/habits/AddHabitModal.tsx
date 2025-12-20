@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { X, Search, Plus } from '@tamagui/lucide-icons';
 import { getHabitTemplates } from '../../../server/habits';
+import Notification from './ToastMessage';
 
 // Helper: flatten mọi style mảng -> object
 const sx = (...styles: Array<StyleProp<ViewStyle | TextStyle | ImageStyle>>) =>
@@ -45,6 +46,26 @@ export default function AddHabitModal() {
   const [categories, setCategories] = useState<Categories>({});
   const [isLoading, setIsLoading] = useState(true);
 
+  // Toast notification state
+  const [toast, setToast] = useState<{
+    show: boolean;
+    message: string;
+    type: 'success' | 'warning' | 'error';
+  }>({
+    show: false,
+    message: '',
+    type: 'success'
+  });
+
+  // Toast helper functions
+  const showToast = (message: string, type: 'success' | 'warning' | 'error' = 'success') => {
+    setToast({ show: true, message, type });
+  };
+
+  const hideToast = () => {
+    setToast(prev => ({ ...prev, show: false }));
+  };
+
   useEffect(() => {
     (async () => {
       setIsLoading(true);
@@ -67,6 +88,7 @@ export default function AddHabitModal() {
         setCategories(cats);
       } catch (err) {
         console.error('[AddHabitModal] failed to fetch templates:', err);
+        showToast('Không thể tải danh sách thói quen mẫu', 'error');
         setCategories({});
       } finally {
         setIsLoading(false);
@@ -215,6 +237,16 @@ export default function AddHabitModal() {
           </TouchableOpacity>
         </Link>
       </View>
+
+      {/* Toast Notification */}
+      {toast.show && (
+        <Notification
+          type={toast.type}
+          message={toast.message}
+          onClose={hideToast}
+          show={toast.show}
+        />
+      )}
     </SafeAreaView>
   );
 }

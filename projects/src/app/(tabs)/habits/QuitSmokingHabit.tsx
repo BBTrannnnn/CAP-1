@@ -12,6 +12,7 @@ import { ChevronLeft, Ban, Info, AlertCircle, Heart, Check } from 'lucide-react-
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, router } from 'expo-router';
 import { getHabitTemplateById, createHabitFromTemplate } from '../../../server/habits';
+import Notification from './ToastMessage';
 
 const { width } = Dimensions.get('window');
 
@@ -19,6 +20,17 @@ export default function QuitSmokingHabit() {
   const [habitData, setHabitData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Toast notification state
+  const [toast, setToast] = useState<{
+    show: boolean;
+    message: string;
+    type: 'success' | 'warning' | 'error';
+  }>({
+    show: false,
+    message: '',
+    type: 'success'
+  });
   
   const { templateId } = useLocalSearchParams();
   const isEditMode = useMemo(
@@ -28,9 +40,18 @@ export default function QuitSmokingHabit() {
   
   console.log('templateId:', templateId);
 
+  // Toast helper functions
+  const showToast = (message: string, type: 'success' | 'warning' | 'error' = 'success') => {
+    setToast({ show: true, message, type });
+  };
+
+  const hideToast = () => {
+    setToast(prev => ({ ...prev, show: false }));
+  };
+
   const handleAddHabit = async () => {
     if (!templateId) {
-      console.error('Template ID is missing');
+      showToast('Template ID is missing', 'error');
       return;
     }
 
@@ -38,9 +59,13 @@ export default function QuitSmokingHabit() {
       setIsSubmitting(true);
       const response = await createHabitFromTemplate(templateId);
       console.log('Habit created:', response);
-      router.replace('/(tabs)/habits');
+      showToast('Đã thêm thói quen thành công!', 'success');
+      setTimeout(() => {
+        router.replace('/(tabs)/habits');
+      }, 1500);
     } catch (err) {
       console.error('Error creating habit:', err);
+      showToast('Không thể thêm thói quen. Vui lòng thử lại.', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -212,7 +237,7 @@ export default function QuitSmokingHabit() {
 
         {/* Stats */}
         <View style={styles.stats}>
-          <Text style={styles.statsText}>👥 1,234 người đang thực hiện</Text>
+          <Text style={styles.statsText}> </Text>
         </View>
 
         {/* Bottom Buttons */}
@@ -249,6 +274,16 @@ export default function QuitSmokingHabit() {
 
         </View>
       </ScrollView>
+
+      {/* Toast Notification */}
+      {toast.show && (
+        <Notification
+          type={toast.type}
+          message={toast.message}
+          onClose={hideToast}
+          show={toast.show}
+        />
+      )}
     </View>
   );
 }

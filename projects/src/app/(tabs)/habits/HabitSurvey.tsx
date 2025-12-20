@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
-  Alert,
   StyleSheet,
 } from 'react-native';
 import { router } from 'expo-router';
@@ -18,6 +17,7 @@ import {
   submitSurvey,
   createHabit,
 } from '../../../server/habits';
+import Notification from './ToastMessage';
 
 // ===== Types cho UI =====
 type Option = { value: number; label: string; emoji?: string };
@@ -88,6 +88,65 @@ const CATEGORY_LABELS: Record<string, string> = {
   control: 'Kỷ luật',
 };
 
+// Helper functions for difficulty styling
+const getDifficultyStyle = (difficulty: string) => {
+  console.log('Difficulty value:', difficulty); // Debug log
+  switch (difficulty) {
+    case 'Dễ':
+    case 'easy':
+    case 'Easy':
+      return {
+        backgroundColor: '#dcfce7',
+        borderColor: '#bbf7d0',
+        textColor: '#16a34a',
+        icon: ''
+      };
+    case 'Trung bình':
+    case 'medium':
+    case 'Medium':
+      return {
+        backgroundColor: '#fef3c7',
+        borderColor: '#fde68a',
+        textColor: '#d97706',
+        icon: ''
+      };
+    case 'Khó':
+    case 'hard':
+    case 'Hard':
+      return {
+        backgroundColor: '#fecaca',
+        borderColor: '#f87171',
+        textColor: '#dc2626',
+        icon: ''
+      };
+    default:
+      console.log('Using default style for difficulty:', difficulty); // Debug log
+      return {
+        backgroundColor: '#f3f4f6',
+        borderColor: '#d1d5db',
+        textColor: '#6b7280',
+        icon: ''
+      };
+  }
+};
+
+// Helper function for category icons
+const getCategoryIcon = (category: string) => {
+  const icons: Record<string, string> = {
+    digital: '📱',
+    learning: '📚',
+    sleep: '😴',
+    energy: '⚡',
+    social: '👥',
+    productivity: '🎯',
+    fitness: '💪',
+    health: '🏥',
+    mindful: '🧘',
+    control: '🎛️',
+  };
+  return icons[category] || '📋';
+};
+
 type ViewMode = 'survey' | 'summary' | 'suggestions';
 
 const defaultDomainScores = {
@@ -112,6 +171,17 @@ export default function HabitSurveyMobile() {
   const [isLoadingQuestions, setIsLoadingQuestions] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Toast notification state
+  const [toast, setToast] = useState<{
+    show: boolean;
+    message: string;
+    type: 'success' | 'warning' | 'error';
+  }>({
+    show: false,
+    message: '',
+    type: 'success'
+  });
 
   const total = questions.length;
   const current = total > 0 ? questions[idx] : undefined;
@@ -175,10 +245,12 @@ export default function HabitSurveyMobile() {
 
         // Nếu response không hợp lệ hoặc không có câu hỏi
         setErrorMsg('Không tải được bộ câu hỏi khảo sát. Vui lòng thử lại sau.');
+        showToast('Không tải được bộ câu hỏi khảo sát', 'error');
       } catch (err) {
         console.error('[HabitSurvey] getQuestionSurvey error:', err);
         if (!cancelled) {
           setErrorMsg('Có lỗi khi tải bộ câu hỏi khảo sát.');
+          showToast('Có lỗi khi tải bộ câu hỏi khảo sát', 'error');
         }
       } finally {
         if (!cancelled) {
@@ -310,6 +382,7 @@ export default function HabitSurveyMobile() {
       } catch (err) {
         console.error('[HabitSurvey] submitSurvey error:', err);
         setErrorMsg('Không thể gửi kết quả khảo sát. Vui lòng thử lại.');
+        showToast('Không thể gửi kết quả khảo sát', 'error');
       }
     };
     submit();
@@ -324,6 +397,15 @@ export default function HabitSurveyMobile() {
     }));
   };
 
+  // Toast helper functions
+  const showToast = (message: string, type: 'success' | 'warning' | 'error' = 'success') => {
+    setToast({ show: true, message, type });
+  };
+
+  const hideToast = () => {
+    setToast(prev => ({ ...prev, show: false }));
+  };
+
   const addSelectedToHabits = async () => {
     const list = suggestions.filter((s) => {
       const key = s._id || s.id || s.name;
@@ -331,7 +413,7 @@ export default function HabitSurveyMobile() {
     });
 
     if (list.length === 0) {
-      Alert.alert('Thông báo', 'Hãy chọn ít nhất 1 thói quen để thêm.');
+      showToast('Hãy chọn ít nhất 1 thói quen để thêm.', 'warning');
       return;
     }
 
@@ -340,15 +422,13 @@ export default function HabitSurveyMobile() {
       for (const s of list) {
         await createHabit(s);
       }
-      Alert.alert('Thành công', 'Đã thêm thói quen vào danh sách.', [
-        {
-          text: 'OK',
-          onPress: () => router.push('/(tabs)/habits'),
-        },
-      ]);
+      showToast('Đã thêm thói quen vào danh sách.', 'success');
+      setTimeout(() => {
+        router.push('/(tabs)/habits');
+      }, 1500);
     } catch (e) {
       console.error('[HabitSuggestions] createHabit error:', e);
-      Alert.alert('Lỗi', 'Không thể thêm thói quen. Vui lòng thử lại.');
+      showToast('Không thể thêm thói quen. Vui lòng thử lại.', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -380,33 +460,57 @@ export default function HabitSurveyMobile() {
   // ================== UI: ĐANG LOAD CÂU HỎI ==================
   if (isLoadingQuestions && view === 'survey') {
     return (
-      <View style={styles.page}>
-        {renderHeader('Khảo sát thói quen', 'Đang tải bộ câu hỏi...')}
-        <View style={styles.card}>
-          <Text style={styles.textNormal}>Vui lòng chờ trong giây lát...</Text>
-          <ActivityIndicator style={{ marginTop: 12 }} />
+      <>
+        <View style={styles.page}>
+          {renderHeader('Khảo sát thói quen', 'Đang tải bộ câu hỏi...')}
+          <View style={styles.card}>
+            <Text style={styles.textNormal}>Vui lòng chờ trong giây lát...</Text>
+            <ActivityIndicator style={{ marginTop: 12 }} />
+          </View>
         </View>
-      </View>
+        
+        {/* Toast Notification */}
+        {toast.show && (
+          <Notification
+            type={toast.type}
+            message={toast.message}
+            onClose={hideToast}
+            show={toast.show}
+          />
+        )}
+      </>
     );
   }
 
   // ================== UI: KHÔNG CÓ CÂU HỎI ==================
   if (!current && (view === 'survey' || view === 'summary')) {
     return (
-      <View style={styles.page}>
-        {renderHeader('Khảo sát thói quen', 'Không có câu hỏi để hiển thị')}
-        <View style={[styles.card, styles.cardError]}>
-          <Text style={styles.errorText}>
-            {errorMsg || 'Không tải được bộ câu hỏi khảo sát.'}
-          </Text>
-          <TouchableOpacity
-            onPress={() => router.push('/(tabs)/habits')}
-            style={[styles.btnPrimary, { marginTop: 8 }]}
-          >
-            <Text style={styles.btnPrimaryText}>Quay lại</Text>
-          </TouchableOpacity>
+      <>
+        <View style={styles.page}>
+          {renderHeader('Khảo sát thói quen', 'Không có câu hỏi để hiển thị')}
+          <View style={[styles.card, styles.cardError]}>
+            <Text style={styles.errorText}>
+              {errorMsg || 'Không tải được bộ câu hỏi khảo sát.'}
+            </Text>
+            <TouchableOpacity
+              onPress={() => router.push('/(tabs)/habits')}
+              style={[styles.btnPrimary, { marginTop: 8 }]}
+            >
+              <Text style={styles.btnPrimaryText}>Quay lại</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
+        
+        {/* Toast Notification */}
+        {toast.show && (
+          <Notification
+            type={toast.type}
+            message={toast.message}
+            onClose={hideToast}
+            show={toast.show}
+          />
+        )}
+      </>
     );
   }
 
@@ -432,32 +536,46 @@ export default function HabitSurveyMobile() {
             </View>
           )}
 
-          <View style={styles.summaryButtonsRow}>
-            <TouchableOpacity
-              onPress={() => router.push('/(tabs)/habits')}
-              style={styles.btnGray}
-            >
-              <Text style={styles.btnGrayText}>Về danh sách thói quen</Text>
-            </TouchableOpacity>
+          <View style={styles.summaryButtonsContainer}>
+            {/* Hàng trên: 2 button nhỏ */}
+            <View style={styles.summaryButtonsTopRow}>
+              <TouchableOpacity
+                onPress={() => router.push('/(tabs)/habits')}
+                style={styles.btnGray}
+              >
+                <Text style={styles.btnGrayText}>Về danh sách thói quen</Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity onPress={handleRedo} style={styles.btnWarning}>
-              <Text style={styles.btnWarningText}>Làm lại khảo sát</Text>
-            </TouchableOpacity>
+              <TouchableOpacity onPress={handleRedo} style={styles.btnWarning}>
+                <Text style={styles.btnWarningText}>Làm lại khảo sát</Text>
+              </TouchableOpacity>
+            </View>
 
+            {/* Hàng dưới: 1 button lớn */}
             <TouchableOpacity
               onPress={handleViewSuggestions}
               disabled={isLoading}
               style={[
-                styles.btnPrimary,
+                styles.btnPrimaryLarge,
                 isLoading ? { opacity: 0.7 } : null,
               ]}
             >
-              <Text style={styles.btnPrimaryText}>
+              <Text style={styles.btnPrimaryLargeText}>
                 {isLoading ? 'Đang tải gợi ý...' : 'Xem gợi ý'}
               </Text>
             </TouchableOpacity>
           </View>
         </View>
+        
+        {/* Toast Notification */}
+        {toast.show && (
+          <Notification
+            type={toast.type}
+            message={toast.message}
+            onClose={hideToast}
+            show={toast.show}
+          />
+        )}
       </ScrollView>
     );
   }
@@ -474,7 +592,7 @@ export default function HabitSurveyMobile() {
 
         {/* Hồ sơ + tóm tắt */}
         <View style={styles.profileBanner}>
-          <Text style={styles.profileTitle}>Ho so cua ban</Text>
+          <Text style={styles.profileTitle}>Hồ Sơ Của Bạn</Text>
           <Text style={styles.profileSubtitle}>
             {userInfo?.name || 'Nguoi ban ron can can bang'}
           </Text>
@@ -483,12 +601,12 @@ export default function HabitSurveyMobile() {
             <View style={styles.profileTagsRow}>
               {userInfo.gender ? (
                 <View style={styles.profileTag}>
-                  <Text style={styles.profileTagText}>Gioi tinh: {userInfo.gender}</Text>
+                  <Text style={styles.profileTagText}>Giới Tính: {userInfo.gender}</Text>
                 </View>
               ) : null}
               {userInfo.age != null ? (
                 <View style={styles.profileTag}>
-                  <Text style={styles.profileTagText}>{userInfo.age} tuoi</Text>
+                  <Text style={styles.profileTagText}>{userInfo.age} Tuổi</Text>
                 </View>
               ) : null}
               {userInfo.ageGroup ? (
@@ -502,12 +620,12 @@ export default function HabitSurveyMobile() {
           <View style={styles.profileTagsRow}>
             <View style={styles.profileTag}>
               <Text style={styles.profileTagText}>
-                {Object.keys(answers).length || 0}/{total} cau hoi da tra loi
+                {Object.keys(answers).length || 0}/{total} Câu Hỏi Trả Lời
               </Text>
             </View>
             <View style={styles.profileTag}>
               <Text style={styles.profileTagText}>
-                {suggestions.length} goi y thoi quen
+                {suggestions.length} Gợi Ý Thói Quen
               </Text>
             </View>
           </View>
@@ -529,14 +647,16 @@ export default function HabitSurveyMobile() {
         </View>
 
         {/* Tóm tắt chọn */}
-        <View style={styles.selectionSummary}>
-          <View style={styles.selectionSummaryLeft}>
-            <Check size={16} color="#2563eb" />
-            <Text style={styles.selectionSummaryText}>
-              Đã chọn {selectedCount} thói quen
-            </Text>
+        <View style={styles.selectionHeader}>
+          <View style={styles.selectionHeaderLeft}>
+            <View style={styles.selectionBadge}>
+              <Check size={16} color="#ffffff" />
+              <Text style={styles.selectionBadgeText}>
+                Đã chọn {selectedCount} thói quen
+              </Text>
+            </View>
           </View>
-          <Text style={styles.selectionSummaryHint}>
+          <Text style={styles.selectionHeaderHint}>
             Chọn các thói quen bạn muốn bắt đầu
           </Text>
         </View>
@@ -545,48 +665,87 @@ export default function HabitSurveyMobile() {
         {suggestions.map((s, i) => {
           const key = s._id || s.id || s.name;
           const isSelected = !!selectedHabits[key];
+          const difficultyStyle = getDifficultyStyle(s.difficulty);
+          const categoryIcon = getCategoryIcon(s.category);
 
           return (
-            <View key={key} style={styles.suggestionCard}>
-              <View style={styles.suggestionHeaderRow}>
-                <Text style={styles.suggestionTitle}>
-                  #{i + 1} {s.title}
-                </Text>
-                <Text style={styles.suggestionScore}>{s.score}</Text>
-              </View>
-              <Text style={styles.suggestionName}>{s.name}</Text>
-
-              <View style={styles.suggestionTagsRow}>
-                <View style={styles.suggestionDiffTag}>
-                  <Text style={styles.suggestionDiffText}>{s.difficulty}</Text>
+            <TouchableOpacity 
+              key={key} 
+              onPress={() => toggleHabit(s)}
+              style={[
+                styles.habitCard,
+                isSelected && styles.habitCardSelected
+              ]}
+            >
+              {/* Main content với checkbox bên trái */}
+              <View style={styles.habitCardMain}>
+                <View style={[
+                  styles.checkbox,
+                  isSelected && styles.checkboxSelected
+                ]}>
+                  {isSelected && <Check size={16} color="#ffffff" />}
                 </View>
-                <View style={styles.suggestionDescTag}>
-                  <Text style={styles.suggestionDescText}>{s.description}</Text>
+                
+                <View style={styles.habitCardContent}>
+                  {/* Header với tên thói quen */}
+                  <View style={styles.habitCardTitleRow}>
+                    <Text style={styles.habitCardTitle}>
+                      #{i + 1} {s.name || s.title}
+                    </Text>
+                  </View>
+
+                  {/* Difficulty và Category tags nổi bật */}
+                  <View style={styles.habitTagsRow}>
+                    <View style={[
+                      styles.habitDifficultyTag,
+                      { 
+                        backgroundColor: difficultyStyle.backgroundColor,
+                        borderColor: difficultyStyle.borderColor 
+                      }
+                    ]}>
+                      <Text style={[
+                        styles.habitDifficultyText,
+                        { color: difficultyStyle.textColor }
+                      ]}>
+                        {s.difficulty}
+                      </Text>
+                    </View>
+                    
+                    <View style={styles.habitCategoryTag}>
+                      <Text style={styles.categoryIcon}>{categoryIcon}</Text>
+                      <Text style={styles.habitCategoryTagText}>{s.category}</Text>
+                    </View>
+                  </View>
+
+                  {/* Description bubble nổi bật */}
+                  <View style={styles.habitDescriptionBubble}>
+                    <Text style={styles.habitDescriptionText}>{s.description}</Text>
+                  </View>
+
+                  {/* Footer chỉ với danh mục và button chọn */}
+                  <View style={styles.habitCardFooter}>
+                    <View style={styles.habitCategoryRow}>
+                      <Text style={styles.habitCategoryIcon}>📂</Text>
+                      <Text style={styles.habitCategoryText}>Danh mục: {s.category}</Text>
+                    </View>
+                    <TouchableOpacity 
+                      style={[
+                        styles.habitSelectButton,
+                        isSelected && styles.habitSelectButtonSelected
+                      ]}
+                      onPress={() => toggleHabit(s)}
+                    >
+                      <Text style={[
+                        styles.habitSelectButtonText,
+                        isSelected && styles.habitSelectButtonTextSelected
+                      ]}>
+                        {isSelected ? '✓ Đã chọn' : 'Chọn'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </View>
-
-              <View style={styles.suggestionBottomRow}>
-                <Text style={styles.suggestionCategory}>
-                  Danh mục: {s.category}
-                </Text>
-                <TouchableOpacity
-                  onPress={() => toggleHabit(s)}
-                  style={[
-                    styles.selectHabitBtn,
-                    isSelected && { borderColor: '#2563eb' },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.selectHabitText,
-                      isSelected && { color: '#2563eb' },
-                    ]}
-                  >
-                    {isSelected ? 'Đã chọn' : 'Chọn'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+            </TouchableOpacity>
           );
         })}
 
@@ -615,6 +774,16 @@ export default function HabitSurveyMobile() {
             </View>
           </TouchableOpacity>
         </View>
+        
+        {/* Toast Notification */}
+        {toast.show && (
+          <Notification
+            type={toast.type}
+            message={toast.message}
+            onClose={hideToast}
+            show={toast.show}
+          />
+        )}
       </ScrollView>
     );
   }
@@ -711,6 +880,16 @@ export default function HabitSurveyMobile() {
           </View>
         </TouchableOpacity>
       </View>
+      
+      {/* Toast Notification */}
+      {toast.show && (
+        <Notification
+          type={toast.type}
+          message={toast.message}
+          onClose={hideToast}
+          show={toast.show}
+        />
+      )}
     </ScrollView>
   );
 }
@@ -833,6 +1012,15 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#16a34a',
   },
+  summaryButtonsContainer: {
+    marginTop: 20,
+    gap: 12,
+  },
+  summaryButtonsTopRow: {
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'space-between',
+  },
   summaryButtonsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -847,29 +1035,62 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     width:'48%'
   },
+  btnPrimaryLarge: {
+    backgroundColor: '#2563eb',
+    borderRadius: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#2563eb',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
   btnPrimaryText: {
     color: '#ffffff',
     fontWeight: '800',
     fontSize: 13,
   },
+  btnPrimaryLargeText: {
+    color: '#ffffff',
+    fontWeight: '800',
+    fontSize: 16,
+  },
   btnGray: {
     backgroundColor: '#e5e7eb',
     borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderWidth: 1,
     borderColor: '#cbd5e1',
+    flex: 1,
+    alignItems: 'center',
   },
   btnGrayText: {
     color: '#0f172a',
-    fontWeight: '800',
+    fontWeight: '700',
     fontSize: 13,
   },
   btnWarning: {
     backgroundColor: '#f97316',
     borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    flex: 1,
+    alignItems: 'center',
+    shadowColor: '#f97316',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   btnWarningText: {
     color: '#ffffff',
@@ -965,110 +1186,275 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
 
-  selectionSummary: {
+  selectionHeader: {
     marginHorizontal: 10,
     marginTop: 10,
-    padding: 12,
-    borderRadius: 12,
-    backgroundColor: '#ffffff',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  selectionSummaryLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  selectionSummaryText: {
-    color: '#334155',
-    fontWeight: '800',
-  },
-  selectionSummaryHint: {
-    fontSize: 12,
-    color: '#64748b',
-  },
-
-  suggestionCard: {
-    marginHorizontal: 10,
-    marginTop: 10,
-    padding: 14,
+    padding: 16,
     borderRadius: 16,
     backgroundColor: '#ffffff',
-  },
-  suggestionHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  suggestionTitle: {
-    fontWeight: '900',
-    color: '#0f172a',
+  selectionHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  selectionBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#6366f1',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  selectionBadgeText: {
+    color: '#ffffff',
+    fontWeight: '800',
     fontSize: 14,
   },
-  suggestionScore: {
-    fontWeight: '900',
-    color: '#2563eb',
+  selectionHeaderText: {
+    color: '#0f172a',
+    fontWeight: '800',
+    fontSize: 16,
   },
-  suggestionName: {
-    marginTop: 6,
-    color: '#475569',
+  selectionHeaderHint: {
     fontSize: 13,
+    color: '#6366f1',
+    fontWeight: '600',
   },
-  suggestionTagsRow: {
+
+  habitCard: {
+    marginHorizontal: 10,
+    marginTop: 12,
+    borderRadius: 20,
+    backgroundColor: '#ffffff',
+    borderWidth: 2,
+    borderColor: '#e5e7eb',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  habitCardSelected: {
+    borderColor: '#6366f1',
+    backgroundColor: '#f8faff',
+    shadowColor: '#6366f1',
+    shadowOpacity: 0.2,
+  },
+  habitCardMain: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    padding: 16,
+    alignItems: 'flex-start',
+    gap: 16,
+  },
+  habitCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  habitCardTitleRow: {
+    marginBottom: 12,
+  },
+  habitCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  checkbox: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: '#cbd5e1',
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  checkboxSelected: {
+    backgroundColor: '#6366f1',
+    borderColor: '#6366f1',
+  },
+  habitCardContent: {
+    flex: 1,
+  },
+  habitCardTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#0f172a',
+    lineHeight: 24,
+  },
+  habitTagsRow: {
+    flexDirection: 'row',
     gap: 8,
-    marginTop: 8,
+    marginBottom: 16,
+    flexWrap: 'wrap',
   },
-  suggestionDiffTag: {
-    backgroundColor: '#dcfce7',
+  habitCardSelectText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6366f1',
+  },
+  habitCardDescription: {
+    fontSize: 14,
+    color: '#64748b',
+    marginBottom: 12,
+    lineHeight: 20,
+  },
+  habitDescriptionBubble: {
+    backgroundColor: '#dbeafe',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#bbf7d0',
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    borderColor: '#bfdbfe',
   },
-  suggestionDiffText: {
-    color: '#16a34a',
-    fontWeight: '800',
-    fontSize: 12,
+  descriptionHeader: {
+    marginBottom: 8,
   },
-  suggestionDescTag: {
-    backgroundColor: '#e0e7ff',
+  descriptionLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1e40af',
+  },
+  habitDescriptionText: {
+    fontSize: 15,
+    color: '#1e40af',
+    lineHeight: 22,
+    fontWeight: '500',
+  },
+  habitCardTags: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  habitDifficultyTag: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     borderWidth: 1,
-    borderColor: '#c7d2fe',
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    // Đảm bảo có background color mặc định
+    backgroundColor: '#f3f4f6',
+    borderColor: '#d1d5db',
   },
-  suggestionDescText: {
-    color: '#4338ca',
-    fontWeight: '800',
+  habitDifficultyText: {
+    fontWeight: '700',
+    fontSize: 13,
+    // Đảm bảo có text color mặc định
+    color: '#6b7280',
+  },
+  habitCategoryTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#f3f4f6',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  categoryIcon: {
+    fontSize: 14,
+  },
+  habitCategoryTagText: {
     fontSize: 12,
+    fontWeight: '700',
+    color: '#374151',
   },
-  suggestionBottomRow: {
-    marginTop: 10,
+  habitCardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
   },
-  suggestionCategory: {
-    fontSize: 12,
+  habitTimeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+  },
+  timeIcon: {
+    fontSize: 16,
+  },
+  habitTimeText: {
+    fontSize: 13,
     color: '#64748b',
-    fontWeight: '700',
+    fontWeight: '600',
   },
-  selectHabitBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
+  habitCategoryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+  },
+  habitCategoryIcon: {
+    fontSize: 16,
+  },
+  habitCategoryInfo: {
+    flex: 1,
+    marginLeft: 8,
+  },
+  habitCategoryText: {
+    fontSize: 13,
+    color: '#64748b',
+    fontWeight: '600',
+  },
+  habitSelectButton: {
+    backgroundColor: '#f1f5f9',
+    borderRadius: 16,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
     borderWidth: 1,
-    borderColor: '#cbd5e1',
+    borderColor: '#e2e8f0',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
-  selectHabitText: {
-    fontSize: 12,
+  habitSelectButtonSelected: {
+    backgroundColor: '#6366f1',
+    borderColor: '#6366f1',
+  },
+  habitSelectButtonText: {
+    fontSize: 13,
     fontWeight: '800',
-    color: '#334155',
+    color: '#64748b',
+  },
+  habitSelectButtonTextSelected: {
+    color: '#ffffff',
   },
 
   bottomBar: {
