@@ -413,10 +413,10 @@ const trackHabit = asyncHandler(async (req, res) => {
   }
 
   const daysDiff = Math.floor((todayUTC - trackingDate) / (1000 * 60 * 60 * 24));
-  if (daysDiff > 30) {
+  if (daysDiff > 0) {
     return res.status(400).json({
       success: false,
-      message: 'Cannot track habits older than 30 days'
+      message: 'Cannot track habits in the past '
     });
   }
 
@@ -1156,10 +1156,10 @@ const addHabitSubTracking = async (req, res) => {
 
       const daysDiff = Math.floor((todayUTC - trackingDate) / (1000 * 60 * 60 * 24));
 
-      if (daysDiff > 30) {
+      if (daysDiff > 0) {
         return res.status(400).json({
           success: false,
-          message: 'Cannot track habits older than 30 days'
+          message: 'Cannot track habits in the past'
         });
       }
 
