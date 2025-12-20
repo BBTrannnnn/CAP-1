@@ -28,3 +28,5 @@ yarn-error.log*
 *.bin
 BE/ai_model/mistral-dream-vn-finetuned/
 BE/ai_model/model_finetuned/
+
+.expo/

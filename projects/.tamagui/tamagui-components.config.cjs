@@ -23324,8 +23324,8 @@ var useStackedZIndex = /* @__PURE__ */ __name((props) => {
       if (typeof zIndexProp == "number") return zIndexProp;
       if (stackZIndex) {
         if (hardcoded) return hardcoded + 1;
-        const highest = Object.values(stackContext).reduce((acc, cur) => Math.max(acc, cur), 0), found = stackLayer * 5e3 + highest + 1;
-        return typeof stackZIndex == "number" ? stackZIndex + found : found;
+        const entries = Object.values(stackContext), baseForLayer = stackLayer * 5e3, nextLayerBase = (stackLayer + 1) * 5e3, validEntries = entries.filter((z) => z < nextLayerBase), highest = validEntries.length > 0 ? Math.max(...validEntries) : baseForLayer, nextZIndex = highest === baseForLayer ? baseForLayer + 1 : highest + 1;
+        return typeof stackZIndex == "number" ? stackZIndex + nextZIndex : nextZIndex;
       }
       return 1;
     }, [stackLayer, zIndexProp, stackZIndex]);
@@ -25049,6 +25049,7 @@ function createSheet({
           flex: hasFit && open ? 0 : 1,
           height: shouldUseFixedHeight ? stableFrameSize.current : hasFit ? void 0 : frameSize,
           pointerEvents: open ? "auto" : "none",
+          "data-state": open ? "open" : "closed",
           ...props,
           children: [/* @__PURE__ */ (0, import_jsx_runtime20.jsx)(StackZIndexContext, {
             zIndex: resolveViewZIndex(props.zIndex),
@@ -26057,6 +26058,7 @@ var AvatarImage = React37.forwardRef((props, forwardedRef) => {
   const {
     __scopeAvatar,
     src,
+    source,
     onLoadingStatusChange = /* @__PURE__ */ __name(() => {
     }, "onLoadingStatusChange"),
     ...imageProps
@@ -26066,12 +26068,12 @@ var AvatarImage = React37.forwardRef((props, forwardedRef) => {
     {
       tokens: (0, import_core17.getTokens)()
     }
-  )?.width);
+  )?.width), resolvedSrc = src || (source && typeof source == "object" && "uri" in source ? source.uri : source);
   return React37.useEffect(() => {
-    setStatus(src ? "idle" : "error");
-  }, [JSON.stringify(src)]), React37.useEffect(() => {
+    setStatus(resolvedSrc ? "idle" : "error");
+  }, [resolvedSrc]), React37.useEffect(() => {
     onLoadingStatusChange(status), context2.onImageLoadingStatusChange(status);
-  }, [status]), src ? /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(YStack, {
+  }, [status]), resolvedSrc ? /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(YStack, {
     fullscreen: true,
     zIndex: 1,
     children: /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Image, {
@@ -26082,7 +26084,7 @@ var AvatarImage = React37.forwardRef((props, forwardedRef) => {
       },
       ...imageProps,
       ref: forwardedRef,
-      src,
+      src: resolvedSrc,
       onError: /* @__PURE__ */ __name(() => {
         setStatus("error");
       }, "onError"),
@@ -29508,11 +29510,15 @@ var PopperAnchor = YStack.extractable(React49.forwardRef(function(props, forward
   React49.useEffect(() => {
     virtualRef && refs.setReference(virtualRef.current);
   }, [virtualRef]);
-  const stackProps = anchorProps, refProps = getReferenceProps ? getReferenceProps(stackProps) : null, shouldHandleInHover = isWeb && scope, composedRefs = useComposedRefs(
+  const stackProps = anchorProps, safeSetReference = React49.useCallback((node) => {
+    startTransition(() => {
+      refs.setReference(node);
+    });
+  }, [refs.setReference]), refProps = getReferenceProps ? getReferenceProps(stackProps) : null, shouldHandleInHover = isWeb && scope, composedRefs = useComposedRefs(
     forwardedRef,
     ref,
     // web handles this onMouseEnter below so it can support multiple targets + hovering
-    shouldHandleInHover ? void 0 : refs.setReference
+    shouldHandleInHover ? void 0 : safeSetReference
   );
   return /* @__PURE__ */ (0, import_jsx_runtime37.jsx)(import_core26.View, {
     ...stackProps,
@@ -29571,7 +29577,11 @@ var PopperContent = React49.forwardRef(function(props, forwardedRef) {
     getFloatingProps,
     size: size4,
     isPositioned
-  } = context2, contentRefs = useComposedRefs(refs.setFloating, forwardedRef), [needsMeasure, setNeedsMeasure] = React49.useState(enableAnimationForPositionChange);
+  } = context2, safeSetFloating = React49.useCallback((node) => {
+    startTransition(() => {
+      refs.setFloating(node);
+    });
+  }, [refs.setFloating]), contentRefs = useComposedRefs(safeSetFloating, forwardedRef), [needsMeasure, setNeedsMeasure] = React49.useState(enableAnimationForPositionChange);
   useIsomorphicLayoutEffect(() => {
     needsMeasure && x && y && setNeedsMeasure(false);
   }, [needsMeasure, enableAnimationForPositionChange, x, y]);
@@ -33666,7 +33676,9 @@ var PopoverContent = PopoverContentFrame.extractable(React53.forwardRef(function
     scope,
     ...contentImplProps
   } = props, context2 = usePopoverContext(scope), contentRef = React53.useRef(null), composedRefs = useComposedRefs(forwardedRef, contentRef), isRightClickOutsideRef = React53.useRef(false), [isFullyHidden, setIsFullyHidden] = React53.useState(!context2.open);
-  return context2.open && isFullyHidden && setIsFullyHidden(false), !context2.keepChildrenMounted && isFullyHidden ? null : /* @__PURE__ */ (0, import_jsx_runtime39.jsx)(PopoverPortal, {
+  return React53.useEffect(() => {
+    context2.open && isFullyHidden && setIsFullyHidden(false);
+  }, [context2.open, isFullyHidden]), !context2.keepChildrenMounted && isFullyHidden && !context2.open ? null : /* @__PURE__ */ (0, import_jsx_runtime39.jsx)(PopoverPortal, {
     passThrough: context2.breakpointActive,
     context: context2,
     zIndex,
@@ -35540,7 +35552,7 @@ var SelectValue = SelectValueFrame.styleable(function({
   placeholder,
   ...props
 }, forwardedRef) {
-  const context2 = useSelectContext(scope), itemParentContext = useSelectItemParentContext(scope), composedRefs = useComposedRefs(forwardedRef, context2.onValueNodeChange), children = childrenProp ?? context2.selectedItem, selectValueChildren = context2.value == null || context2.value === "" ? placeholder ?? children : children;
+  const context2 = useSelectContext(scope), itemParentContext = useSelectItemParentContext(scope), composedRefs = useComposedRefs(forwardedRef, context2.onValueNodeChange), isEmptyValue = context2.value == null || context2.value === "", renderedValue = context2.renderValue?.(context2.value), children = childrenProp ?? renderedValue ?? context2.selectedItem, selectValueChildren = isEmptyValue ? placeholder ?? children : children;
   return /* @__PURE__ */ (0, import_jsx_runtime53.jsx)(SelectValueFrame, {
     ...!props.unstyled && {
       size: itemParentContext.size,
@@ -35757,7 +35769,8 @@ function SelectInner(props) {
     size: sizeProp = "$true",
     onActiveChange,
     dir,
-    id
+    id,
+    renderValue
   } = props, SelectImpl = useAdaptIsActive(adaptScope) || !isWeb ? SelectSheetImpl : SelectInlineImpl, forceUpdate = React65.useReducer(() => ({}), {})[1], [selectedItem, setSelectedItem] = React65.useState(null), [open, setOpen] = useControllableState({
     prop: openProp,
     defaultProp: defaultOpen || false,
@@ -35820,6 +35833,7 @@ function SelectInner(props) {
       value,
       open,
       native,
+      renderValue,
       children: /* @__PURE__ */ (0, import_jsx_runtime53.jsx)(SelectSheetController, {
         onOpenChange: setOpen,
         scope,

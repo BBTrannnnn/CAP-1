@@ -8,7 +8,11 @@
       "developmentClient": true,
       "distribution": "internal",
       "android": {
-        "buildType": "apk"
+        "buildType": "apk",
+        "node": "20.18.0",
+        "env": {
+          "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
+        }
       },
       "ios": {
         "simulator": true
@@ -17,20 +21,32 @@
     "preview": {
       "distribution": "internal",
       "android": {
-        "buildType": "apk"
+        "buildType": "apk",
+        "node": "20.18.0",
+        "env": {
+          "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
+        }
       }
     },
     "production": {
       "autoIncrement": true,
       "android": {
-        "buildType": "apk"
+        "buildType": "apk",
+        "node": "20.18.0",
+        "env": {
+          "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
+        }
       }
     },
     "apk": {
       "distribution": "internal",
       "android": {
         "buildType": "apk",
-        "gradleCommand": ":app:assembleRelease"
+        "gradleCommand": ":app:assembleRelease",
+        "node": "20.18.0",
+        "env": {
+          "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
+        }
       }
     }
   },
