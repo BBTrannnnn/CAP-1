@@ -183,6 +183,47 @@ userSchema.pre('save',async function(next){
     next();
 });
 
+
+userSchema.pre('deleteOne', { document: true, query: false }, async function(next) {
+    try {
+        const Habit = mongoose.model('Habit');
+        const HabitTracking = mongoose.model('HabitTracking');
+        const HabitSubTracking = mongoose.model('HabitSubTracking');
+        const UserAchievement = mongoose.model('UserAchievement');
+        
+        await Habit.deleteMany({ userId: this._id });
+        await HabitTracking.deleteMany({ userId: this._id });
+        await HabitSubTracking.deleteMany({ userId: this._id });
+        await UserAchievement.deleteMany({ userId: this._id });
+        
+        next();
+    } catch (error) {
+        next(error);
+    }
+});
+
+userSchema.pre('findOneAndDelete', async function(next) {
+    try {
+        const user = await this.model.findOne(this.getFilter());
+        if (!user) return next();
+        
+        const Habit = mongoose.model('Habit');
+        const HabitTracking = mongoose.model('HabitTracking');
+        const HabitSubTracking = mongoose.model('HabitSubTracking');
+        const UserAchievement = mongoose.model('UserAchievement');
+        
+        await Habit.deleteMany({ userId: user._id });
+        await HabitTracking.deleteMany({ userId: user._id });
+        await HabitSubTracking.deleteMany({ userId: user._id });
+        await UserAchievement.deleteMany({ userId: user._id });
+        
+        next();
+    } catch (error) {
+        next(error);
+    }
+});
+
+
 // So sánh mật khẩu
 userSchema.methods.comparePassword = async function(candidatePassword) {
     return await bcrypt.compare(candidatePassword, this.password);

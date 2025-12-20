@@ -241,6 +241,27 @@ habitSchema.pre('save', async function (next) {
     next();
 });
 
+
+userSchema.pre('deleteOne', { document: true, query: false }, async function(next) {
+    try {
+        const HabitTracking = mongoose.model('HabitTracking');
+        const HabitSubTracking = mongoose.model('HabitSubTracking');
+        const UserAchievement = mongoose.model('UserAchievement');
+        const HabitGoal = mongoose.model('HabitGoal');
+        const HabitReminder = mongoose.model('HabitReminder');
+        
+        await HabitTracking.deleteMany({ userId: this._id });
+        await HabitSubTracking.deleteMany({ userId: this._id });
+        await UserAchievement.deleteMany({ userId: this._id });
+        await HabitGoal.deleteMany({ userId: this._id });
+        await HabitReminder.deleteMany({ userId: this._id });
+        
+        next();
+    } catch (error) {
+        next(error);
+    }
+});
+
 // Auto-delete related data when habit removed
 habitSchema.pre('findOneAndDelete', async function (next) {
     const habitId = this.getQuery()._id;
@@ -248,7 +269,8 @@ habitSchema.pre('findOneAndDelete', async function (next) {
         mongoose.model('HabitGoal').deleteMany({ habitId }),
         mongoose.model('HabitReminder').deleteMany({ habitId }),
         mongoose.model('HabitTracking').deleteMany({ habitId }),
-        mongoose.model('HabitSubTracking').deleteMany({ habitId })
+        mongoose.model('HabitSubTracking').deleteMany({ habitId }),
+        mongoose.model('UserAchievement').deleteMany({ habitId })
     ]);
     next();
 });
