@@ -18,6 +18,8 @@ import aiRoutes from './routes/AI-routes.js';
 import fcmRoutes from './routes/fcmRoutes.js';
 import testRoutes from './routes/testRoutes.js';
 
+import noteRoutes from './routes/Note-routes.js';
+
 import reminderScheduler from './services/reminderScheduler.js';
 import streakProtectionScheduler from './jobs/streakProtectionScheduler.js';
 import { scheduleDailyModelRetraining } from './jobs/dailyModelRetraining.js';
@@ -51,6 +53,8 @@ app.use('/api/dreams', dreamRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/fcm', fcmRoutes);
 app.use('/api/test', testRoutes);
+
+app.use('/api/notes', noteRoutes);
 
 app.use('/api/achievements', achievementRoutes);
 app.use('/api/inventory', inventoryRoutes);

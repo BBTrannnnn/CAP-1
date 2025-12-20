@@ -1,481 +1,239 @@
-// Content Moderation Service
-// Handles text profanity detection and AI-based image moderation
-
 import stringSimilarity from 'string-similarity';
 import axios from 'axios';
 import sharp from 'sharp';
 
-// ========== TEXT MODERATION ==========
-
-// Vietnamese profanity patterns (Tier 1: Severe - auto block)
-const SEVERE_PROFANITY_PATTERNS = [
-    /đ[ịiíìỉĩ\*\.\s]*t\s*m[ẹeéèẻẽ\*\.\s]*(?:[^a-z]|$)/gi,           // đit mẹ
-    /c[ặaáàảãạ\*\.\s]*c(?:\s*[^a-z]|$)/gi,                           // cặc, c*c (fixed boundary)
-    /l[ồoóòỏõọ\*\.\s]*n(?:\s*[^a-z]|$)/gi,                           // lồn, l*n
-    /bu[ồoóòỏõọ\*\.\s]*i(?:\s*[^a-z]|$)/gi,                          // buồi
-    /\bcon\s*đ[ĩiíìỉ\*\.\s]*\b/gi,                              // con đĩ
-    /\b[đd][ĩiíìỉĩ\*\.\s]*\s*[đd][iíìỉĩ\*\.\s]*[êếệ]m\b/gi,   // đĩ điếm
-    /\bđ[ĩiíìỉĩ\*\.\s]*(?=\s|$)/gi,                            // đĩ (đứng riêng)
-    /m[ẹeéèẻẽ\*\.\s]*\s*m[áàảãạ\*\.\s]*y/gi,                  // mẹ mày
-    /đ[ụuúùủũ\*\.\s]*\s*m[áàảãạ\*\.\s]*(?:[^a-z]|$)/gi,             // địt má
-    /v[cklồ]\s*l(?:[^a-z]|$)/gi,                                      // vcl, vkl
-];
-
-// Moderate profanity (Tier 2: Warning - needs review if multiple)
-const MODERATE_PROFANITY_PATTERNS = [
-    /n[gđ][uủú][^a-z]/gi,                                       // ngu
-    /[đd][iíìỉĩ][êế]n\s*[^a-z]/gi,                              // điên
-    /ch[óoồ]\s*[^a-z]/gi,                                       // chó
-    /n[gđ][uủú]\s*[đd][ốoồ]\s*[^a-z]/gi,                       // ngu đần
-    /th[ằa]ng\s*n[gđ][uủú]/gi,                                  // thằng ngu
-];
-
-// English profanity
-const ENGLISH_PROFANITY_PATTERNS = [
-    /\bf+u+c+k+\w*\b/gi,
-    /\bs+h+i+t+\w*\b/gi,
-    /\bb+i+t+c+h+\w*\b/gi,
-    /\ba+s+s+h+o+l+e+\b/gi,
-    /\bc+u+n+t+\b/gi,
-    /\bd+a+m+n+\b/gi,
-];
+// ========== TEXT MODERATION (100% API) ==========
 
 /**
- * Check text for profanity
+ * Check text for profanity using Sightengine API
  * @param {string} text - Text to check
- * @returns {Object} { blocked: boolean, score: number (0-100), reason: string, matches: array }
+ * @returns {Promise<Object>} { blocked: boolean, score: number, reason: string, matches: array }
  */
-export function checkTextProfanity(text) {
-    if (!text || typeof text !== 'string') {
+export async function checkTextProfanity(text) {
+    // 1. Kiểm tra đầu vào
+    if (!text || typeof text !== 'string' || text.trim().length === 0) {
         return { blocked: false, score: 0, reason: null, matches: [] };
     }
 
-    // Normalize text
-    const normalized = text.toLowerCase()
-        .replace(/[íìỉĩị]/g, 'i')
-        .replace(/[óòỏõọ]/g, 'o')
-        .replace(/[ắằẳẵặ]/g, 'a')
-        .replace(/[éèẻẽẹ]/g, 'e')
-        .replace(/[úùủũụ]/g, 'u');
+    // 2. Lấy Key
+    const API_USER = process.env.SIGHTENGINE_USER;
+    const API_SECRET = process.env.SIGHTENGINE_SECRET;
 
-    const matches = [];
-    let severeCount = 0;
-    let moderateCount = 0;
+    if (!API_USER || !API_SECRET) {
+        console.warn('⚠️ Sightengine Keys missing. Skipping text moderation.');
+        return { blocked: false };
+    }
 
-    // Check severe profanity
-    for (const pattern of SEVERE_PROFANITY_PATTERNS) {
-        const found = normalized.match(pattern);
-        if (found) {
-            severeCount += found.length;
-            matches.push(...found.map(m => ({ type: 'severe', word: m.trim() })));
+    try {
+        // 3. Gọi API (Standard Mode - Hỗ trợ đa ngôn ngữ bao gồm tiếng Việt)
+        const response = await axios.get('https://api.sightengine.com/1.0/text/check.json', {
+            params: {
+                text: text,
+                lang: 'en,vi', // Ưu tiên tiếng Anh và Việt
+                mode: 'standard',
+                api_user: API_USER,
+                api_secret: API_SECRET
+            },
+            timeout: 5000 // Timeout 5s
+        });
+
+        const data = response.data;
+
+        // 4. Xử lý lỗi API
+        if (data.status === 'failure') {
+            console.error('Sightengine API Error:', data.error);
+            return { blocked: false };
         }
-    }
 
-    // If severe profanity detected → Block immediately
-    if (severeCount > 0) {
-        return {
-            blocked: true,
-            score: 100,
-            reason: 'Nội dung chứa từ ngữ nghiêm trọng không phù hợp',
-            matches
-        };
-    }
-
-    // Check moderate profanity
-    for (const pattern of MODERATE_PROFANITY_PATTERNS) {
-        const found = normalized.match(pattern);
-        if (found) {
-            moderateCount += found.length;
-            matches.push(...found.map(m => ({ type: 'moderate', word: m.trim() })));
+        // 5. Kiểm tra kết quả (Profanity)
+        const matches = data.profanity?.matches || [];
+        
+        if (matches.length > 0) {
+            // Lấy từ vi phạm đầu tiên để báo lỗi
+            const badWord = matches[0].match;
+            return {
+                blocked: true,
+                score: 100, // API bắt được thì tính là 100 điểm
+                reason: `Ngôn từ không phù hợp: "${badWord}"`,
+                matches: matches.map(m => ({ 
+                    word: m.match, 
+                    type: m.type,
+                    intensity: m.intensity 
+                }))
+            };
         }
+
+        // Optional: Kiểm tra thông tin cá nhân (Email/Phone) nếu muốn
+        // if (data.personal && (data.personal.email || data.personal.phone_number)) ...
+
+        // Sạch
+        return { blocked: false, score: 0, reason: null, matches: [] };
+
+    } catch (error) {
+        console.error('Text Moderation Error:', error.message);
+        // Lỗi mạng -> Cho qua để không chặn user oan (Fail-open)
+        return { blocked: false, reason: 'Lỗi kiểm duyệt' };
     }
-
-    // Check English profanity
-    for (const pattern of ENGLISH_PROFANITY_PATTERNS) {
-        const found = text.match(pattern);
-        if (found) {
-            moderateCount += found.length;
-            matches.push(...found.map(m => ({ type: 'moderate', word: m.trim() })));
-        }
-    }
-
-    // Score calculation
-    const score = Math.min(100, moderateCount * 35); // Each moderate word = 35 points
-
-    // Block if 2+ moderate profanity words or score >= 70
-    if (moderateCount >= 2 || score >= 70) {
-        return {
-            blocked: true,
-            score,
-            reason: 'Nội dung chứa nhiều từ ngữ không phù hợp',
-            matches
-        };
-    }
-
-    // Warning if 1 moderate word (needs review based on trust score)
-    if (moderateCount === 1) {
-        return {
-            blocked: false,
-            score,
-            reason: 'Nội dung có thể chứa từ ngữ không phù hợp',
-            matches,
-            needsReview: true
-        };
-    }
-
-    return { blocked: false, score: 0, reason: null, matches: [] };
 }
 
 // ========== URL VALIDATION ==========
+// (Giữ lại logic check link này vì nó nhanh và không tốn tiền API)
 
-// Blacklisted domains (shortened URLs, known spam)
 const BLACKLISTED_DOMAINS = [
-    'bit.ly',
-    'tinyurl.com',
-    'goo.gl',
-    't.co',
-    'ow.ly',
-    'adf.ly',
-    'bc.vc',
-    'ouo.io',
+    'bit.ly', 'tinyurl.com', 'goo.gl', 't.co', 'ow.ly', 'adf.ly', 'bc.vc', 'ouo.io',
 ];
 
-/**
- * Check URLs in text
- * @param {string} text - Text to check
- * @returns {Object} { blocked: boolean, reason: string, urls: array }
- */
 export function checkUrls(text) {
-    if (!text || typeof text !== 'string') {
-        return { blocked: false, urls: [] };
-    }
+    if (!text || typeof text !== 'string') return { blocked: false, urls: [] };
 
     const urlRegex = /(https?:\/\/[^\s]+)/gi;
     const urls = text.match(urlRegex) || [];
 
-    if (urls.length === 0) {
-        return { blocked: false, urls: [] };
-    }
+    if (urls.length === 0) return { blocked: false, urls: [] };
+    if (urls.length > 3) return { blocked: true, reason: 'Bài viết chứa quá nhiều links (tối đa 3)', urls };
 
-    // Check URL count limit
-    if (urls.length > 3) {
-        return {
-            blocked: true,
-            reason: 'Bài viết chứa quá nhiều links (tối đa 3)',
-            urls
-        };
-    }
-
-    // Check blacklisted domains
     for (const url of urls) {
         try {
             const hostname = new URL(url).hostname.toLowerCase();
-
-            const isBlacklisted = BLACKLISTED_DOMAINS.some(domain =>
-                hostname.includes(domain)
-            );
-
-            if (isBlacklisted) {
-                return {
-                    blocked: true,
-                    reason: 'Bài viết chứa link không được phép (shortened URLs)',
-                    urls
-                };
+            if (BLACKLISTED_DOMAINS.some(domain => hostname.includes(domain))) {
+                return { blocked: true, reason: 'Bài viết chứa link rút gọn không an toàn', urls };
             }
-        } catch (error) {
-            // Invalid URL
-            return {
-                blocked: true,
-                reason: 'Bài viết chứa link không hợp lệ',
-                urls
-            };
+        } catch (e) {
+            return { blocked: true, reason: 'Link không hợp lệ', urls };
         }
     }
-
     return { blocked: false, urls };
 }
 
 // ========== SPAM DETECTION ==========
+// (Giữ lại logic check spam trùng lặp)
 
-// In-memory cache for recent posts (in production, use Redis)
-const recentPosts = new Map(); // userId -> [{ content, timestamp }]
+const recentPosts = new Map();
 const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
 
-/**
- * Check for duplicate/similar content
- * @param {string} userId - User ID
- * @param {string} content - Content to check
- * @returns {Object} { blocked: boolean, reason: string, similarity: number }
- */
 export function checkDuplicateContent(userId, content) {
-    if (!userId || !content) {
-        return { blocked: false };
-    }
+    if (!userId || !content) return { blocked: false };
 
-    // Get user's recent posts
     const userPosts = recentPosts.get(userId) || [];
-
-    // Clean old posts
     const now = Date.now();
     const validPosts = userPosts.filter(p => (now - p.timestamp) < CACHE_DURATION);
 
-    // Check exact duplicate
     const exactMatch = validPosts.find(p => p.content === content);
     if (exactMatch) {
-        return {
-            blocked: true,
-            reason: 'Nội dung trùng lặp với bài viết trước',
-            similarity: 100
-        };
+        return { blocked: true, reason: 'Nội dung trùng lặp với bài viết trước', similarity: 100 };
     }
 
-    // Check similarity (using string-similarity)
     for (const post of validPosts) {
         const similarity = stringSimilarity.compareTwoStrings(content, post.content);
-
-        if (similarity > 0.85) { // 85% similar
-            return {
-                blocked: true,
-                reason: 'Nội dung quá giống với bài viết trước',
-                similarity: Math.round(similarity * 100)
-            };
+        if (similarity > 0.85) {
+            return { blocked: true, reason: 'Nội dung quá giống với bài viết trước', similarity: Math.round(similarity * 100) };
         }
     }
 
-    // Add to cache
     validPosts.push({ content, timestamp: now });
     recentPosts.set(userId, validPosts);
-
-    // Cleanup cache if too large
-    if (recentPosts.size > 1000) {
-        const oldestKey = recentPosts.keys().next().value;
-        recentPosts.delete(oldestKey);
-    }
+    if (recentPosts.size > 1000) recentPosts.delete(recentPosts.keys().next().value);
 
     return { blocked: false, similarity: 0 };
 }
 
-/**
- * Clear user's spam cache (e.g., after successful post)
- * @param {string} userId - User ID
- */
 export function clearSpamCache(userId) {
     if (recentPosts.has(userId)) {
         const posts = recentPosts.get(userId);
-        // Keep only last post
         recentPosts.set(userId, posts.slice(-1));
     }
 }
 
-// ========== IMAGE MODERATION (AI + Manual Hybrid) ==========
+// ========== IMAGE MODERATION (Sightengine API) ==========
 
-/**
- * Load NSFW model (using Sightengine Free API as fallback)
- */
 export async function loadNSFWModel() {
-    console.log('✅ Image moderation: AI auto-check + Manual review hybrid mode');
-    console.log('📸 Using heuristic analysis + Sightengine free tier API');
+    console.log('✅ Image moderation: Sightengine API enabled');
     return true;
 }
 
-/**
- * Check image properties for potential NSFW content (heuristic analysis)
- * @param {Buffer} imageBuffer - Image buffer
- * @returns {Promise<Object>} { suspicious: boolean, reason: string }
- */
-async function analyzeImageHeuristics(imageBuffer) {
-    try {
-        const metadata = await sharp(imageBuffer).metadata();
-        const stats = await sharp(imageBuffer).stats();
-
-        // Heuristic checks (basic filters)
-        const warnings = [];
-        let suspicionScore = 0;
-
-        // 1. Check image size (very small or very large images are suspicious)
-        if (metadata.width < 100 || metadata.height < 100) {
-            warnings.push('Kích thước ảnh quá nhỏ');
-            suspicionScore += 20;
-        }
-
-        // 2. Check aspect ratio (extremely wide/tall images)
-        const aspectRatio = metadata.width / metadata.height;
-        if (aspectRatio > 3 || aspectRatio < 0.33) {
-            warnings.push('Tỉ lệ ảnh bất thường');
-            suspicionScore += 15;
-        }
-
-        // 3. Analyze color distribution (skin tone detection - very basic)
-        if (stats.channels && stats.channels.length >= 3) {
-            const [r, g, b] = stats.channels;
-            const avgR = r.mean;
-            const avgG = g.mean;
-            const avgB = b.mean;
-
-            // Rough skin tone range: R>G>B with R high
-            const isSkinTone = avgR > 95 && avgG > 40 && avgG < 100 && avgB > 20 && avgB < 70;
-            const skinDominance = avgR > avgG && avgG > avgB && avgR > 160;
-
-            if (isSkinTone || skinDominance) {
-                warnings.push('Phát hiện nhiều vùng màu da');
-                suspicionScore += 30;
-            }
-        }
-
-        return {
-            suspicious: suspicionScore >= 40,
-            suspicionScore,
-            warnings,
-            metadata: {
-                width: metadata.width,
-                height: metadata.height,
-                format: metadata.format
-            }
-        };
-    } catch (error) {
-        console.error('Heuristic analysis error:', error);
-        return { suspicious: false, suspicionScore: 0, warnings: [] };
-    }
-}
-
-/**
- * Check image using Sightengine free API (100 requests/day free)
- * @param {string} imageUrl - Image URL
- * @returns {Promise<Object>} { blocked: boolean, scores: object, source: string }
- */
+// Hàm gọi API check ảnh
 async function checkImageWithSightengine(imageUrl) {
-    // Sightengine free tier API keys (you need to sign up at sightengine.com)
-    const API_USER = process.env.SIGHTENGINE_USER || null;
-    const API_SECRET = process.env.SIGHTENGINE_SECRET || null;
+    const API_USER = process.env.SIGHTENGINE_USER;
+    const API_SECRET = process.env.SIGHTENGINE_SECRET;
 
-    if (!API_USER || !API_SECRET) {
-        console.log(' Sightengine API not configured, skipping external check');
-        return null;
-    }
+    if (!API_USER || !API_SECRET) return null;
 
     try {
         const response = await axios.get('https://api.sightengine.com/1.0/check.json', {
             params: {
                 url: imageUrl,
-                models: 'nudity,wad',
+                models: 'nudity,wad,offensive', // Check: Khỏa thân, Vũ khí/Rượu/Thuốc, Phản cảm
                 api_user: API_USER,
                 api_secret: API_SECRET
             },
-            timeout: 5000
+            timeout: 10000 // 10s cho ảnh
         });
 
         const data = response.data;
+        if (data.status === 'failure') return null;
 
-        // Parse nudity scores
+        // 1. Nudity
         const nudityScore = data.nudity?.sexual || 0;
         const partialScore = data.nudity?.partial || 0;
+        
+        // 2. WAD
+        const weaponScore = data.weapon || 0;
+        const drugsScore = data.drugs || 0;
+        
+        // 3. Offensive
+        const offensiveScore = data.offensive?.prob || 0;
+
+        // Logic chặn
+        const isNudity = nudityScore > 0.6 || partialScore > 0.8;
+        const isDangerous = weaponScore > 0.6 || drugsScore > 0.6;
+        const isOffensive = offensiveScore > 0.8;
+
+        let reason = '';
+        if (isNudity) reason = 'Ảnh chứa nội dung nhạy cảm/khỏa thân';
+        else if (isDangerous) reason = 'Ảnh chứa vũ khí hoặc chất cấm';
+        else if (isOffensive) reason = 'Ảnh chứa nội dung xúc phạm';
 
         return {
-            blocked: nudityScore > 0.6 || partialScore > 0.7,
+            blocked: isNudity || isDangerous || isOffensive,
+            reason,
             scores: {
                 sexual: nudityScore,
-                partial: partialScore,
-                safe: data.nudity?.safe || 0
+                weapon: weaponScore,
+                offensive: offensiveScore
             },
             source: 'sightengine'
         };
     } catch (error) {
-        console.warn('Sightengine API error:', error.message);
+        console.warn('Sightengine Image API error:', error.message);
         return null;
     }
 }
 
-/**
- * Check image for NSFW content (AI auto + manual review)
- * @param {string} imageUrl - Cloudinary URL
- * @returns {Promise<Object>} { blocked: boolean, needsReview: boolean, scores: object }
- */
+// Wrapper cho check 1 ảnh
 export async function checkImageNSFW(imageUrl) {
-    if (!imageUrl) {
-        return { blocked: false, needsReview: false };
-    }
+    if (!imageUrl) return { blocked: false };
+    
+    // Gọi API trực tiếp
+    const apiResult = await checkImageWithSightengine(imageUrl);
 
-    try {
-        // Step 1: Download image
-        const response = await axios.get(imageUrl, {
-            responseType: 'arraybuffer',
-            timeout: 10000
-        });
-        const imageBuffer = Buffer.from(response.data);
-
-        // Step 2: Heuristic analysis (local, free)
-        const heuristicResult = await analyzeImageHeuristics(imageBuffer);
-
-        // Step 3: External API check (if configured)
-        const apiResult = await checkImageWithSightengine(imageUrl);
-
-        // Decision logic
-        let blocked = false;
-        let needsReview = false;
-        let autoCheckPassed = false;
-        const reasons = [];
-
-        // If API detected NSFW
-        if (apiResult && apiResult.blocked) {
-            blocked = true;
-            reasons.push('AI phát hiện nội dung không phù hợp (Sightengine)');
-        }
-        // If heuristics are highly suspicious
-        else if (heuristicResult.suspicious && heuristicResult.suspicionScore >= 60) {
-            needsReview = true;
-            reasons.push(...heuristicResult.warnings);
-        }
-        // If heuristics are moderately suspicious
-        else if (heuristicResult.suspicious) {
-            needsReview = true;
-            reasons.push('Cần kiểm tra thêm');
-        }
-        // All checks passed
-        else {
-            autoCheckPassed = true;
-        }
-
+    if (apiResult && apiResult.blocked) {
         return {
-            blocked,
-            needsReview,
-            autoCheckPassed,
-            scores: {
-                heuristic: heuristicResult.suspicionScore,
-                ...(apiResult ? apiResult.scores : {})
-            },
-            reason: reasons.join(', ') || null,
-            checks: {
-                heuristic: heuristicResult,
-                api: apiResult ? 'completed' : 'skipped'
-            }
-        };
-
-    } catch (error) {
-        console.error('Image moderation error:', error.message);
-        // Fail-safe: allow but flag for review
-        return {
-            blocked: false,
-            needsReview: true,
-            autoCheckPassed: false,
-            error: error.message,
-            reason: 'Không thể kiểm tra ảnh tự động'
+            blocked: true,
+            needsReview: false,
+            reason: apiResult.reason,
+            scores: apiResult.scores
         };
     }
+
+    return { blocked: false, needsReview: false, autoCheckPassed: true };
 }
 
-/**
- * Check multiple images
- * @param {Array<string>} imageUrls - Array of Cloudinary URLs
- * @returns {Promise<Object>} { blocked: boolean, needsReview: boolean, results: array }
- */
+// Wrapper cho check nhiều ảnh
 export async function checkImagesNSFW(imageUrls) {
-    if (!imageUrls || imageUrls.length === 0) {
-        return { blocked: false, needsReview: false, results: [] };
-    }
+    if (!imageUrls || imageUrls.length === 0) return { blocked: false, results: [] };
 
     const results = [];
     let anyBlocked = false;
-    let anyNeedsReview = false;
 
     for (const url of imageUrls) {
         const result = await checkImageNSFW(url);
@@ -483,17 +241,13 @@ export async function checkImagesNSFW(imageUrls) {
 
         if (result.blocked) {
             anyBlocked = true;
-            break; // Stop checking if one is blocked
-        }
-        if (result.needsReview) {
-            anyNeedsReview = true;
+            break; // Chặn ngay nếu thấy 1 ảnh vi phạm
         }
     }
 
     return {
         blocked: anyBlocked,
-        needsReview: anyNeedsReview,
-        autoCheckPassed: !anyBlocked && !anyNeedsReview,
+        reason: anyBlocked ? results.find(r => r.blocked).reason : null,
         results
     };
 }

@@ -1,5 +1,6 @@
 import { chat as llmChat } from '../services/llmService.js';
 import SleepLog from '../models/SleepLog.js';
+import Note from '../models/Note.js';
 import mongoose from 'mongoose';
 
 const USE_FALLBACK = String(process.env.AI_FALLBACK_ON_ERROR || '').toLowerCase() === 'true';
@@ -26,27 +27,29 @@ const fmtHM = (mins) => {
 export async function chat(req, res, next) {
   try {
     const { messages, language = 'vi' } = req.body || {};
-    
     if (!Array.isArray(messages) || messages.length === 0) {
       return res.status(400).json({ success: false, message: 'messages must be non-empty array' });
     }
-
-    // Sanitize messages
     const trimmed = messages.slice(-15).map((m) => ({
       role: m.role === 'assistant' ? 'assistant' : 'user',
       content: String(m.content || m.text || '').slice(0, MAX_LEN)
     }));
 
-    // ===== LẤY SLEEP LOGS CỦA USER =====
-    let sleepContext = '';
+    // Lấy note gần nhất của user (nếu có)
     const userId = toObjectId(getUserId(req));
-    
+    if (userId) {
+      const note = await Note.findOne({ userId }).sort({ date: -1 }).lean();
+      if (note && note.content) {
+        return res.json({ success: true, reply: note.content });
+      }
+    }
+
+    // ===== LẤY SLEEP LOGS VÀ NOTES CỦA USER (như cũ) =====
+    let sleepContext = '';
     if (userId) {
       try {
-        // Lấy 10 bản ghi gần nhất (trong 7 ngày)
         const now = Date.now();
         const cutoff = new Date(now - 7 * 864e5); // 7 ngày
-        
         const logs = await SleepLog.find({ 
           userId, 
           wakeAt: { $gte: cutoff } 
@@ -54,10 +57,8 @@ export async function chat(req, res, next) {
           .sort({ wakeAt: -1 })
           .limit(10)
           .lean();
-
         if (logs.length > 0) {
           sleepContext = '\n\n NHẬT KÝ GIẤC NGỦ GẦN ĐÂY CỦA NGƯỜI DÙNG:\n';
-          
           logs.forEach(log => {
             const sleepDate = new Date(log.sleepAt).toLocaleString('vi-VN', { 
               month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' 
@@ -66,27 +67,35 @@ export async function chat(req, res, next) {
               month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' 
             });
             const duration = fmtHM(log.durationMin);
-            
             sleepContext += `\n ${sleepDate} → ${wakeDate} (${duration})`;
-            
-            if (log.notes && log.notes.trim()) {
-              // Giới hạn notes 300 ký tự để không vượt token limit
-              const shortNotes = log.notes.length > 300
-                ? log.notes.slice(0, 300) + '...' 
-                : log.notes;
-sleepContext += `\n  Ghi chú: ${shortNotes}`;
-            }
             sleepContext += '\n';
           });
-          
+          sleepContext += '\n---\n';
+        }
+        // Lấy 5 notes gần nhất (7 ngày)
+        const notes = await Note.find({
+          userId,
+          date: { $gte: cutoff }
+        })
+          .sort({ date: -1 })
+          .limit(5)
+          .lean();
+        if (notes.length > 0) {
+          sleepContext += '\n NHẬT KÝ CẢM XÚC/GHI CHÚ GẦN ĐÂY:\n';
+          notes.forEach(note => {
+            const noteDate = new Date(note.date).toLocaleString('vi-VN', { 
+              month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' 
+            });
+            let content = note.content || '';
+            if (content.length > 300) content = content.slice(0, 300) + '...';
+            sleepContext += `\n ${noteDate}: ${content}`;
+          });
           sleepContext += '\n---\n';
         }
       } catch (err) {
-        console.error(' Lỗi khi fetch sleep logs:', err);
-        // Không throw error, tiếp tục chat bình thường
+        console.error(' Lỗi khi fetch sleep logs/notes:', err);
       }
     }
-    // System prompt   
     const system = {
       role: 'system',
       content: [
@@ -98,12 +107,9 @@ sleepContext += `\n  Ghi chú: ${shortNotes}`;
         sleepContext 
       ].join(' ')
     };
-
     const { text } = await llmChat([system, ...trimmed], { max_tokens: 550 });
     res.json({ success: true, reply: text });
-    
   } catch (err) {
-    // Map quota/429 to user-friendly message or fallback
     if ((err?.statusCode === 429 || err?.statusCode === 503) && USE_FALLBACK) {
       const { language = 'vi' } = req.body || {};
       return res.json({ success: true, reply: fallbackChat(language), _fallback: true });
