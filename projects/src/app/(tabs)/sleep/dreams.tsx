@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FlatList, Alert, TextInput } from 'react-native';
+import { FlatList, TextInput } from 'react-native';
 import { YStack, XStack, Card, Button, Text, Separator, Spinner, Sheet, ScrollView } from 'tamagui';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { apiGet } from '../../../lib/api';
 import { analyzeDream, fetchDreamStats, removeDream } from '../../../lib/dreamApi';
 import type { DreamItem, DreamStats as DreamStatsType, DreamCategory } from '../../../types/dream';
-import { notifyError, notifySuccess } from '../../../utils/notify';
+import { notifyError, notifySuccess, notifyConfirm } from '../../../utils/notify';
 
 const PRIMARY = '#9B59FF';
 const PRIMARY_PRESSED = '#8B4AE8';
@@ -201,7 +201,7 @@ const DreamCard = ({ item, onDelete }: { item: DreamHistoryItem; onDelete: (id: 
       {
         !!item.interpretation && (
           <YStack backgroundColor="#F8FAFC" borderRadius={12} padding={10} marginTop={4}>
-            <Text color="#0f172a" fontWeight="700" marginBottom={6}>AI Insight</Text>
+            <Text color="#0f172a" fontWeight="700" marginBottom={6}>Nhận định từ AI</Text>
             <Text color="#475569">{item.interpretation}</Text>
           </YStack>
         )
@@ -329,22 +329,22 @@ const DreamsScreen: React.FC = () => {
   };
 
   const onDelete = (id: string) => {
-    Alert.alert('Xác nhận', 'Bạn có chắc muốn xoá giấc mơ này?', [
-      { text: 'Huỷ', style: 'cancel' },
-      {
-        text: 'Xoá', style: 'destructive', onPress: async () => {
-          const keep = [...history];
-          setHistory(prev => prev.filter(x => x._id !== id));
-          try {
-            await removeDream(id);
-            await fetchStats();
-          } catch (e: any) {
-            setHistory(keep);
-            notifyError('Lỗi', e?.message || 'Không thể xoá giấc mơ');
-          }
+    notifyConfirm({
+      title: 'Xác nhận',
+      message: 'Bạn có chắc muốn xoá giấc mơ này?',
+      isDestructive: true,
+      onConfirm: async () => {
+        const keep = [...history];
+        setHistory(prev => prev.filter(x => x._id !== id));
+        try {
+          await removeDream(id);
+          await fetchStats();
+        } catch (e: any) {
+          setHistory(keep);
+          notifyError('Lỗi', e?.message || 'Không thể xoá giấc mơ');
         }
       }
-    ]);
+    });
   };
 
   const handleDelete = async (id: string) => {

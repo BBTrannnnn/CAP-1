@@ -2,10 +2,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import DreamsScreen from './dreams';
 import SleepContent from './SleepContent';
-import { ScrollView, Alert, Platform, Pressable } from 'react-native';
+import { ScrollView, Alert, Platform, Pressable, TouchableOpacity } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { YStack, XStack, Text, Button, Card, Input, Separator, } from 'tamagui';
+import { YStack, XStack, Text, Button, Card, Input, Separator, TextArea } from 'tamagui';
 
 import Ionicons from '@expo/vector-icons/Ionicons';
 import AntDesign from '@expo/vector-icons/AntDesign';
@@ -14,8 +14,9 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { apiGet, apiPost, apiPut, apiDelete } from '../../../lib/api';
-import { notifyError, notifySuccess } from '../../../utils/notify';
+import { notifyConfirm, notifyError, notifySuccess, notifyInfo } from '../../../utils/notify';
 import { scheduleDailyNotification } from '../../../utils/notifications';
+import DateTimePickerModal from "react-native-modal-datetime-picker";
 
 // Color constants for Sleep tabs (keep PRIMARY consistent across app)
 const PRIMARY = '#9B59FF'; // Main purple
@@ -28,10 +29,12 @@ export default function SleepLab() {
   const router = useRouter();
   const [tab, setTab] = useState<'journal' | 'support' | 'dreams'>('journal');
 
+  // ----- Information state -----
+  const [profile, setProfile] = useState<any>(null);
+  const [evaluation, setEvaluation] = useState<any>(null);
+
   // ----- Journal states -----
-  const [bedTime, setBedTime] = useState('10:30 PM');
-  const [wakeTime, setWakeTime] = useState('7:00 AM');
-  const [quality, setQuality] = useState(4); // 1..5
+  const [notes, setNotes] = useState('');
   const [sleepDate, setSleepDate] = useState<string>(() => {
     const d = new Date();
     const yyyy = d.getFullYear();
@@ -39,6 +42,15 @@ export default function SleepLab() {
     const dd = String(d.getDate()).padStart(2, '0');
     return `${yyyy}-${mm}-${dd}`;
   });
+
+  const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
+  const [bedTime, setBedTime] = useState('10:30 PM');
+  const [wakeTime, setWakeTime] = useState('06:30 AM');
+  const [isBedTimePickerVisible, setBedTimePickerVisibility] = useState(false);
+  const [isWakeTimePickerVisible, setWakeTimePickerVisibility] = useState(false);
+
+  // Track today's sleep log ID (if any) to prevent 409 and support updates
+  const [currentLogId, setCurrentLogId] = useState<string | null>(null);
 
   const SLEEP_TIPS = [
     "Tránh màn hình điện tử 1 giờ trước khi ngủ. Ánh sáng xanh có thể ảnh hưởng đến melatonin.",
@@ -49,15 +61,51 @@ export default function SleepLab() {
   ];
   const [tipIndex, setTipIndex] = useState(0);
 
-  // Additional states required for the Journal UI
-  const FACTORS = ['Uống coffee', 'Tập luyện', 'Stress', 'Ăn muộn', 'Đọc sách', 'Xem phim', 'Tắm nước ấm'] as const;
-
-  const [mood, setMood] = useState<Mood>('😊');
-  const [factors, setFactors] = useState<Record<string, boolean>>(Object.fromEntries(FACTORS.map(f => [f, false])) as Record<string, boolean>);
+  // Removed factors and mood states as they are replaced by notes
 
   const [logs, setLogs] = useState<any[]>([]);
   const [entries, setEntries] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+
+  const fetchNoteForDate = async (date: string) => {
+    try {
+      setLoading(true);
+      const res = await apiGet(`/api/notes/by-date?date=${date}`);
+      if (res?.success && res?.data) {
+        setNotes(res.data.content);
+        return res.data;
+      } else {
+        setNotes('');
+        return null;
+      }
+    } catch (err: any) {
+      setNotes('');
+      // 404 is normal if no note exists for that day
+      if (!err?.message?.includes('404')) {
+        console.warn('[Sleep] Fetch note error:', err);
+      }
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchNotesHistory = async () => {
+    try {
+      const res = await apiGet('/api/notes?page=1&limit=20');
+      if (res?.success && Array.isArray(res.data)) {
+        const mapped = res.data.map((item: any) => ({
+          _id: item._id,
+          dateISO: item.date ? item.date.slice(0, 10) : '',
+          notes: item.content,
+          saveTime: item.updatedAt ? new Date(item.updatedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '',
+        }));
+        setEntries(mapped);
+      }
+    } catch (err) {
+      console.warn('[Sleep] Fetch notes history error:', err);
+    }
+  };
 
   // ID đang xoá (để disable nút)
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -66,85 +114,35 @@ export default function SleepLab() {
   useEffect(() => {
     let isCancelled = false;
 
-    async function loadInitialSleepData() {
+    async function loadData() {
       try {
-        // 1) Đọc local 7 ngày đã lưu trong AsyncStorage
-        const stored = await AsyncStorage.getItem('sleepJournal');
-        if (!isCancelled && stored) {
-          const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed)) {
-            setEntries(parsed);
-          }
-        }
-      } catch (error) {
-        if (__DEV__) {
-          console.warn('[Sleep] Không đọc được sleepJournal từ AsyncStorage', error);
-        }
-      }
-
-      try {
-        // 2) Lấy log từ BE để cập nhật state logs
-        const res = await apiGet('/api/sleep/logs?page=1&limit=10');
-        const freshLogs = normalizeLogs(res?.data || []);
-        if (isCancelled) return;
-
-        setLogs(freshLogs);
-
-        // Nếu chưa có entries từ AsyncStorage thì tạo entries từ log BE
-        if (freshLogs.length > 0) {
-          const mappedEntries = freshLogs
-            .map((log: any) => {
-              const dateISO = getYMDFromLog(log) || todayISO();
-              const bed = log.sleepTime || '10:30 PM';
-              const wake = log.wakeTime || '7:00 AM';
-              const durationMin = diffMinutes(bed, wake);
-
-              // Map wakeMood → emoji để bảng hiển thị giống UI hiện tại
-              let moodEmoji: Mood = '😊';
-              switch (log.wakeMood) {
-                case 'met':
-                  moodEmoji = '😫';
-                  break;
-                case 'cang_thang':
-                  moodEmoji = '😐';
-                  break;
-                case 'thu_gian':
-                  moodEmoji = '😊';
-                  break;
-                case 'vui':
-                  moodEmoji = '🤩';
-                  break;
-                case 'buon':
-                  moodEmoji = '😴';
-                  break;
-              }
-
-              return {
-                dateISO,
-                bedTime: bed,
-                wakeTime: wake,
-                durationMin,
-                quality: typeof log.quality === 'number' ? log.quality : 3,
-                mood: moodEmoji,
-                factors: Array.isArray(log.factors) ? log.factors : [],
-              };
-            })
-            .filter((entry) => within7Days(entry.dateISO))
-            .sort((a, b) => (a.dateISO < b.dateISO ? 1 : -1))
-            .slice(0, 7);
-
-          // Chỉ ghi đè entries nếu AsyncStorage chưa có gì
-          setEntries((previous) => (previous.length > 0 ? previous : mappedEntries));
-
-          // Lưu lại vào AsyncStorage để lần sau mở app nhanh hơn
-          try {
-            await AsyncStorage.setItem('sleepJournal', JSON.stringify(mappedEntries));
-          } catch (error) {
-            if (__DEV__) {
-              console.warn('[Sleep] Không lưu lại mappedEntries vào AsyncStorage', error);
+        // Fetch Profile
+        const meRes = await apiGet('/api/users/me');
+        const userData = meRes?.user || meRes?.data?.user || meRes?.data || meRes;
+        if (userData) {
+          setProfile(userData);
+          if (!userData.gender || !userData.dateOfBirth) {
+            const userId = userData.id || userData._id;
+            if (userId) {
+              const fullP = await apiGet(`/api/users/${userId}`);
+              const pData = fullP?.data || fullP;
+              if (pData) setProfile(pData);
             }
           }
         }
+
+        // Fetch Stats/Evaluation
+        const statsRes = await apiGet('/api/sleep/stats');
+        // Fetch Notes History
+        await fetchNotesHistory();
+
+        // 2) Lấy log từ BE để cập nhật state logs
+        const res = await apiGet('/api/sleep/logs?page=1&limit=50');
+        const freshLogs = normalizeLogs(res?.data || []);
+        if (isCancelled) return;
+        setLogs(freshLogs);
+
+        // We trigger detection in a separate useEffect that listens to sleepDate and logs
       } catch (error) {
         if (__DEV__) {
           console.warn('[Sleep] Lỗi khi lấy logs từ BE', error);
@@ -152,142 +150,111 @@ export default function SleepLab() {
       }
     }
 
-    loadInitialSleepData();
+    loadData();
 
     return () => {
       isCancelled = true;
     };
   }, []);
 
+  // Detect if a log exists for the currently selected sleepDate
+  useEffect(() => {
+    // Find a log that woke up on the selected sleepDate
+    const existing = logs.find(log => getYMDFromLog(log) === sleepDate);
+
+    if (existing) {
+      setCurrentLogId(existing._id);
+      // Pre-fill UI with existing data
+      const w = new Date(existing.wakeAt);
+      setWakeTime(formatTimeAMPM(w));
+      const s = new Date(existing.sleepAt);
+      setBedTime(formatTimeAMPM(s));
+
+      // Only show evaluation if it's "today" or recent
+      const todayISO = new Date().toISOString().slice(0, 10);
+      if (sleepDate === todayISO) {
+        setEvaluation({
+          level: (existing.durationMin || 0) >= 420 ? 'success' : 'warning',
+          title: (existing.durationMin || 0) >= 420 ? 'Giấc ngủ tốt' : 'Thiếu ngủ',
+          message: (existing.durationMin || 0) >= 420
+            ? `Tuyệt vời! Bạn đã ngủ ${formatMinToHM(existing.durationMin || 0)}. Cơ thể bạn chắc chắn đang cảm thấy rất sảng khoái, hãy duy trì thói quen này nhé!`
+            : `Hôm nay bạn chỉ ngủ ${formatMinToHM(existing.durationMin || 0)} (dưới mức 7h). Bạn nên dành thêm thời gian nghỉ ngơi trưa nay và cố gắng đi ngủ sớm hơn vào buổi tối nhé.`
+        });
+      }
+    } else {
+      setCurrentLogId(null);
+      // If we are on today and no record, clear evaluation
+      const todayISO = new Date().toISOString().slice(0, 10);
+      if (sleepDate === todayISO) {
+        setEvaluation(null);
+      }
+    }
+  }, [sleepDate, logs]);
+
+  const getAgeGroup = (dob?: string) => {
+    if (!dob) return 'N/A';
+    const birth = new Date(dob);
+    const now = new Date();
+    let age = now.getFullYear() - birth.getFullYear();
+    const m = now.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--;
+
+    // Group logic: (21 - 30), etc.
+    const start = Math.floor(age / 10) * 10 + 1;
+    const end = start + 9;
+    return `(${start} - ${end})`;
+  };
+
   // map _id theo yyyy-mm-dd để disable nút theo hàng
   const idByDate = useMemo(() => {
     const m: Record<string, string> = {};
     for (const it of logs) {
-      const ymd = String(it?.date || '').slice(0, 10);
+      const ymd = getYMDFromLog(it);
       if (ymd && it?._id) m[ymd] = it._id;
     }
     return m;
   }, [logs]);
 
-  const moodMap: Record<string, string> = {
-    '😴': 'met',
-    '😐': 'cang_thang',
-    '😊': 'thu_gian',
-    '😁': 'vui',
-    '🥲': 'buon',
-  };
+  const COL_DAY = 100;
+  const COL_TIME = 80;
+  const COL_NOTES = 200;
+  const HEADER_FONT = 11;
 
-  const factorMap: Record<string, string> = {
-    'Uống coffee': 'cafe',
-    'Tập luyện': 'tap_luyen',
-    'Stress': 'stress',
-    'Ăn muộn': 'an_muon',
-    'Đọc sách': 'doc_sach',
-    'Xem phim': 'xem_phim',
-    'Tắm nước ấm': 'tam_nuoc_am',
-    'Noise': 'on_ao',
-  };
+  // Removed mood and factor maps as they are no longer used
 
-  const COL_DAY = 72;
-  const COL_TIME = 64;
-  const COL_DURATION = 72;
-  const COL_STAR = 48;
-  const COL_MOOD = 64;
-  const HEADER_FONT = 9;
+  // ----- Handlers -----
 
-  function selectedFactorsFromState(factorsState: Record<string, boolean>) {
-    return Object.keys(factorsState)
-      .filter((k) => !!factorsState[k] && factorMap[k])
-      .map((k) => factorMap[k]);
-  }
-
-  // Ensure each log item keeps BE _id; if backend sends `id` fallback to that.
-  function normalizeLogs(items: any[] = []) {
-    return (items || []).map((it: any) => ({
-      ...it,
-      _id: it._id ?? it.id ?? null,
-    }));
-  }
-
-  // Helpers for date/time and id resolution
-  // parse 12h time like "10:30 PM" into minutes since midnight
-  function toMins12h(s: string) {
-    const m = s.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-    if (!m) return 0;
-    let h = parseInt(m[1], 10);
-    const mm = parseInt(m[2], 10);
-    const ap = m[3].toUpperCase();
-    if (ap === 'PM' && h !== 12) h += 12;
-    if (ap === 'AM' && h === 12) h = 0;
-    return h * 60 + mm;
-  }
-
-  // keep the old name as an alias so other code doesn't need editing
-  function toMinutes(t: string) {
-    return toMins12h(t || '12:00 AM');
-  }
-
-  function diffMinutes(bed: string, wake: string) {
-    const b = toMinutes(bed);
-    const w = toMinutes(wake);
-    const day = 24 * 60;
-    const diff = (w - b + day) % day; // handle overnight
-    return diff === 0 ? day : diff;
-  }
-
-  function crossesMidnight(bed: string, wake: string) {
-    return toMins12h(wake) <= toMins12h(bed);
-  }
-
-  function shiftYMD(ymd: string, deltaDays: number) {
-    const d = new Date(`${ymd}T00:00:00`);
-    d.setDate(d.getDate() + deltaDays);
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    return `${d.getFullYear()}-${mm}-${dd}`;
-  }
-
-  function getYMDFromLog(l: any) {
-    if (!l) return '';
-    if (typeof l.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(l.date)) return l.date;
-    if (l.sleepAt) {
-      try {
-        return new Date(l.sleepAt).toISOString().slice(0, 10);
-      } catch { }
+  async function executeDeleteLog(logId: string, dateISO: string) {
+    if (!logId) {
+      notifyError('Lỗi', 'Không tìm thấy _id để xoá.');
+      return;
     }
-    return '';
-  }
-
-  const getIdForDate = async (dateISO: string) => {
-    // try local logs first
-    const local = logs.find((l) => String(l?.date || '').slice(0, 10) === dateISO);
-    if (local?._id) return local._id;
-
-    // fallback: refetch the first page and search again
+    setDeletingId(logId);
     try {
-      const res = await apiGet('/api/sleep/logs?page=1&limit=10');
-      const fresh: any[] = Array.isArray(res?.data) ? res.data : (res?.data || []);
-      const normalized = normalizeLogs(fresh);
-      setLogs(normalized);
-      const found = normalized.find((l) => String(l?.date || '').slice(0, 10) === dateISO || getYMDFromLog(l) === dateISO);
-      return found?._id || null;
-    } catch (err) {
-      if (__DEV__) console.warn('[getIdForDate] fetch failed', err);
-      return null;
+      await apiDelete(`/api/notes/${logId}`);
+      await fetchNotesHistory();
+      if (sleepDate === dateISO) {
+        setNotes('');
+      }
+      notifySuccess('Đã xoá', 'Nhật ký đã được xoá.');
+    } catch (err: any) {
+      notifyError('Lỗi', err?.message || 'Không thể xoá nhật ký.');
+    } finally {
+      setDeletingId(null);
     }
-  };
+  }
 
-  // confirm chung cho web & native
-  function confirmDelete(message = 'Bạn có chắc muốn xoá nhật ký này?'): Promise<boolean> {
-    if (Platform.OS === 'web') {
-      // @ts-ignore
-      return Promise.resolve((globalThis.confirm ?? window.confirm)(message));
-    }
-    return new Promise<boolean>((resolve) => {
-      Alert.alert('Xác nhận', message, [
-        { text: 'Huỷ', style: 'cancel', onPress: () => resolve(false) },
-        { text: 'Xoá', style: 'destructive', onPress: () => resolve(true) },
-      ]);
+  function confirmDelete(log: any) {
+    const logDate = String(log?.date || log?.dateISO || '').slice(0, 10);
+    const logId = log?._id || idByDate[logDate];
+
+    notifyConfirm({
+      title: 'Xóa nhật ký',
+      message: 'Bạn có chắc chắn muốn xóa nhật ký này không?',
+      isDestructive: true,
+      onConfirm: () => {
+        executeDeleteLog(logId, logDate);
+      }
     });
   }
 
@@ -306,158 +273,146 @@ export default function SleepLab() {
     return diff <= 6 && diff >= 0;
   }
 
-  const weeklyEntries = entries
-    .filter(e => within7Days(e.dateISO))
-    .sort((a, b) => (a.dateISO < b.dateISO ? 1 : -1));
+  function formatTimeAMPM(date: Date) {
+    let hours = date.getHours();
+    let minutes = date.getMinutes();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    const strMinutes = minutes < 10 ? '0' + minutes : minutes;
+    const strHours = hours < 10 ? '0' + hours : hours;
+    return `${strHours}:${strMinutes} ${ampm}`;
+  }
 
-  // Helpers
-  const durationText = useMemo(() => {
-    const mins = diffMinutes(bedTime, wakeTime);
-    const h = Math.floor(mins / 60);
-    const m = mins % 60;
-    return `${h}h ${m.toString().padStart(2, '0')}m`;
-  }, [bedTime, wakeTime]);
+  const weeklyEntries = useMemo(() => {
+    return entries
+      .sort((a, b) => (a.dateISO < b.dateISO ? 1 : -1));
+  }, [entries]);
 
-  const toggleFactor = (k: string) =>
-    setFactors((p) => ({ ...p, [k]: !p[k] }));
+  const sleepLogs = useMemo(() => {
+    return logs.filter(l => (l.durationMin || 0) >= 30);
+  }, [logs]);
 
-  const onSaveJournal = async () => {
+  const handleConfirmDate = (date: Date) => {
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    const iso = `${yyyy}-${mm}-${dd}`;
+    setSleepDate(iso);
+    setDatePickerVisibility(false);
+    fetchNoteForDate(iso);
+  };
+
+  const handleConfirmBedTime = (date: Date) => {
+    setBedTime(formatTimeAMPM(date));
+    setBedTimePickerVisibility(false);
+  };
+
+  const handleConfirmWakeTime = (date: Date) => {
+    setWakeTime(formatTimeAMPM(date));
+    setWakeTimePickerVisibility(false);
+  };
+
+  const durationText = "";
+
+  // Removed toggleFactor as factors are gone
+
+  const onSaveJournalOnly = async () => {
+    if (!notes.trim()) {
+      notifyError('Lỗi', 'Vui lòng nhập nội dung nhật ký.');
+      return;
+    }
     try {
       setLoading(true);
 
-      // Validate sleepDate (YYYY-MM-DD)
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(sleepDate)) {
-        notifyError('Ngày không hợp lệ', 'Vui lòng nhập ngày dạng YYYY-MM-DD.');
-        return;
-      }
+      // Check if note already exists for this date
+      const existing = await apiGet(`/api/notes/by-date?date=${sleepDate}`).catch(() => null);
 
-      const sendDate =
-        crossesMidnight(bedTime, wakeTime) ? shiftYMD(sleepDate, -1) : sleepDate;
-
-      const payload = {
-        date: sendDate,
-        sleepTime: bedTime,
-        wakeTime: wakeTime,
-        quality,
-        wakeMood: moodMap[mood] || 'thu_gian',
-        factors: selectedFactorsFromState(factors),
-        notes: '',
-      };
-
-      console.log('[Sleep] payload gửi BE →', payload);
-
-      try {
-        await apiPost('/api/sleep/logs', payload);
-      } catch (e: any) {
-        const msg = e?.data?.message || e?.message || '';
-        const status = e?.status || (typeof e?.code === 'number' ? e.code : undefined);
-        if (String(status) === '409' || /409|trùng|Conflict/i.test(msg)) {
-          const listRes = await apiGet('/api/sleep/logs?page=1&limit=1');
-          const latest = normalizeLogs(listRes?.data || [])[0];
-          if (latest?._id) {
-            await apiPut(`/api/sleep/logs/${latest._id}`, {
-              quality: payload.quality,
-              wakeMood: payload.wakeMood,
-              factors: payload.factors,
-              notes: payload.notes,
-            });
-          } else {
-            throw e;
-          }
-        } else {
-          throw e;
-        }
-      }
-      const listRes = await apiGet('/api/sleep/logs?page=1&limit=10');
-      const freshLogs = normalizeLogs(listRes?.data || []);
-
-      try {
-        const mins = diffMinutes(bedTime, wakeTime);
-        const newEntry = {
-          dateISO: sendDate,
-          bedTime,
-          wakeTime,
-          durationMin: mins,
-          quality,
-          mood,
-          factors: Object.keys(factors).filter((k) => !!factors[k]),
-        };
-
-        setEntries((prev) => {
-          const others = prev.filter((e) => e.dateISO !== sendDate);
-          const next = [newEntry, ...others]
-            .sort((a, b) => (a.dateISO < b.dateISO ? 1 : -1))
-            .slice(0, 7);
-          AsyncStorage.setItem('sleepJournal', JSON.stringify(next));
-          return next;
+      if (existing?.success && existing?.data?._id) {
+        // Update
+        await apiPut(`/api/notes/${existing.data._id}`, {
+          content: notes,
+          date: sleepDate
         });
-      } catch (err) {
-        if (__DEV__) console.warn('[Sleep] update local entries failed', err);
+      } else {
+        // Create new
+        const payload = {
+          content: notes,
+          date: sleepDate,
+        };
+        await apiPost('/api/notes', payload);
       }
 
-      setLogs(freshLogs);
-      notifySuccess('Thành công', 'Đã lưu nhật ký giấc ngủ!');
+      // Refresh local list
+      fetchNotesHistory();
+
+      notifySuccess('Thành công', 'Đã lưu nhật ký!');
     } catch (e: any) {
-      console.error('[Sleep] save error:', e);
-      const msg = e?.data?.message || e?.message || 'Không thể lưu nhật ký.';
-      notifyError('Lỗi', String(msg));
+      notifyError('Lỗi', e?.data?.message || e?.message || 'Không thể lưu nhật ký.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = async (logId: string, dateISO: string) => {
-    console.log('[UI] handleDelete click:', { logId, dateISO });
-
-    if (!logId) {
-      notifyError('Lỗi', 'Không tìm thấy _id để xoá.');
-      return;
-    }
-
+  const onSaveSleepOnly = async () => {
     try {
-      const ok = await confirmDelete('Bạn có chắc muốn xoá nhật ký này?');
-      if (!ok) return;
-    } catch (e) {
-      console.warn('[UI] confirmDelete failed:', e);
-      return;
-    }
+      setLoading(true);
 
-    setDeletingId(logId);
-    const snapshot = logs;
-    setLogs((prev: any[]) => prev.filter((l) => l._id !== logId));
+      const parseTime = (timeStr: string, baseDate: string) => {
+        const [time, ap] = timeStr.split(' ');
+        let [hh, mm] = time.split(':').map(Number);
+        if (ap === 'PM' && hh !== 12) hh += 12;
+        if (ap === 'AM' && hh === 12) hh = 0;
+        return new Date(`${baseDate}T${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}:00`);
+      };
 
-    try {
-      await apiDelete(`/api/sleep/logs/${logId}`);
+      let wakeAtDate = parseTime(wakeTime, sleepDate);
+      let sleepAtDate = parseTime(bedTime, sleepDate);
 
-      const listRes = await apiGet('/api/sleep/logs?page=1&limit=10');
-      setLogs(normalizeLogs(listRes?.data || []));
+      if (sleepAtDate > wakeAtDate) {
+        sleepAtDate.setDate(sleepAtDate.getDate() - 1);
+      }
 
-      setEntries((prev) => {
-        const next = prev.filter((e) => e.dateISO !== dateISO);
-        AsyncStorage.setItem('sleepJournal', JSON.stringify(next));
-        return next;
-      });
+      const payload = {
+        sleepAt: sleepAtDate.toISOString(),
+        wakeAt: wakeAtDate.toISOString(),
+        notes: '', // Decoupled from notes history
+      };
 
-      notifySuccess('Đã xoá', 'Nhật ký đã được xoá.');
-    } catch (err: any) {
-      console.log('[UI] delete error:', err);
-      // rollback nếu lỗi
-      setLogs(snapshot);
-      notifyError('Lỗi', err?.message || 'Không thể xoá nhật ký.');
+      const res = currentLogId
+        ? await apiPut(`/api/sleep/logs/${currentLogId}`, payload)
+        : await apiPost('/api/sleep/logs', payload);
+
+      if (res?.success) {
+        notifySuccess('Thành công', currentLogId ? 'Đã cập nhật giấc ngủ!' : 'Đã lưu giấc ngủ!');
+        const logsRes = await apiGet('/api/sleep/logs?page=1&limit=50');
+        const freshLogs = normalizeLogs(logsRes?.data || []);
+        setLogs(freshLogs);
+
+        // Update currentLogId if it was a new record
+        if (res.data?._id) {
+          setCurrentLogId(res.data._id);
+        }
+
+        // Update daily evaluation
+        if (res.evaluation) {
+          setEvaluation(res.evaluation);
+        } else if (freshLogs.length > 0) {
+          const latest = freshLogs[0];
+          setEvaluation({
+            level: (latest.durationMin || 0) >= 420 ? 'success' : 'warning',
+            title: (latest.durationMin || 0) >= 420 ? 'Giấc ngủ tốt' : 'Thiếu ngủ',
+            message: (latest.durationMin || 0) >= 420
+              ? `Tuyệt vời! Bạn đã ngủ ${formatMinToHM(latest.durationMin || 0)}. Hãy duy trì thói quen này để cơ thể luôn tràn đầy năng lượng!`
+              : `Hôm nay bạn ngủ ${formatMinToHM(latest.durationMin || 0)} (thiếu ngủ). Đừng quên đi ngủ sớm hơn tối nay và hạn chế caffeine để phục hồi sức khoẻ nhé!`
+          });
+        }
+      }
+    } catch (e: any) {
+      const msg = e?.data?.message || e?.message || 'Không thể lưu giấc ngủ.';
+      notifyError('Lỗi', String(msg));
     } finally {
-      setDeletingId(null);
-    }
-  };
-  const handleSetReminder = async () => {
-    try {
-      const mins = toMins12h(bedTime);
-      const h = Math.floor(mins / 60);
-      const m = mins % 60;
-      await scheduleDailyNotification('Đến giờ đi ngủ!', 'Chúc bạn ngủ ngon và mơ đẹp!', h, m);
-      notifySuccess('Đã đặt nhắc nhở', `Bạn sẽ được nhắc vào lúc ${bedTime} mỗi ngày.`);
-    } catch (error) {
-      console.error(error);
-      notifyError('Lỗi', 'Không thể đặt nhắc nhở.');
+      setLoading(false);
     }
   };
 
@@ -469,7 +424,7 @@ export default function SleepLab() {
           <Button backgroundColor="transparent" height={36} width={36} onPress={() => router.back()}>
             <Ionicons name="chevron-back" size={22} color="#000" />
           </Button>
-          <Text fontSize={18} fontWeight="700" style={{ marginLeft: 8 }} color="#000">{'Sleep'}</Text>
+          <Text fontSize={18} fontWeight="700" style={{ marginLeft: 8 }} color="#000">{'Giấc ngủ'}</Text>
           <XStack flex={1} />
           <Button backgroundColor="transparent" height={36} width={36}>
             <Ionicons name="moon-outline" size={20} color={PRIMARY} />
@@ -479,23 +434,23 @@ export default function SleepLab() {
         {/* Tabs */}
         <XStack paddingHorizontal={16} marginBottom={8} gap={8}>
           {[
-            { key: 'journal', label: 'Nhật ký ngủ' },
+            { key: 'journal', label: 'Nhật ký' },
             { key: 'support', label: 'Hỗ trợ ngủ' },
             { key: 'dreams', label: 'Giấc mơ' },
           ].map((t) => {
-            const active = tab === (t.key as any);
+            const active = tab === t.key;
             return (
               <Button
                 key={t.key}
                 flex={1}
-                height={52}
-                borderRadius={999}
-                backgroundColor={active ? '#F3E8FF' : '#FFFFFF'}
-                borderColor={active ? PRIMARY : '#E8ECF3'}
+                height={40}
+                backgroundColor={active ? PRIMARY : '#FFF'}
                 borderWidth={1}
+                borderColor={active ? PRIMARY : '#E8ECF3'}
+                borderRadius={10}
                 onPress={() => setTab(t.key as any)}
               >
-                <Text fontSize={14} color={active ? PRIMARY : '#6B6B6B'} fontWeight="600">
+                <Text color={active ? '#FFF' : '#666'} fontWeight={active ? '700' : '500'}>
                   {t.label}
                 </Text>
               </Button>
@@ -503,207 +458,284 @@ export default function SleepLab() {
           })}
         </XStack>
 
-        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
-
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 30 }}>
           {/* ============= TAB 1: JOURNAL ============= */}
           {tab === 'journal' && (
-            <YStack gap={16}>
+            <YStack paddingHorizontal={16}>
+              {/* Card Viết Nhật ký */}
               <Card
                 padding={16}
                 borderRadius={12}
                 borderWidth={1}
                 borderColor="#E8ECF3"
                 backgroundColor="#FFFFFF"
+                marginTop={8}
               >
-                <XStack alignItems="center" gap={8}>
-                  <Ionicons name="bed-outline" size={20} color={PRIMARY} />
-                  <Text fontSize={16} fontWeight="700">Thời gian ngủ hôm nay</Text>
-                </XStack>
-                {/* Sleep Date Input - test */}
-                <YStack marginTop={12}>
-                  <Text fontSize={13} color="#6B6B6B">Ngày ghi nhật ký (test trong vòng 1 tuần)</Text>
-
-                  <XStack
-                    alignItems="center"
-                    height={52}
-                    borderRadius={12}
-                    borderWidth={1}
-                    backgroundColor="#F8F8F8"
-                    borderColor="#E4E4E4"
-                    paddingHorizontal={12}
-                    style={{ marginTop: 6 }}
-                  >
-                    <Ionicons name="calendar-outline" size={18} color="#6B6B6B" />
-                    <Input
-                      flex={1}
-                      height={52}
-                      fontSize={16}
-                      placeholder="yyyy-mm-dd (VD: 2025-11-27)"
-                      value={sleepDate}
-                      onChangeText={setSleepDate}
-                      backgroundColor="transparent"
-                      style={{ marginLeft: 8 }}
-                    />
+                <XStack alignItems="center" justifyContent="space-between" marginBottom={12}>
+                  <XStack alignItems="center" gap={8}>
+                    <Ionicons name="journal-outline" size={20} color={PRIMARY} />
+                    <Text fontSize={16} fontWeight="700" color="#1F1F1F">Viết Nhật ký</Text>
                   </XStack>
-                </YStack>
-
-                {/* Bed / Wake rows */}
-                <XStack marginTop={12} gap={12}>
-                  <YStack flex={1}>
-                    <Text fontSize={13} color="#6B6B6B">Giờ đi ngủ</Text>
-                    <XStack
-                      alignItems="center"
-                      height={52}
-                      borderRadius={12}
-                      borderWidth={1}
-                      backgroundColor="#F8F8F8"
-                      borderColor="#E4E4E4"
-                      paddingHorizontal={12}
-                      style={{ marginTop: 6 }}
-                    >
-                      <Ionicons name="time-outline" size={18} color="#6B6B6B" />
-                      <Input
-                        flex={1}
-                        height={52}
-                        fontSize={16}
-                        placeholder="10:30 PM"
-                        value={bedTime}
-                        onChangeText={setBedTime}
-                        backgroundColor="transparent"
-                        style={{ marginLeft: 8 }}
-                      />
+                  <TouchableOpacity onPress={() => setDatePickerVisibility(true)}>
+                    <XStack alignItems="center" gap={4} backgroundColor="#F3E8FF" paddingHorizontal={10} paddingVertical={6} borderRadius={20}>
+                      <Ionicons name="calendar-outline" size={14} color={PRIMARY} />
+                      <Text color={PRIMARY} fontSize={13} fontWeight="600">{formatVN(sleepDate)}</Text>
                     </XStack>
-                  </YStack>
-
-                  <YStack flex={1}>
-                    <Text fontSize={13} color="#6B6B6B">Giờ thức dậy</Text>
-                    <XStack
-                      alignItems="center"
-                      height={52}
-                      borderRadius={12}
-                      borderWidth={1}
-                      backgroundColor="#F8F8F8"
-                      borderColor="#E4E4E4"
-                      paddingHorizontal={12}
-                      style={{ marginTop: 6 }}
-                    >
-                      <Ionicons name="alarm-outline" size={18} color="#6B6B6B" />
-                      <Input
-                        flex={1}
-                        height={52}
-                        fontSize={16}
-                        placeholder="7:00 AM"
-                        value={wakeTime}
-                        onChangeText={setWakeTime}
-                        backgroundColor="transparent"
-                        style={{ marginLeft: 8 }}
-                      />
-                    </XStack>
-                  </YStack>
+                  </TouchableOpacity>
                 </XStack>
 
-                {/* Duration badge */}
-                <YStack
-                  alignItems="center"
-                  justifyContent="center"
-                  height={44}
+                <DateTimePickerModal
+                  isVisible={isDatePickerVisible}
+                  mode="date"
+                  onConfirm={(d) => {
+                    const yyyy = d.getFullYear();
+                    const mm = String(d.getMonth() + 1).padStart(2, '0');
+                    const dd = String(d.getDate()).padStart(2, '0');
+                    const iso = `${yyyy}-${mm}-${dd}`;
+                    setSleepDate(iso);
+                    setDatePickerVisibility(false);
+                    fetchNoteForDate(iso);
+                  }}
+                  onCancel={() => setDatePickerVisibility(false)}
+                />
+                <TextArea
+                  placeholder="Viết nhật ký mỗi ngày có thể giúp bạn nhẹ lòng hơn..."
+                  value={notes}
+                  onChangeText={setNotes}
+                  marginTop={12}
+                  height={100}
+                  fontSize={14}
                   borderRadius={10}
-                  backgroundColor="#F3E8FF"
-                  style={{ marginTop: 12 }}
-                >
-                  <Text fontSize={15} fontWeight="700" color={PRIMARY}>{`Thời gian ngủ: ${durationText}`}</Text>
-                </YStack>
-
-                <Separator backgroundColor="#EEF1F6" style={{ marginVertical: 12 }} />
-
-                {/* Rating */}
-                <XStack alignItems="center" gap={8} style={{ marginTop: 12 }}>
-                  <Ionicons name="star-outline" size={20} color={PRIMARY} />
-                  <Text fontSize={13} color="#6B6B6B">Chất lượng giấc ngủ</Text>
-                </XStack>
-                <XStack alignItems="center" style={{ marginTop: 6 }}>
-                  {Array.from({ length: 5 }).map((_, i) => {
-                    const idx = i + 1;
-                    const active = quality >= idx;
-                    return (
-                      <Button
-                        key={idx}
-                        backgroundColor="transparent"
-                        height={36}
-                        width={36}
-                        onPress={() => setQuality(idx)}
-                      >
-                        <AntDesign name="star" size={20} color={active ? '#FFC107' : '#E0E0E0'} />
-                      </Button>
-                    );
-                  })}
-                </XStack>
-
-                {/* Mood */}
-                <XStack alignItems="center" gap={8} style={{ marginTop: 12 }}>
-                  <Ionicons name="happy-outline" size={20} color={PRIMARY} />
-                  <Text fontSize={13} color="#6B6B6B">Tình trạng khi thức dậy</Text>
-                </XStack>
-                <XStack alignItems="center" flexWrap="wrap" style={{ marginTop: 6 }}>
-                  {(['😴', '😐', '😊', '😫', '😡', '😭', '🤩', '😌', '🤯'] as Mood[]).map((m) => (
-                    <Button
-                      key={m}
-                      backgroundColor={mood === m ? '#FFF3CC' : '#FFFFFF'}
-                      borderWidth={1}
-                      borderColor="#E8ECF3"
-                      height={40}
-                      borderRadius={999}
-                      paddingHorizontal={14}
-                      onPress={() => setMood(m)}
-                      style={{ marginRight: 8, marginBottom: 8 }}
-                    >
-                      <Text fontSize={18}>{m}</Text>
-                    </Button>
-                  ))}
-                </XStack>
-
-                {/* Factors */}
-                <XStack alignItems="center" gap={8} style={{ marginTop: 12 }}>
-                  <Ionicons name="list-outline" size={20} color={PRIMARY} />
-                  <Text fontSize={13} color="#6B6B6B">Yếu tố ảnh hưởng</Text>
-                </XStack>
-                <XStack flexWrap="wrap" style={{ marginTop: 6 }}>
-                  {FACTORS.map((f) => {
-                    const active = !!factors[f];
-                    return (
-                      <Button
-                        key={f}
-                        backgroundColor={active ? '#EEF0FF' : '#FFFFFF'}
-                        borderWidth={1}
-                        borderColor={active ? PRIMARY : '#E8ECF3'}
-                        height={36}
-                        borderRadius={999}
-                        paddingHorizontal={12}
-                        onPress={() => toggleFactor(f)}
-                        style={{ marginRight: 8, marginBottom: 8 }}
-                      >
-                        <Text fontSize={13} color={active ? PRIMARY : '#111111'} fontWeight="600">
-                          {f}
-                        </Text>
-                      </Button>
-                    );
-                  })}
-                </XStack>
-
-                {/* Save */}
+                  borderColor="#E8ECF3"
+                  backgroundColor="#F9FBFF"
+                />
                 <Button
-                  height={52}
-                  borderRadius={12}
+                  marginTop={16}
+                  height={48}
+                  borderRadius={10}
                   backgroundColor={PRIMARY}
-                  pressStyle={{ backgroundColor: PRIMARY_PRESSED }}
-                  onPress={onSaveJournal}
-                  style={{ marginTop: 12 }}
+                  pressStyle={{ backgroundColor: PRIMARY_PRESSED, scale: 0.98 }}
+                  onPress={onSaveJournalOnly}
+                  disabled={loading}
                 >
-                  <Text fontSize={16} fontWeight="700" color="#FFFFFF">Lưu nhật ký ngủ</Text>
+                  <Text color="white" fontWeight="700" fontSize={15}>Lưu nhật ký</Text>
                 </Button>
               </Card>
 
-              {/* Tip banner */}
+              {/* Card Giấc ngủ */}
+              <Card
+                padding={16}
+                borderRadius={12}
+                borderWidth={1}
+                borderColor="#E8ECF3"
+                backgroundColor="#FFFFFF"
+                marginTop={16}
+              >
+                <XStack alignItems="center" gap={8} marginBottom={12}>
+                  <Ionicons name="bed-outline" size={20} color={PRIMARY} />
+                  <Text fontSize={16} fontWeight="700" color="#1F1F1F">Giấc ngủ</Text>
+                </XStack>
+
+                <YStack marginTop={12}>
+                  <XStack gap={12}>
+                    <YStack flex={1}>
+                      <Text fontSize={13} color="#6B6B6B">Giờ đi ngủ</Text>
+                      <TouchableOpacity
+                        activeOpacity={0.7}
+                        onPress={() => setBedTimePickerVisibility(true)}
+                      >
+                        <XStack
+                          alignItems="center"
+                          height={48}
+                          borderRadius={10}
+                          borderWidth={1}
+                          borderColor="#E8ECF3"
+                          backgroundColor="#F9FBFF"
+                          paddingHorizontal={12}
+                          marginTop={6}
+                        >
+                          <Ionicons name="time-outline" size={18} color={PRIMARY} />
+                          <Text flex={1} style={{ marginLeft: 8 }} color="#1F1F1F">{bedTime}</Text>
+                        </XStack>
+                      </TouchableOpacity>
+                    </YStack>
+
+                    <YStack flex={1}>
+                      <Text fontSize={13} color="#6B6B6B">Giờ thức dậy</Text>
+                      <TouchableOpacity
+                        activeOpacity={0.7}
+                        onPress={() => setWakeTimePickerVisibility(true)}
+                      >
+                        <XStack
+                          alignItems="center"
+                          height={48}
+                          borderRadius={10}
+                          borderWidth={1}
+                          borderColor="#E8ECF3"
+                          backgroundColor="#F9FBFF"
+                          paddingHorizontal={12}
+                          marginTop={6}
+                        >
+                          <Ionicons name="sunny-outline" size={18} color="#FFB000" />
+                          <Text flex={1} style={{ marginLeft: 8 }} color="#1F1F1F">{wakeTime}</Text>
+                        </XStack>
+                      </TouchableOpacity>
+                    </YStack>
+                  </XStack>
+                </YStack>
+
+                <Button
+                  backgroundColor={PRIMARY}
+                  color="white"
+                  height={48}
+                  borderRadius={10}
+                  pressStyle={{ backgroundColor: PRIMARY_PRESSED, scale: 0.98 }}
+                  onPress={onSaveSleepOnly}
+                  disabled={loading}
+                >
+                  <Text color="white" fontWeight="600" fontSize={15}>
+                    {currentLogId ? 'Cập nhật giấc ngủ' : 'Lưu giấc ngủ'}
+                  </Text>
+                </Button>
+
+                <DateTimePickerModal
+                  isVisible={isBedTimePickerVisible}
+                  mode="time"
+                  onConfirm={(d) => {
+                    setBedTime(d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+                    setBedTimePickerVisibility(false);
+                  }}
+                  onCancel={() => setBedTimePickerVisibility(false)}
+                />
+                <DateTimePickerModal
+                  isVisible={isWakeTimePickerVisible}
+                  mode="time"
+                  onConfirm={(d) => {
+                    setWakeTime(d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+                    setWakeTimePickerVisibility(false);
+                  }}
+                  onCancel={() => setWakeTimePickerVisibility(false)}
+                />
+              </Card>
+
+              {/* Card Chất lượng giấc ngủ (formerly Thông tin bổ sung) */}
+              <Card
+                padding={16}
+                borderRadius={12}
+                borderWidth={1}
+                borderColor="#E8ECF3"
+                backgroundColor="#FFFFFF"
+                marginTop={16}
+              >
+                <XStack alignItems="center" gap={8} marginBottom={12}>
+                  <Ionicons name="information-circle-outline" size={20} color={PRIMARY} />
+                  <Text fontSize={16} fontWeight="700" color="#1F1F1F">Chất lượng giấc ngủ</Text>
+                </XStack>
+
+                <YStack gap={8}>
+                  {profile && (
+                    <>
+                      <XStack justifyContent="space-between">
+                        <Text color="#6B6B6B">Giới tính:</Text>
+                        <Text fontWeight="600" color="#1F1F1F">
+                          {profile.gender === 'male' || profile.gender === 'Nam' ? 'Nam' : 'Nữ'}
+                        </Text>
+                      </XStack>
+                      <XStack justifyContent="space-between">
+                        <Text color="#6B6B6B">Độ tuổi:</Text>
+                        <Text fontWeight="600" color="#1F1F1F">
+                          {getAgeGroup(profile?.dateOfBirth)}
+                        </Text>
+                      </XStack>
+                    </>
+                  )}
+
+                  <XStack justifyContent="space-between">
+                    <Text color="#6B6B6B">Chất lượng:</Text>
+                    <Text
+                      fontWeight="600"
+                      color={
+                        evaluation?.level === 'success'
+                          ? '#2E7D32'
+                          : evaluation?.level === 'warning'
+                            ? '#D32F2F'
+                            : '#1976D2'
+                      }
+                    >
+                      {evaluation?.title || 'Đang chờ ghi nhận hôm nay...'}
+                    </Text>
+                  </XStack>
+
+                  <Separator marginVertical={10} borderColor="#EEE" />
+
+                  <Text fontSize={14} color="#6B6B6B" fontStyle="italic">
+                    Lời nhắn hôm nay:
+                  </Text>
+                  <Text fontSize={14} color="#1F1F1F" marginTop={4}>
+                    {evaluation?.message || 'Hãy ghi lại giấc ngủ sáng nay để xem đánh giá nhanh nhé!'}
+                  </Text>
+                </YStack>
+              </Card>
+
+              {/* Bảng lịch sử Nhật ký */}
+              <Card
+                padding={16}
+                borderRadius={12}
+                borderWidth={1}
+                borderColor="#E8ECF3"
+                backgroundColor="#FFFFFF"
+                marginTop={16}
+              >
+                <XStack alignItems="center" gap={8} marginBottom={10}>
+                  <Ionicons name="journal-outline" size={20} color={PRIMARY} />
+                  <Text fontSize={17} fontWeight="700" color="#1F1F1F">Lịch sử Nhật ký</Text>
+                </XStack>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <YStack>
+                    <XStack backgroundColor="#F7F9FC" paddingVertical={8} paddingHorizontal={10} borderRadius={10} borderWidth={1} borderColor="#E5E9F0">
+                      <Text fontSize={11} fontWeight="700" color="#6B6B6B" style={{ width: 80 }}>Ngày</Text>
+                      <Text fontSize={11} fontWeight="700" color="#6B6B6B" style={{ width: 60 }}>Giờ lưu</Text>
+                      <Text fontSize={11} fontWeight="700" color="#6B6B6B" style={{ width: 140, marginLeft: 10 }}>Nội dung</Text>
+                      <Text fontSize={11} fontWeight="700" color="#6B6B6B" style={{ width: 80, textAlign: 'center' }}>Thao tác</Text>
+                    </XStack>
+                    {entries.length === 0 ? (
+                      <Text
+                        fontSize={13}
+                        color="#6B6B6B"
+                        textAlign="center"
+                        marginTop={12}
+                        paddingHorizontal={10}
+                      >
+                        Chưa có dữ liệu nhật ký.
+                      </Text>
+                    ) : (
+                      entries.map((e, idx) => (
+                        <XStack key={idx} paddingVertical={10} paddingHorizontal={10} borderBottomWidth={1} borderColor="#EEF1F5" alignItems="center">
+                          <Text fontSize={13} style={{ width: 80 }} color="#333">{formatVN(e.dateISO)}</Text>
+                          <Text fontSize={13} style={{ width: 60 }} color="#333">{e.saveTime}</Text>
+                          <Pressable onPress={() => notifyInfo(`Nhật ký ${formatVN(e.dateISO)}`, e.notes || '')}>
+                            <Text fontSize={13} style={{ width: 140, marginLeft: 10 }} numberOfLines={1} color="#333">{e.notes || '—'}</Text>
+                          </Pressable>
+                          <XStack gap={12} style={{ width: 80 }} justifyContent="center">
+                            <TouchableOpacity onPress={() => {
+                              setSleepDate(e.dateISO);
+                              setNotes(e.notes || '');
+                              notifyInfo('Sửa nhật ký', 'Nội dung đã được đưa lên trên để chỉnh sửa.');
+                            }}>
+                              <Ionicons name="create-outline" size={18} color={PRIMARY} />
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => executeDeleteLog(e._id, e.dateISO)}>
+                              <Ionicons name="trash-outline" size={18} color="#E53935" />
+                            </TouchableOpacity>
+                          </XStack>
+                        </XStack>
+                      ))
+                    )}
+                  </YStack>
+                </ScrollView>
+              </Card>
+
+              {/* Mẹo ngủ ngon */}
               <Card
                 backgroundColor="#F3E8FF"
                 borderWidth={1}
@@ -711,6 +743,8 @@ export default function SleepLab() {
                 borderRadius={12}
                 paddingHorizontal={16}
                 paddingVertical={14}
+                marginTop={16}
+                marginBottom={20}
               >
                 <XStack alignItems="center">
                   <Ionicons name="bulb-outline" size={20} color={PRIMARY_PRESSED} />
@@ -732,176 +766,6 @@ export default function SleepLab() {
                   </YStack>
                 </XStack>
               </Card>
-              {/* BẢNG THỐNG KÊ 7 NGÀY */}
-              <Card
-                padding={16}
-                borderRadius={16}
-                borderWidth={1}
-                borderColor="#E8ECF3"
-                backgroundColor="#FFFFFF"
-                style={{ marginTop: 12 }}
-              >
-                <XStack alignItems="center" gap={8} marginBottom={10}>
-                  <Ionicons name="analytics-outline" size={22} color={PRIMARY} />
-                  <Text fontSize={17} fontWeight="700" color="#1F1F1F">
-                    Thống kê giấc ngủ · 7 ngày gần nhất
-                  </Text>
-                </XStack>
-
-                {/* Horizontal ScrollView for table */}
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  <YStack>
-                    {/* Header */}
-                    <XStack
-                      alignItems="center"
-                      justifyContent="space-between"
-                      backgroundColor="#F7F9FC"
-                      paddingVertical={8}
-                      paddingHorizontal={10}
-                      borderRadius={10}
-                      borderWidth={1}
-                      borderColor="#E5E9F0"
-                    >
-                      <Text
-                        fontSize={HEADER_FONT}
-                        fontWeight="700"
-                        color="#6B6B6B"
-                        style={{ width: COL_DAY }}
-                      >
-                        Ngày
-                      </Text>
-
-                      <Text
-                        fontSize={HEADER_FONT}
-                        fontWeight="700"
-                        color="#6B6B6B"
-                        style={{ width: COL_TIME, textAlign: 'center' }}
-                      >
-                        Đi ngủ
-                      </Text>
-
-                      <Text
-                        fontSize={HEADER_FONT}
-                        fontWeight="700"
-                        color="#6B6B6B"
-                        style={{ width: COL_TIME, textAlign: 'center' }}
-                      >
-                        Thức dậy
-                      </Text>
-
-                      <Text
-                        fontSize={HEADER_FONT}
-                        fontWeight="700"
-                        color="#6B6B6B"
-                        style={{ width: COL_DURATION, textAlign: 'center' }}
-                      >
-                        Thời gian
-                      </Text>
-
-                      <Text
-                        fontSize={HEADER_FONT}
-                        fontWeight="700"
-                        color="#6B6B6B"
-                        style={{ width: COL_STAR, textAlign: 'center' }}
-                      >
-                        Sao
-                      </Text>
-
-                      <Text
-                        fontSize={HEADER_FONT}
-                        fontWeight="700"
-                        color="#6B6B6B"
-                        style={{ width: COL_MOOD, textAlign: 'right' }}
-                      >
-                        Mood
-                      </Text>
-
-                      <XStack style={{ width: 60 }} />
-                    </XStack>
-
-                    {/* Rows */}
-                    {weeklyEntries.length === 0 ? (
-                      <Text
-                        fontSize={13}
-                        color="#6B6B6B"
-                        textAlign="center"
-                        marginTop={12}
-                      >
-                        Chưa có dữ liệu trong 7 ngày gần nhất.
-                        Hãy bấm <Text fontWeight="700" color={PRIMARY}>“Lưu nhật ký ngủ”</Text>.
-                      </Text>
-                    ) : (
-                      weeklyEntries.map((e, index) => (
-                        <XStack
-                          key={e.dateISO}
-                          alignItems="center"
-                          justifyContent="space-between"
-                          paddingVertical={12}
-                          paddingHorizontal={10}
-                          backgroundColor={index % 2 === 0 ? '#FFFFFF' : '#F9FBFF'}
-                          borderBottomWidth={1}
-                          borderColor="#EEF1F5"
-                          borderRadius={index === weeklyEntries.length - 1 ? 10 : 0}
-                        >
-                          <Text fontSize={13} fontWeight="600" color="#1F1F1F" style={{ width: COL_DAY }}>
-                            {formatVN(e.dateISO)}
-                          </Text>
-                          <Text fontSize={13} color="#333" style={{ width: COL_TIME, textAlign: 'center' }}>{e.bedTime}</Text>
-                          <Text fontSize={13} color="#333" style={{ width: COL_TIME, textAlign: 'center' }}>{e.wakeTime}</Text>
-                          <Text fontSize={13} color="#333" style={{ width: COL_DURATION, textAlign: 'center' }}>{fmtDuration(e.durationMin)}</Text>
-
-                          <XStack style={{ width: COL_STAR, justifyContent: 'center' }} alignItems="center" gap={6}>
-                            {Array.from({ length: 5 }).map((_, i) => (
-                              <AntDesign
-                                key={i}
-                                name="star"
-                                size={12}
-                                color={i < e.quality ? '#FFC107' : '#E0E0E0'}
-                              />
-                            ))}
-                          </XStack>
-
-                          <Text fontSize={14} style={{ width: COL_MOOD, textAlign: 'right' }}>
-                            {e.mood}
-                          </Text>
-                          <Button
-                            backgroundColor="#FFEAEA"
-                            disabled={deletingId === idByDate[e.dateISO]}
-                            borderRadius={999}
-                            paddingHorizontal={10}
-                            height={26}
-                            onPress={async () => {
-                              try {
-                                console.log('[UI] Click Xoá ngày:', e.dateISO);
-                                // tìm _id tin cậy theo YMD
-                                const id = await getIdForDate(e.dateISO);
-                                console.log('[UI] Resolved _id:', id);
-                                if (!id) {
-                                  Alert.alert(
-                                    'Không tìm thấy log để xoá',
-                                    'Hãy làm mới dữ liệu (ấn “Lưu nhật ký ngủ” để đồng bộ hoặc kéo xuống để tải lại).'
-                                  );
-                                  return;
-                                }
-                                // gọi flow xoá (đã có optimistic update)
-                                await handleDelete(id, e.dateISO);
-                              } catch (err: any) {
-                                console.log('[UI] onPress delete error:', err);
-                                Alert.alert('Lỗi', err?.message || 'Không thể xử lý yêu cầu xoá.');
-                              }
-                            }}
-                          >
-                            {deletingId === idByDate[e.dateISO]
-                              ? <Text color="#9CA3AF" fontSize={12}>Đang xoá…</Text>
-                              : <Text color="#E53935" fontSize={12}>Xoá</Text>
-                            }
-                          </Button>
-                        </XStack>
-                      ))
-                    )}
-                  </YStack>
-                </ScrollView>
-              </Card>
             </YStack>
           )}
 
@@ -916,44 +780,44 @@ export default function SleepLab() {
   );
 }
 
-/** Parse "HH:MM AM/PM" and get diff minutes from bed -> wake (wrap overnight) */
-function diffMinutes(bed: string, wake: string) {
-  const b = toMinutes(bed);
-  const w = toMinutes(wake);
-  const day = 24 * 60;
-  const diff = (w - b + day) % day; // handle overnight
-  return diff === 0 ? day : diff;   // treat same time as full day
+/** Utility to normalize logs from BE */
+function normalizeLogs(raw: any[]) {
+  if (!Array.isArray(raw)) return [];
+  return raw.map(it => ({
+    _id: it?._id,
+    sleepAt: it?.sleepAt,
+    wakeAt: it?.wakeAt,
+    durationMin: it?.durationMin,
+    date: it?.sleepAt ? it.sleepAt.slice(0, 10) : ''
+  }));
 }
-function toMinutes(t: string) {
-  // "10:30 PM" / "7:00 AM"
-  const m = t.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-  if (!m) return 0;
-  let hh = parseInt(m[1], 10);
-  const mm = parseInt(m[2], 10);
-  const ap = m[3].toUpperCase();
-  if (ap === 'PM' && hh !== 12) hh += 12;
-  if (ap === 'AM' && hh === 12) hh = 0;
-  return hh * 60 + mm;
+
+/** Parse YMD from a log object - Based on wakeAt because that defines "today's sleep" */
+function getYMDFromLog(log: any) {
+  if (!log?.wakeAt) return '';
+  // Convert wakeAt to local date YYYY-MM-DD
+  const d = new Date(log.wakeAt);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
-const formatMinutes = (m: number | null | undefined) => {
-  if (m == null) return '—';
-  const h = Math.floor(m / 60);
-  const mm = m % 60;
-  return `${h}h ${mm}m`;
-};
-function fmtDuration(mins: number) {
+
+function formatMinToHM(mins: number) {
   const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  return `${h}h ${String(m).padStart(2, '0')}m`;
+  const mm = mins % 60;
+  return `${h}h ${mm}m`;
 }
 
 function formatVN(iso: string) {
+  if (!iso) return '—';
   const d = new Date(iso + 'T00:00:00');
   const dd = String(d.getDate()).padStart(2, '0');
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   const yyyy = d.getFullYear();
   return `${dd}/${mm}/${yyyy}`;
 }
+
 function labelMood(m: string) {
   switch (m) {
     case '😊': return 'Tích cực';

@@ -1,22 +1,19 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { ScrollView, KeyboardAvoidingView, Platform, View, TextInput, FlatList, StyleSheet, SafeAreaView } from 'react-native';
-import { YStack, XStack, Card, Text, Input, Button, Theme } from 'tamagui';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import React, { useState, useRef, useCallback } from 'react';
+import { ScrollView, KeyboardAvoidingView, Platform, View, TextInput, StyleSheet, ActivityIndicator } from 'react-native';
+import { Text, Button } from 'tamagui';
+import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import LinearGradient from 'expo-linear-gradient';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { useNavigation } from '@react-navigation/native';
+import { AIApi } from '../../../api/services';
+import { notifyError } from '../../../utils/notify';
 
 const PRIMARY = '#9B59FF';
-const GRADIENT = ['#9B59FF', '#7F00FF'];
-const TAB_BAR_HEIGHT = 72;
 
 type Msg = { id: string; role: 'user' | 'ai'; text: string };
 
 export default function AIChatScreen() {
-  const router = useRouter();
   const navigation = useNavigation();
-  const insets = useSafeAreaInsets();
 
   // Ẩn tab bar khi vào màn AI chat, hiện lại khi rời màn
   useFocusEffect(
@@ -43,24 +40,54 @@ export default function AIChatScreen() {
     },
   ]);
   const [text, setText] = useState('');
+  const [loading, setLoading] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
 
-  const sendMsg = () => {
+  const sendMsg = async () => {
     const content = text.trim();
-    if (!content) return;
+    if (!content || loading) return;
 
     const userMsg: Msg = { id: Date.now().toString(), role: 'user', text: content };
     setMsgs((m) => [...m, userMsg]);
     setText('');
-    setTimeout(() => {
-      const reply: Msg = {
-        id: (Date.now() + 1).toString(),
+    setLoading(true);
+
+    try {
+      // Chuẩn bị lịch sử tin nhắn cho BE
+      // BE expects: { role: 'user' | 'assistant', content: string }
+      const history = msgs.concat(userMsg).map(m => ({
+        role: m.role === 'ai' ? 'assistant' : 'user',
+        content: m.text
+      }));
+
+      const res = await AIApi.chat(history);
+
+      if (res.success && res.reply) {
+        const reply: Msg = {
+          id: Date.now().toString(),
+          role: 'ai',
+          text: res.reply,
+        };
+        setMsgs((m) => [...m, reply]);
+      } else {
+        throw new Error('Không nhận được phản hồi từ AI');
+      }
+    } catch (error: any) {
+      console.error('Chat error:', error);
+      notifyError('Lỗi', error.message || 'Không thể kết nối với AI. Vui lòng thử lại sau.');
+
+      // Thêm thông báo lỗi vào chat để người dùng biết
+      setMsgs((m) => [...m, {
+        id: Date.now().toString(),
         role: 'ai',
-        text: suggest(content),
-      };
-      setMsgs((m) => [...m, reply]);
-      scrollRef.current?.scrollToEnd({ animated: true });
-    }, 800);
+        text: 'Xin lỗi, mình đang gặp chút trục trặc kỹ thuật. Bạn thử lại sau nhé! 😅'
+      }]);
+    } finally {
+      setLoading(false);
+      setTimeout(() => {
+        scrollRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }
   };
 
   const renderMessage = ({ item, index }: { item: Msg; index: number }) => {
@@ -80,6 +107,10 @@ export default function AIChatScreen() {
             paddingVertical: 10,
             borderRadius: 16,
             elevation: 2,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.1,
+            shadowRadius: 2,
           }}
         >
           <Text fontSize={15} color={item.role === 'user' ? '#FFFFFF' : '#1F1F1F'} lineHeight={20}>
@@ -91,7 +122,7 @@ export default function AIChatScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F4F7FB' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F4F7FB' }} edges={['top', 'left', 'right']}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -105,6 +136,11 @@ export default function AIChatScreen() {
             showsVerticalScrollIndicator={false}
           >
             {msgs.map((item, index) => renderMessage({ item, index }))}
+            {loading && (
+              <View style={styles.loadingBubble}>
+                <ActivityIndicator size="small" color={PRIMARY} />
+              </View>
+            )}
           </ScrollView>
         </View>
 
@@ -116,17 +152,23 @@ export default function AIChatScreen() {
             value={text}
             onChangeText={setText}
             multiline
+            editable={!loading}
           />
 
           <Button
             height={48}
             width={48}
             borderRadius={14}
-            backgroundColor={PRIMARY}
+            backgroundColor={loading ? '#ccc' : PRIMARY}
             pressStyle={{ backgroundColor: '#7F00FF' }}
             onPress={sendMsg}
+            disabled={loading}
           >
-            <Ionicons name="send" size={18} color="#fff" />
+            {loading ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Ionicons name="send" size={18} color="#fff" />
+            )}
           </Button>
         </View>
       </KeyboardAvoidingView>
@@ -157,15 +199,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     fontSize: 15,
   },
+  loadingBubble: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 16,
+    marginBottom: 12,
+    elevation: 1,
+  }
 });
-
-function suggest(q: string) {
-  const s = q.toLowerCase();
-  if (s.includes('kể') || s.includes('chuyện'))
-    return '🌙 Chuyện ngắn: "Giấc mơ trên mây" — bạn đang trôi bồng bềnh giữa làn mây ấm, nghe gió ru nhẹ nhàng...';
-  if (s.includes('thiền') || s.includes('thư giãn'))
-    return '🧘 Thiền dẫn: Hít vào 4s... giữ 4s... thở ra 6s. Cảm nhận cơ thể nhẹ như khói tan.';
-  if (s.includes('mẹo') || s.includes('khó ngủ'))
-    return '💡 Mẹo ngủ nhanh: tránh màn hình 30 phút trước khi ngủ, phòng mát 22°C, ánh sáng vàng ấm.';
-  return 'Mình có thể kể chuyện, hướng dẫn thiền, hoặc gợi ý mẹo ngủ. Bạn muốn thử kiểu nào?';
-}
