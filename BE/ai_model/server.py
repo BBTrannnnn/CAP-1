@@ -1,33 +1,37 @@
+# ==========================================
+#   SERVER AI: VINALLAMA (SINGLE PARAGRAPH FIX)
+# ==========================================
+import os
+import sys
+
+# 1. CÀI ĐẶT
+print("Đang kiểm tra thư viện...")
+os.system("pip install -q -U bitsandbytes transformers peft accelerate datasets fastapi uvicorn pyngrok nest_asyncio")
+
+# 2. CẤU HÌNH
+NGROK_TOKEN = "376fTqd7ZLEBXEn7j65Uft95mxB_6mo8Hq5kpxr1PDyP21ZmU" 
+PORT = 8000
+
+# 3. TẠO SERVER FILE
+server_content = f"""
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 from peft import PeftModel
-import os
+from pyngrok import ngrok, conf
+import nest_asyncio
+import re
 
-# --- CẤU HÌNH ---
-# Đường dẫn đến thư mục chứa model bạn vừa train (giải nén file zip vào đây)
-ADAPTER_MODEL_PATH = "./model_finetuned" 
-BASE_MODEL_NAME = "mistralai/Mistral-7B-Instruct-v0.2"
+conf.get_default().auth_token = "{NGROK_TOKEN}"
+nest_asyncio.apply()
 
 app = FastAPI()
 
-print("-" * 50)
-print(" ĐANG KHỞI ĐỘNG AI SERVER...")
-print(f"   - Base Model: {BASE_MODEL_NAME}")
-print(f"   - Adapter Path: {ADAPTER_MODEL_PATH}")
-print("-" * 50)
+print("Đang tải Model Vinallama...")
 
-# 1. Load Tokenizer
-try:
-    tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL_NAME)
-    tokenizer.pad_token = tokenizer.eos_token
-except Exception as e:
-    print(f" Lỗi tải Tokenizer: {e}")
-    exit(1)
-
-# 2. Load Base Model (Dùng 4-bit để chạy nhẹ trên GPU thường)
+base_model_id = "vilm/vinallama-7b-chat"
 bnb_config = BitsAndBytesConfig(
     load_in_4bit=True,
     bnb_4bit_quant_type="nf4",
@@ -35,70 +39,110 @@ bnb_config = BitsAndBytesConfig(
     bnb_4bit_use_double_quant=False,
 )
 
+# Load Tokenizer & Model
 try:
+    tokenizer = AutoTokenizer.from_pretrained(base_model_id)
+    tokenizer.pad_token = tokenizer.eos_token
+    
     base_model = AutoModelForCausalLM.from_pretrained(
-        BASE_MODEL_NAME,
+        base_model_id,
         quantization_config=bnb_config,
         device_map="auto"
     )
 except Exception as e:
-    print(f" Lỗi tải Base Model: {e}")
-    exit(1)
+    print(f"Lỗi tải Base Model: {{e}}")
+    exit()
 
-# 3. Load Model Fine-tuned (Adapter)
-if os.path.exists(ADAPTER_MODEL_PATH):
-    try:
-        model = PeftModel.from_pretrained(base_model, ADAPTER_MODEL_PATH)
-        model.eval() # Chế độ suy luận
-        print(" ĐÃ LOAD MODEL THÀNH CÔNG! SẴN SÀNG PHỤC VỤ.")
-    except Exception as e:
-        print(f" Cảnh báo: Lỗi load Adapter ({e}). Hệ thống sẽ chạy bằng model gốc.")
+# Load Adapter
+adapter_path = ""
+import os
+for root, dirs, files in os.walk("/kaggle/input"):
+    if "adapter_model.safetensors" in files:
+        adapter_path = root
+        print(f"Đã tìm thấy Adapter: {{adapter_path}}")
+        break
+
+try:
+    if adapter_path:
+        model = PeftModel.from_pretrained(base_model, adapter_path)
+        print("ĐÃ NẠP FINE-TUNED MODEL THÀNH CÔNG!")
+    else:
         model = base_model
-else:
-    print(f" Không thấy thư mục '{ADAPTER_MODEL_PATH}'. Hệ thống sẽ chạy bằng model gốc.")
+        print("Không tìm thấy Adapter, chạy Base Model.")
+except:
     model = base_model
 
-# Định nghĩa format dữ liệu đầu vào
+model.eval()
+
 class DreamRequest(BaseModel):
     dream: str
 
 @app.post("/analyze")
-async def analyze_dream(req: DreamRequest):
+async def analyze(req: DreamRequest):
     try:
-        print(f"Nhận yêu cầu giải mã: {req.dream[:50]}...")
-        
-        # Format Prompt chuẩn (giống hệt lúc train)
-        prompt = f"<s>[INST] Giải mã giấc mơ: {req.dream} [/INST]"
+        # Prompt ép trả lời ngắn, tập trung
+        prompt = f'''<|im_start|>system
+Bạn là chuyên gia giải mã giấc mơ. Hãy giải thích ý nghĩa giấc mơ sau đây một cách ngắn gọn, đi thẳng vào vấn đề. Không liệt kê thêm các ví dụ khác.
+<|im_end|>
+<|im_start|>user
+{{req.dream}}
+<|im_end|>
+<|im_start|>assistant
+'''
         
         inputs = tokenizer(prompt, return_tensors="pt").to("cuda")
         
         with torch.no_grad():
             outputs = model.generate(
                 **inputs,
-                max_new_tokens=350,   # Độ dài tối đa câu trả lời
-                do_sample=True,       # Cho phép sáng tạo
-                temperature=0.7,      # Mức độ sáng tạo (0.7 là chuẩn)
+                max_new_tokens=250,      # Giới hạn độ dài ngắn thôi
+                do_sample=True,
+                temperature=0.3,         # Giảm nhiệt độ để bớt "phiêu"
                 top_p=0.9,
-                repetition_penalty=1.1, # Tránh lặp từ
+                repetition_penalty=1.2,
                 pad_token_id=tokenizer.eos_token_id
             )
         
-        # Giải mã kết quả từ số sang chữ
-        full_response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+        input_length = inputs['input_ids'].shape[1]
+        generated_tokens = outputs[0][input_length:]
+        result = tokenizer.decode(generated_tokens, skip_special_tokens=True)
         
-        # Cắt bỏ phần prompt, chỉ lấy phần AI trả lời
-        if "[/INST]" in full_response:
-            result_text = full_response.split("[/INST]")[1].strip()
-        else:
-            result_text = full_response
+        # === BỘ LỌC CẮT CỤT (QUAN TRỌNG) ===
+        
+        # 1. Cắt ngay khi gặp dấu hiệu liệt kê "( 1 )" hoặc "1."
+        result = re.split(r'\( \d+ \)', result)[0]  # Cắt khi gặp ( 1 )
+        result = re.split(r'\\n\d+\.', result)[0]    # Cắt khi gặp 1.
+        
+        # 2. Cắt ngay khi gặp 2 lần xuống dòng liên tiếp (Hết đoạn văn là dừng)
+        if "\\n\\n" in result:
+            result = result.split("\\n\\n")[0]
             
-        print("Đã giải mã xong.")
-        return {"result": result_text}
+        # 3. Cắt các từ khóa kết thúc hệ thống
+        stop_words = ["<|im_end|>", "User:", "(Lưu ý", "Dream:"]
+        for word in stop_words:
+            if word in result:
+                result = result.split(word)[0]
+
+        return {{"result": result.strip()}}
 
     except Exception as e:
-        print(f" Lỗi xử lý: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Lỗi: {{e}}")
+        return {{"result": "Hệ thống đang bận."}}
 
 if __name__ == "__main__":
-    # Chạy server tại cổng 8000
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    try:
+        ngrok.kill()
+        public_url = ngrok.connect({PORT}).public_url
+        print("="*50)
+        print(f"SERVER FIX ĐANG CHẠY: {{public_url}}/analyze")
+        print("="*50)
+        uvicorn.run(app, host="0.0.0.0", port={PORT})
+    except Exception as e:
+        print("Lỗi khởi động:", e)
+"""
+
+with open("server.py", "w", encoding="utf-8") as f:
+    f.write(server_content)
+
+print("Đang khởi động Server...")
+#!python server.py

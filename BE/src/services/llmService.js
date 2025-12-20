@@ -1,81 +1,88 @@
-// LLM service wrapper (OpenAI by default)
 import OpenAI from 'openai';
+import axios from 'axios'; 
 
-const provider = process.env.LLM_PROVIDER || 'openai';
-const DEFAULT_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+// --- CẤU HÌNH ---
+// 1. Link AI của bạn (Kaggle/Ngrok)
+const LOCAL_API_URL = 'https://lakier-jewell-nonhygroscopically.ngrok-free.dev/analyze'; // Thay bằng link của bạn
 
-let client = null;
-if (provider === 'openai') {
-  if (!process.env.OPENAI_API_KEY) {
-    console.warn('[LLM] Missing OPENAI_API_KEY. AI endpoints will fail until set.');
-    client = null; // defer init until key provided
-  } else {
-    client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  }
+// 2. Cấu hình OpenAI (Mặc định cho Chatbot)
+const DEFAULT_PROVIDER = process.env.LLM_PROVIDER || 'openai'; 
+const DEFAULT_OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+
+let openaiClient = null;
+if (process.env.OPENAI_API_KEY) {
+  openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+} else {
+  console.warn('[LLM] Thiếu OPENAI_API_KEY. Chatbot sẽ không hoạt động.');
 }
 
-function ensure() {
-  // Re-init if env became available at runtime (e.g., hot reload)
-  if (!client && provider === 'openai' && process.env.OPENAI_API_KEY) {
-    client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  }
-  if (!client) {
-    const err = new Error('LLM client not configured. Set OPENAI_API_KEY.');
-    err.statusCode = 503; // Service Unavailable
-    throw err;
-  }
-}
-
-// Helper: Sleep for ms
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-// messages: [{ role: 'system'|'user'|'assistant', content: string }]
+/**
+ * Hàm Chat Đa Năng
+ * - Chatbot thường: Không truyền gì -> Tự dùng OpenAI.
+ * - Giải mã giấc mơ: Truyền { provider: 'local' } -> Dùng model của bạn.
+ */
 export async function chat(messages, opts = {}) {
-  ensure();
-  const model = opts.model || DEFAULT_MODEL;
-  const maxRetries = opts.maxRetries || 2; // Retry up to 2 times for rate limits
-  
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+  // Mặc định dùng OpenAI, trừ khi được chỉ định 'local'
+  const provider = opts.provider || 'openai';
+
+  // === TRƯỜNG HỢP 1: DÙNG MODEL CỦA BẠN (Kaggle) ===
+  if (provider === 'local') {
     try {
-      const res = await client.chat.completions.create({
-        model,
-        messages,
-        temperature: opts.temperature ?? 0.7,
-        max_tokens: opts.max_tokens ?? 500,
-      });
-      const text = res?.choices?.[0]?.message?.content?.trim() || '';
-      return { text, raw: res };
-    } catch (e) {
-      // If rate limit (429) and still have retries, wait and retry
-      if (e?.status === 429 && attempt < maxRetries) {
-        const waitTime = Math.pow(2, attempt) * 1000; // 1s, 2s exponential backoff
-        console.log(`[LLM] Rate limit hit, retrying in ${waitTime}ms (attempt ${attempt + 1}/${maxRetries})`);
-        await sleep(waitTime);
-        continue; // Retry
-      }
+      const userMessage = messages.find(m => m.role === 'user')?.content || '';
+      if (!userMessage) throw new Error("Nội dung tin nhắn trống");
+
+      console.log(`[LLM-Local] 🔮 Đang gửi sang Kaggle: "${userMessage.substring(0, 30)}..."`);
       
-      // Otherwise, log chi tiết lỗi để debug
-      console.error('[LLM][ERROR]', {
-        message: e?.message,
-        status: e?.status,
-        data: e?.response?.data,
-        full: e
+      const response = await axios.post(LOCAL_API_URL, {
+        dream: userMessage
       });
-      const err = new Error(e?.message || 'LLM chat error');
-      err.statusCode = e?.status || 500;
-      throw err;
+
+      return { text: response.data.result || '' };
+    } catch (e) {
+      console.error('❌ [LLM-Local] Lỗi kết nối Kaggle:', e.message);
+      throw new Error('AI Server (Kaggle) đang tắt hoặc bị lỗi kết nối.');
+    }
+  }
+
+  // === TRƯỜNG HỢP 2: DÙNG OPENAI (Cho Chatbot) ===
+  if (provider === 'openai') {
+    if (!openaiClient) throw new Error('Chưa cấu hình OpenAI API Key.');
+
+    const model = opts.model || DEFAULT_OPENAI_MODEL;
+    const maxRetries = opts.maxRetries || 2;
+    
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        const res = await openaiClient.chat.completions.create({
+          model,
+          messages,
+          temperature: opts.temperature ?? 0.7,
+          max_tokens: opts.max_tokens ?? 500,
+        });
+        const text = res?.choices?.[0]?.message?.content?.trim() || '';
+        return { text, raw: res };
+      } catch (e) {
+        if (e?.status === 429 && attempt < maxRetries) {
+          await sleep(1000 * Math.pow(2, attempt));
+          continue;
+        }
+        throw e;
+      }
     }
   }
 }
 
-// Ask for strict JSON response
+// Hàm này giữ nguyên dùng OpenAI để xử lý JSON cho chuẩn
 export async function structuredJSON(prompt, schemaHint, opts = {}) {
   const sys = 'You are a JSON-only assistant. Always reply with valid JSON only.';
   const messages = [
     { role: 'system', content: sys },
     { role: 'user', content: `${prompt}\n\nReturn JSON with this shape: ${schemaHint}` },
   ];
-  const { text } = await chat(messages, { ...opts, temperature: 0.25, max_tokens: 800 });
+  // Luôn ép dùng OpenAI cho hàm này
+  const { text } = await chat(messages, { ...opts, provider: 'openai', temperature: 0.2 });
   try {
     const cleaned = text.replace(/^```json\n?|```$/g, '').trim();
     return JSON.parse(cleaned);

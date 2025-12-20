@@ -2,7 +2,6 @@ import express from 'express';
 import {
   analyzeDream,
   getDreamHistory,
-  getDreamStats,
   getDream,
   deleteDream,
   getRetrainingStats,
@@ -17,7 +16,7 @@ const router = express.Router();
 router.use(auth);
 router.post('/analyze', analyzeDream);
 router.get('/history', getDreamHistory);
-router.get('/stats', getDreamStats);
+
 
 // Retraining endpoints
 router.get('/retraining/stats', getRetrainingStats);
