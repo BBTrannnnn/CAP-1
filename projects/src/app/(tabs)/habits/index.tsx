@@ -56,6 +56,7 @@ import {
 } from '../../../server/habits';
 
 import { notifiToast } from '../../../server/runningTracker';
+import Notification from './ToastMessage';
 
 /* ========================================================= */
 /* TYPES                                                     */
@@ -630,6 +631,7 @@ const HorizontalCalendar: React.FC<HorizontalCalendarProps> = ({
         if (!cancelled) {
           setError('Không tải được dữ liệu lịch.');
           setDayStatusMap({});
+          showToast('Không thể tải dữ liệu lịch', 'error');
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -912,12 +914,32 @@ export default function FlowStateHabits() {
   const [confirmName, setConfirmName] = useState('');
   const [confirmId, setConfirmId] = useState<number | null>(null);
   const [typeForm, setTypeForm] = useState<string>('');
+  
+  // Toast notification state
+  const [toast, setToast] = useState<{
+    show: boolean;
+    message: string;
+    type: 'success' | 'warning' | 'error';
+  }>({
+    show: false,
+    message: '',
+    type: 'success'
+  });
 
   const hhmmNow = () => {
     const d = new Date();
     const h = String(d.getHours()).padStart(2, '0');
     const m = String(d.getMinutes()).padStart(2, '0');
     return `${h}:${m}`;
+  };
+
+  // Toast helper function
+  const showToast = (message: string, type: 'success' | 'warning' | 'error' = 'success') => {
+    setToast({ show: true, message, type });
+  };
+
+  const hideToast = () => {
+    setToast(prev => ({ ...prev, show: false }));
   };
 
   const onChangeTime = (timeValue: string, fieldType: 'start' | 'end') => {
@@ -1189,6 +1211,7 @@ export default function FlowStateHabits() {
           setHabitList([]);
           setOverview(null);
           setWeeklyBars(null);
+          showToast('Không thể tải danh sách thói quen', 'error');
         }
       }
     })();
@@ -1282,7 +1305,7 @@ export default function FlowStateHabits() {
     //console.log('=== SAVE COUNT ENTRY START ===');
     
     if (!newCountForm.habitId) {
-      Alert.alert('Lỗi', 'Không có thói quen được chọn.');
+      showToast('Không có thói quen được chọn.', 'error');
       return;
     }
     
@@ -1290,7 +1313,7 @@ export default function FlowStateHabits() {
     const bid = n2b[habitId];
     
     if (!bid) {
-      Alert.alert('Lỗi', 'Không tìm thấy thói quen trên máy chủ.');
+      showToast('Không tìm thấy thói quen trên máy chủ.', 'error');
       return;
     }
     
@@ -1319,7 +1342,7 @@ export default function FlowStateHabits() {
       
       // Kiểm tra không cho phép thêm cho ngày tương lai
       if (selectedDateStr > todayStr) {
-        Alert.alert('Lỗi', 'Không thể thêm thói quen cho ngày trong tương lai.');
+        showToast('Không thể thêm thói quen cho ngày trong tương lai.', 'warning');
         setIsSaving(false);
         return;
       }
@@ -1385,7 +1408,7 @@ export default function FlowStateHabits() {
       // Refresh
       refreshAll();
       
-      Alert.alert('Thành công!', 'Đã thêm thành công');
+      showToast('Đã thêm thành công!', 'success');
       
     } catch (error: any) {
       console.error('=== SAVE ERROR ===');
@@ -1401,7 +1424,7 @@ export default function FlowStateHabits() {
         msg = error.message;
       }
       
-      Alert.alert('Lỗi', msg);
+      showToast(msg, 'error');
       
     } finally {
       setIsSaving(false);
@@ -1417,8 +1440,12 @@ export default function FlowStateHabits() {
         if (entry?.beId && bid) {
           await apiDeleteHabitSubTrackings(bid, entry.beId);
           refreshAll();
+          showToast('Đã xóa mục thành công', 'success');
         }
-      } catch {}
+      } catch (error) {
+        console.error('[FlowStateHabits] deleteCountEntry error:', error);
+        showToast('Không thể xóa mục này', 'error');
+      }
     })();
   };
 
@@ -1429,8 +1456,11 @@ export default function FlowStateHabits() {
         if (bid) {
           await apiDeleteHabitTrackingDay(bid, getCurrentDateStr());
           refreshAll();
+          showToast('Đã xóa dữ liệu ngày thành công', 'success');
         }
-      } catch {
+      } catch (error) {
+        console.error('[FlowStateHabits] clearCountDay error:', error);
+        showToast('Không thể xóa dữ liệu ngày này', 'error');
       } finally {
         setCountEntries((prev) => ({ ...prev, [habitId]: [] }));
         setCountViewOpen((v) => ({ ...v, [habitId]: false }));
@@ -1478,7 +1508,10 @@ export default function FlowStateHabits() {
           await apiAddHabitSubTracking(bid, body);
         }
         refreshAll();
-      } catch {
+        showToast('Đã lưu thay đổi thành công', 'success');
+      } catch (error) {
+        console.error('[FlowStateHabits] saveEntry error:', error);
+        showToast('Không thể lưu thay đổi', 'error');
       } finally {
         setEditingEntry(null);
       }
@@ -1533,7 +1566,11 @@ export default function FlowStateHabits() {
 
         await apiTrackHabit(bid, payload);
         refreshAll();
-      } catch {}
+        showToast('Đã cập nhật trạng thái thói quen', 'success');
+      } catch (error) {
+        console.error('[FlowStateHabits] handleStatusChange error:', error);
+        showToast('Không thể cập nhật trạng thái', 'error');
+      }
     })();
   };
 
@@ -1571,7 +1608,11 @@ export default function FlowStateHabits() {
         console.log(res);
         
         refreshAll();
-      } catch {}
+        showToast('Đã đồng bộ dữ liệu thói quen', 'success');
+      } catch (error) {
+        console.error('[FlowStateHabits] syncHabitMeta error:', error);
+        showToast('Không thể đồng bộ dữ liệu', 'error');
+      }
     })();
   };
 
@@ -1622,8 +1663,11 @@ export default function FlowStateHabits() {
           }
           await apiUpdateHabit(bid, updates);
           refreshAll();
+          showToast('Đã cập nhật thói quen thành công', 'success');
         }
-      } catch {
+      } catch (error) {
+        console.error('[FlowStateHabits] saveEdit error:', error);
+        showToast('Không thể cập nhật thói quen', 'error');
       } finally {
         closeEditModal();
       }
@@ -1634,9 +1678,14 @@ export default function FlowStateHabits() {
     (async () => {
       try {
         const bid = n2b[id];
-        if (bid) await apiDeleteHabit(bid);
+        if (bid) {
+          await apiDeleteHabit(bid);
+          showToast('Đã xóa thói quen thành công', 'success');
+        }
         refreshAll();
-      } catch {
+      } catch (error) {
+        console.error('[FlowStateHabits] deleteHabit error:', error);
+        showToast('Không thể xóa thói quen', 'error');
       } finally {
         if (activeMenu === id) setActiveMenu(null);
         closeConfirm();
@@ -1699,7 +1748,11 @@ export default function FlowStateHabits() {
 
         await apiAddHabitSubTracking(bid, body);
         refreshAll();
-      } catch {}
+        showToast('Đã lưu dữ liệu thành công', 'success');
+      } catch (error) {
+        console.error('[FlowStateHabits] saveCountModal error:', error);
+        showToast('Không thể lưu dữ liệu', 'error');
+      }
     })();
   };
 
@@ -2569,6 +2622,16 @@ export default function FlowStateHabits() {
           </View>
         </View>
       </Modal>
+
+      {/* Toast Notification */}
+      {toast.show && (
+        <Notification
+          type={toast.type}
+          message={toast.message}
+          onClose={hideToast}
+          show={toast.show}
+        />
+      )}
     </View>
   );
 }

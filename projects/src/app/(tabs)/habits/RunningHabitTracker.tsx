@@ -47,6 +47,7 @@ import {
   deleteHabitGoal,
   completeHabitGoal,
 } from '../../../server/goals';
+import Notification from './ToastMessage';
 
 type Reminder = {
   id: string;
@@ -662,6 +663,7 @@ const HabitTracker: React.FC = () => {
         if (!cancelled) setReminders(list.map(normalizeReminder));
       } catch (e) {
         console.error('[HabitTracker] getHabitReminders error:', e);
+        if (!cancelled) showNotification('Không thể tải danh sách nhắc nhở', 'error');
       }
     };
 
@@ -672,6 +674,7 @@ const HabitTracker: React.FC = () => {
         if (!cancelled) setChallenges(arr.map(normalizeGoal));
       } catch (e) {
         console.error('[HabitTracker] getHabitGoals error:', e);
+        if (!cancelled) showNotification('Không thể tải danh sách mục tiêu', 'error');
       }
     };
 
@@ -727,6 +730,7 @@ const HabitTracker: React.FC = () => {
         }
       } catch (e) {
         console.error('[HabitTracker] getHabitStats error:', e);
+        if (!cancelled) showNotification('Không thể tải thống kê thói quen', 'error');
       }
     };
 
@@ -963,8 +967,10 @@ const HabitTracker: React.FC = () => {
         const payload: any = buildReminderPayload(updated);
         await updateHabitReminder(habitId as string, id, payload);
         await refetchAll();
+        showNotification('Đã cập nhật trạng thái nhắc nhở', 'success');
       } catch (e) {
         console.error('[HabitTracker] toggleReminderEnabled error:', e);
+        showNotification('Không thể cập nhật trạng thái nhắc nhở', 'error');
       }
     }
   };

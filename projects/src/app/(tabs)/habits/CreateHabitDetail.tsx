@@ -14,6 +14,7 @@ import {
   updateHabit,
   deleteHabit,
 } from '../../../server/habits';
+import Notification from './ToastMessage';
 
 // Helper: flatten style mảng -> object
 const sx = (...styles: Array<StyleProp<ViewStyle | TextStyle | ImageStyle>>) =>
@@ -96,6 +97,17 @@ export default function CreateHabitDetail() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Toast notification state
+  const [toast, setToast] = useState<{
+    show: boolean;
+    message: string;
+    type: 'success' | 'warning' | 'error';
+  }>({
+    show: false,
+    message: '',
+    type: 'success'
+  });
+
   // Dates
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [endDate, setEndDate] = useState<Date | null>(null);
@@ -177,9 +189,18 @@ export default function CreateHabitDetail() {
     return payload;
   };
 
+  // Toast helper functions
+  const showToast = (message: string, type: 'success' | 'warning' | 'error' = 'success') => {
+    setToast({ show: true, message, type });
+  };
+
+  const hideToast = () => {
+    setToast(prev => ({ ...prev, show: false }));
+  };
+
   const handleCreateNew = async () => {
     if (!habitName.trim()) {
-      alert('Thiếu tên', 'Vui lòng nhập tên thói quen.');
+      showToast('Vui lòng nhập tên thói quen.', 'warning');
       return;
     }
     if (invalidRange || isSubmitting) return;
@@ -189,12 +210,12 @@ export default function CreateHabitDetail() {
       const payload = buildPayload();
       const res = await createHabit(payload);
       //console.log('[CreateHabitDetail] createHabit API:', res);
-      alert('Thành công', 'Đã tạo thói quen mới.');
+      showToast('Đã tạo thói quen mới.', 'success');
       setIsSubmitting(false);
       router.replace('/(tabs)/habits');
     } catch (err) {
       console.error('[CreateHabitDetail] createHabit error:', err);
-      alert('Lỗi', 'Không thể tạo thói quen. Vui lòng thử lại.');
+      showToast('Không thể tạo thói quen. Vui lòng thử lại.', 'error');
       setIsSubmitting(false);
     }
   };
@@ -288,6 +309,7 @@ export default function CreateHabitDetail() {
         }
       } catch (err) {
         console.error('[CreateHabitDetail] load template error:', err);
+        showToast('Không thể tải dữ liệu thói quen', 'error');
         resetForm();
       }
     })();
@@ -311,7 +333,7 @@ export default function CreateHabitDetail() {
 
   const handleSave = async () => {
     if (!habitName.trim()) {
-      alert('Thiếu tên', 'Vui lòng nhập tên thói quen.');
+      showToast('Vui lòng nhập tên thói quen.', 'warning');
       return;
     }
     if (invalidRange || isSubmitting) return;
@@ -327,7 +349,7 @@ export default function CreateHabitDetail() {
         
         const res = await updateHabit(templateId as string, payload);
         //console.log('[CreateHabitDetail] updateHabit API:', res);
-        alert('Thành công', 'Đã cập nhật thói quen.');
+        showToast('Đã cập nhật thói quen.', 'success');
       } else {
         const res = await createHabit(payload);
         //console.log('[CreateHabitDetail] createHabit API:', res);
@@ -335,7 +357,7 @@ export default function CreateHabitDetail() {
       router.replace('/(tabs)/habits');
     } catch (err) {
       console.error(`[CreateHabitDetail] ${isEditMode ? 'updateHabit' : 'createHabit'} error:`, err);
-      alert(err.message);
+      showToast(err.message || 'Có lỗi xảy ra', 'error');
       setIsSubmitting(false);
     }
   };
@@ -346,11 +368,11 @@ export default function CreateHabitDetail() {
       setIsSubmitting(true);
       const res = await deleteHabit(templateId as string);
       //console.log('[CreateHabitDetail] deleteHabit API:', res);
-      alert('Thành công', 'Đã xóa thói quen.');
+      showToast('Đã xóa thói quen.', 'success');
       router.replace('/(tabs)/habits');
     } catch (err) {
       console.error('[CreateHabitDetail] deleteHabit error:', err);
-      alert('Lỗi', 'Không thể xóa thói quen. Vui lòng thử lại.');
+      showToast('Không thể xóa thói quen. Vui lòng thử lại.', 'error');
       setIsSubmitting(false);
     } finally {
       setConfirmOpen(false);
@@ -416,8 +438,6 @@ export default function CreateHabitDetail() {
               </Pressable>
             ))}
           </View>
-
-          
         </View>
 
         {/* Tên + mô tả */}
@@ -733,6 +753,16 @@ export default function CreateHabitDetail() {
           </View>
         </Pressable>
       </Modal>
+
+      {/* Toast Notification */}
+      {toast.show && (
+        <Notification
+          type={toast.type}
+          message={toast.message}
+          onClose={hideToast}
+          show={toast.show}
+        />
+      )}
     </SafeAreaView>
   );
 }

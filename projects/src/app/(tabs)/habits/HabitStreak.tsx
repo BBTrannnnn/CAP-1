@@ -19,6 +19,7 @@ import {
   getHabitStats,
   getHabitCalendar,
 } from '../../../server/habits';
+import Notification from './ToastMessage';
 
 // Helper: flatten mọi style mảng -> object
 const sx = (...styles: Array<StyleProp<ViewStyle | TextStyle | ImageStyle>>) =>
@@ -94,6 +95,26 @@ export default function HabitStreak() {
   const [calendarMap, setCalendarMap] = React.useState<CalendarMap>({});
   const [loadingHabits, setLoadingHabits] = React.useState(false);
   const [loadingDetail, setLoadingDetail] = React.useState(false);
+
+  // Toast notification state
+  const [toast, setToast] = React.useState<{
+    show: boolean;
+    message: string;
+    type: 'success' | 'warning' | 'error';
+  }>({
+    show: false,
+    message: '',
+    type: 'success'
+  });
+
+  // Toast helper functions
+  const showToast = (message: string, type: 'success' | 'warning' | 'error' = 'success') => {
+    setToast({ show: true, message, type });
+  };
+
+  const hideToast = () => {
+    setToast(prev => ({ ...prev, show: false }));
+  };
 
   // ====== Helpers ngày tháng ======
   const getDaysInMonth = (date: Date) =>
@@ -178,6 +199,7 @@ export default function HabitStreak() {
         }
       } catch (e) {
         console.error('[HabitStreak] getHabits error:', e);
+        showToast('Không thể tải danh sách thói quen', 'error');
       } finally {
         setLoadingHabits(false);
       }
@@ -284,6 +306,7 @@ export default function HabitStreak() {
         setCalendarMap(map);
       } catch (e) {
         console.error('[HabitStreak] load detail error:', e);
+        showToast('Không thể tải dữ liệu thống kê', 'error');
         setStats({
           streak: 0,
           bestStreak: 0,
@@ -542,6 +565,16 @@ export default function HabitStreak() {
           {/* Spacer thay cho footer 10vh web */}
           <View style={{ height: 40 }} />
         </ScrollView>
+      )}
+
+      {/* Toast Notification */}
+      {toast.show && (
+        <Notification
+          type={toast.type}
+          message={toast.message}
+          onClose={hideToast}
+          show={toast.show}
+        />
       )}
     </SafeAreaView>
   );
