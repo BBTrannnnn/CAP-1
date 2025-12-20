@@ -1887,11 +1887,14 @@ export async function updateHabitStats(habitId, userId, checkAchievements = true
     for (let i = 0; i < 365; i++) {
       const dateKey = checkDate.toISOString().split('T')[0];
       const tracking = trackingMap.get(dateKey);
+      
       const isCompleted = tracking && tracking.status === 'completed';
       const isFrozenDay = tracking && tracking.status === 'frozen';
-      const isShieldProtected = tracking && 
-                                tracking.status === 'failed' && 
-                                tracking.isProtected === true;
+      
+      // ✅ SỬA: Kiểm tra isProtected VÀ protectionType
+      const isProtectedDay = tracking && 
+                            tracking.isProtected === true &&
+                            (tracking.protectionType === 'shield' || tracking.protectionType === 'revive');
 
       const isInFrozenPeriod = isFrozen &&
         habit.streakProtection?.frozenStartDate &&
@@ -1899,7 +1902,8 @@ export async function updateHabitStats(habitId, userId, checkAchievements = true
         checkDate >= habit.streakProtection.frozenStartDate &&
         checkDate <= habit.streakProtection.frozenEndDate;
 
-      const countAsCompleted = isCompleted || isShieldProtected;
+      // ✅ SỬA: Coi protected day như completed
+      const countAsCompleted = isCompleted || isProtectedDay;
 
       if (countAsCompleted) {
         currentStreak++;
@@ -1908,6 +1912,7 @@ export async function updateHabitStats(habitId, userId, checkAchievements = true
         continue;
       }
 
+      // Frozen logic
       if (isFrozenDay || isInFrozenPeriod) {
         if (hasStartedStreak) {
           checkDate.setDate(checkDate.getDate() - 1);
@@ -1917,9 +1922,15 @@ export async function updateHabitStats(habitId, userId, checkAchievements = true
         }
       }
 
-      if (!tracking || (tracking.status === 'failed' && !tracking.isProtected)) {
+      // ✅ SỬA: Break nếu failed KHÔNG có protection
+      if (!tracking || 
+          (tracking.status === 'failed' && !tracking.isProtected) ||
+          (tracking.status === 'skipped' && !tracking.isProtected)) {
         break;
       }
+      
+      // Continue nếu còn trường hợp khác
+      checkDate.setDate(checkDate.getDate() - 1);
     }
 
     habit.currentStreak = currentStreak;

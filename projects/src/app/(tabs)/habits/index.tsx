@@ -53,6 +53,8 @@ import {
   getWeeklyReport as apiGetWeeklyReport,
   // tracking habit check-mode
   getHabitTrackings as apiGetHabitTrackings,
+  deleteTracking as apiDeleteHabitTracking,
+  updateTracking as apiUpdateHabitTracking,
 } from '../../../server/habits';
 
 import { notifiToast } from '../../../server/runningTracker';
@@ -83,7 +85,7 @@ type CountEntry = {
   beId?: string;
 };
 
-type StatusUI = 'success' | 'fail' | 'skip' | 'in_progress';
+type StatusUI = 'success' | 'fail' | 'skip' | 'in_progress' | 'frozen' | 'protected' | 'revive';
 
 type TaskStatus = 'completed' | 'in-progress' | 'pending';
 
@@ -864,7 +866,7 @@ export default function FlowStateHabits() {
   const [countViewOpen, setCountViewOpen] = useState<Record<number, boolean>>({});
   const [countEntries, setCountEntries] = useState<Record<number, CountEntry[]>>({});
   const [editingEntry, setEditingEntry] = useState<{ habitId: number; entryId: number } | null>(null);
-
+  const [trackingIds, setTrackingIds] = useState<Record<number, string>>({});
   const [newCountForm, setNewCountForm] = useState<{
     habitId: number | null;
     qty: number;
@@ -1116,18 +1118,52 @@ export default function FlowStateHabits() {
           const overrideStatus: Record<number, StatusUI | undefined> = {};
 
           uiIds.forEach((nid, idx) => {
-            const rr: any = trackResults[idx];
-            const arr = rr?.trackings ?? rr?.data ?? [];
-            if (!Array.isArray(arr) || arr.length === 0) return;
+          const rr: any = trackResults[idx];
+          const arr = rr?.trackings ?? rr?.data ?? [];
+          if (!Array.isArray(arr) || arr.length === 0) return;
 
-            const t = arr[0];
-            const s: string | undefined = t.status;
-            let ui: StatusUI | undefined;
-            if (s === 'completed') ui = 'success';
-            else if (s === 'failed') ui = 'fail';
-            else if (s === 'skipped') ui = 'skip';
-            else if (s === 'in_progress') ui = 'in_progress';
-            overrideStatus[nid] = ui;
+          const t = arr[0];
+          const trackingId = t._id || t.id;
+          if (trackingId) {
+            setTrackingIds(prev => ({
+              ...prev,
+              [nid]: trackingId
+            }));
+          }
+          const s: string | undefined = t.status;
+          const isProtected = t.isProtected === true;
+          const protectionType = t.protectionType;
+          
+          let ui: StatusUI | undefined;
+  
+              //  KIỂM TRA isProtected TRƯỚC (ưu tiên cao nhất)
+              switch (s) {
+                  case 'protected':
+                    ui = 'protected';  // 🛡️
+                    break;
+                  case 'revive':
+                    ui = 'revive';     // ♻️
+                    break;
+                  case 'frozen':
+                    ui = 'frozen';     // ❄️
+                    break;
+                  case 'completed':
+                    ui = 'success';
+                    break;
+                  case 'failed':
+                    ui = 'fail';
+                    break;
+                  case 'skipped':
+                    ui = 'skip';
+                    break;
+                  case 'in_progress':
+                    ui = 'in_progress';
+                    break;
+                  default:
+                    ui = undefined;
+                }
+              
+              overrideStatus[nid] = ui;
 
             const noteVal = t.notes ?? t.note;
             if (noteVal) initialNotes[nid] = String(noteVal);
@@ -1255,6 +1291,196 @@ export default function FlowStateHabits() {
     const mins = eh * 60 + em - (sh * 60 + sm);
     return mins > 0 ? mins : null;
   };
+
+  const handleEditTracking = (habitId: number) => {
+  const habit = habitList.find(h => h.id === habitId);
+  if (habit) {
+    openDetail(habit, 'update'); // Luôn là update
+  }
+};
+
+const handleDeleteTracking = (habitId: number) => {
+  const bid = n2b[habitId];
+  const trackingId = trackingIds[habitId];
+  
+  // Kiểm tra có tracking không
+  if (!trackingId) {
+    showToast('Chưa có tracking để xóa', 'warning');
+    return;
+  }
+  
+  Alert.alert(
+    'Xóa tracking',
+    'Bạn có chắc muốn xóa tracking của ngày này?',
+    [
+      { text: 'Hủy', style: 'cancel' },
+      {
+        text: 'Xóa',
+        style: 'destructive',
+        onPress: () => deleteTrackingForDay(habitId)
+      }
+    ]
+  );
+};
+// HÀM 1: TẠO MỚI TRACKING (dùng khi "Đánh dấu")
+const createNewTracking = async (habitId: number) => {
+  try {
+    const bid = n2b[habitId];
+    if (!bid) {
+      showToast('Không tìm thấy thói quen', 'error');
+      return;
+    }
+
+    const s = computedStatus(habitId);
+    const backendStatus =
+      s === 'success' ? 'completed'
+      : s === 'fail' ? 'failed'
+      : s === 'skip' ? 'skipped'
+      : s === 'in_progress' ? 'in_progress'
+      : s === 'frozen' ? 'frozen'
+      : s === 'protected' ? 'protected'
+      : s === 'revive' ? 'revive'
+      : 'pending';
+
+    const moodRaw = moods[habitId];
+    const mood = moodRaw === 'neutral' ? 'okay' : moodRaw;
+    const note = notes[habitId];
+
+    const payload: any = {
+      status: backendStatus,
+      date: getCurrentDateStr(),
+    };
+
+    if (note && note.trim()) payload.notes = note.trim();
+    if (mood) payload.mood = mood;
+
+    // GỌI API TẠO MỚI
+    const res = await apiTrackHabit(bid, payload);
+    const newTrackingId = res?.tracking?._id || res?.tracking?.id;
+    
+    if (newTrackingId) {
+      setTrackingIds(prev => ({
+        ...prev,
+        [habitId]: newTrackingId
+      }));
+    }
+    
+    refreshAll();
+    showToast('Đã đánh dấu tracking thành công', 'success');
+  } catch (error: any) {
+    console.error('[createNewTracking] error:', error);
+    showToast('Không thể tạo tracking', 'error');
+  }
+};
+
+// HÀM 2: CẬP NHẬT TRACKING (dùng khi "Sửa")
+const updateExistingTracking = async (habitId: number) => {
+  try {
+    const bid = n2b[habitId];
+    const trackingId = trackingIds[habitId];
+    
+    if (!bid || !trackingId) {
+      showToast('Không tìm thấy tracking để cập nhật', 'error');
+      return;
+    }
+
+    const s = computedStatus(habitId);
+    const backendStatus =
+      s === 'success' ? 'completed'
+      : s === 'fail' ? 'failed'
+      : s === 'skip' ? 'skipped'
+      : s === 'in_progress' ? 'in_progress'
+      : s === 'frozen' ? 'frozen'
+      : s === 'protected' ? 'protected'
+      : s === 'revive' ? 'revive'
+      : 'pending';
+
+    const moodRaw = moods[habitId];
+    const mood = moodRaw === 'neutral' ? 'okay' : moodRaw;
+    const note = notes[habitId];
+
+    const payload: any = {
+      status: backendStatus,
+      date: getCurrentDateStr(),
+    };
+
+    if (note && note.trim()) payload.notes = note.trim();
+    if (mood) payload.mood = mood;
+
+    // GỌI API CẬP NHẬT
+    await apiUpdateHabitTracking(bid, trackingId, payload);
+    
+    refreshAll();
+    showToast('Đã cập nhật tracking thành công', 'success');
+  } catch (error: any) {
+    console.error('[updateExistingTracking] error:', error);
+    showToast('Không thể cập nhật tracking', 'error');
+  }
+};
+
+const deleteTrackingForDay = async (habitId: number) => {
+  try {
+    console.log('=== DELETE TRACKING START ===');
+    console.log('Habit ID:', habitId);
+    
+    const bid = n2b[habitId];
+    const trackingId = trackingIds[habitId];
+    
+    console.log('Backend ID:', bid);
+    console.log('Tracking ID:', trackingId);
+    
+    if (!bid) {
+      showToast('Không tìm thấy thói quen', 'error');
+      return;
+    }
+    
+    if (!trackingId) {
+      showToast('Không tìm thấy tracking để xóa', 'warning');
+      return;
+    }
+
+    console.log('Calling API deleteTracking...');
+    await apiDeleteHabitTracking(bid, trackingId);
+    console.log('API call successful');
+    
+    // Xóa các state liên quan
+    setHabitStatus(prev => {
+      const newStatus = { ...prev };
+      delete newStatus[habitId];
+      return newStatus;
+    });
+    
+    setNotes(prev => {
+      const newNotes = { ...prev };
+      delete newNotes[habitId];
+      return newNotes;
+    });
+    
+    setmoods(prev => {
+      const newMoods = { ...prev };
+      delete newMoods[habitId];
+      return newMoods;
+    });
+    
+    setTrackingIds(prev => {
+      const newIds = { ...prev };
+      delete newIds[habitId];
+      return newIds;
+    });
+    
+    console.log('States updated, calling refresh...');
+    refreshAll();
+    showToast('Đã xóa tracking thành công', 'success');
+    
+  } catch (error: any) {
+    console.error('=== DELETE ERROR ===');
+    console.error('Error:', error);
+    console.error('Error message:', error?.message);
+    console.error('Error response:', error?.response?.data);
+    
+    showToast('Không thể xóa tracking', 'error');
+  }
+};
 
   const addCountEntry = (habitId: number) => {
     //console.log('=== OPENING COUNT ENTRY FORM ===');
@@ -1526,95 +1752,16 @@ export default function FlowStateHabits() {
   };
 
   const handleStatusChange = (id: number, status: StatusUI) => {
-    const prev = habitStatus[id];
-    const toggledOff = prev === status;
+  const prev = habitStatus[id];
+  const toggledOff = prev === status;
 
-    setHabitStatus((prevMap) => ({
-      ...prevMap,
-      [id]: toggledOff ? undefined : status,
-    }));
+  // CHỈ cập nhật UI state, KHÔNG gọi API
+  setHabitStatus((prevMap) => ({
+    ...prevMap,
+    [id]: toggledOff ? undefined : status,
+  }));
+}
 
-    (async () => {
-      const isCount = !!countHabitIds[id];
-      if (isCount) return;
-
-      const backendStatus = toggledOff
-        ? 'pending'
-        : status === 'success'
-        ? 'completed'
-        : status === 'fail'
-        ? 'failed'
-        : status === 'skip'
-        ? 'skipped'
-        : 'in_progress';
-
-      const bid = n2b[id];
-      if (!bid) return;
-
-      try {
-        const moodRaw = moods[id];
-        const mood = moodRaw === 'neutral' ? 'okay' : moodRaw;
-        const note = notes[id];
-
-        const payload: any = {
-          status: backendStatus,
-          date: getCurrentDateStr(),
-        };
-
-        if (note && note.trim()) payload.notes = note.trim();
-        if (mood) payload.mood = mood;
-
-        await apiTrackHabit(bid, payload);
-        refreshAll();
-        showToast('Đã cập nhật trạng thái thói quen', 'success');
-      } catch (error) {
-        console.error('[FlowStateHabits] handleStatusChange error:', error);
-        showToast('Không thể cập nhật trạng thái', 'error');
-      }
-    })();
-  };
-
-  const syncHabitMeta = (id: number) => {
-    (async () => {
-      const bid = n2b[id];
-      if (!bid) return;
-
-      const s = computedStatus(id);
-      const backendStatus =
-        s === 'success'
-          ? 'completed'
-          : s === 'fail'
-          ? 'failed'
-          : s === 'skip'
-          ? 'skipped'
-          : s === 'in_progress'
-          ? 'in_progress'
-          : 'pending';
-
-      const moodRaw = moods[id];
-      const mood = moodRaw === 'neutral' ? 'okay' : moodRaw;
-      const note = notes[id];
-
-      const payload: any = {
-        status: backendStatus,
-        date: getCurrentDateStr(),
-      };
-
-      if (note && note.trim()) payload.notes = note.trim();
-      if (mood) payload.mood = mood;
-
-      try {
-        var res = await apiTrackHabit(bid, payload);
-        console.log(res);
-        
-        refreshAll();
-        showToast('Đã đồng bộ dữ liệu thói quen', 'success');
-      } catch (error) {
-        console.error('[FlowStateHabits] syncHabitMeta error:', error);
-        showToast('Không thể đồng bộ dữ liệu', 'error');
-      }
-    })();
-  };
 
   const openEditModal = (h: Habit) => {
     const backendId = n2b[h.id];
@@ -1712,10 +1859,10 @@ export default function FlowStateHabits() {
   const progressPercent =
     totalHabits > 0 ? Math.round((completedCount / totalHabits) * 100) : 0;
 
-  const openDetail = (h: Habit, type: string) => {
-    setTypeForm(type);
-    setDetailHabitId(h.id);
-    setDetailOpen(true);
+  const openDetail = (h: Habit, mode: 'create' | 'update') => {
+  setTypeForm(mode === 'create' ? 'Xong' : 'Cập nhật');
+  setDetailHabitId(h.id);
+  setDetailOpen(true);
   };
 
   const closeDetail = () => {
@@ -1878,6 +2025,12 @@ export default function FlowStateHabits() {
                   return { label: 'Thất bại', bg: '#fee2e2', text: '#dc2626' };
                 if (status === 'skip')
                   return { label: 'Bỏ qua', bg: '#ffedd5', text: '#d97706' };
+                if (status === 'frozen')
+                  return { label: '❄️ Đóng băng', bg: '#dbeafe', text: '#2563eb' };
+                if (status === 'protected')
+                  return { label: '🛡️ Bảo vệ', bg: '#fef3c7', text: '#d97706' };
+                if (status === 'revive')
+                  return { label: '♻️ Hồi sinh', bg: '#dcfce7', text: '#059669' };
                 return { label: 'Chờ làm', bg: '#e5e7eb', text: '#334155' };
               })();
 
@@ -1903,6 +2056,9 @@ export default function FlowStateHabits() {
                       status === 'success' && { backgroundColor: '#f0fdf4' },
                       status === 'fail' && { backgroundColor: '#fef2f2' },
                       status === 'in_progress' && { backgroundColor: '#e0f2fe' },
+                      status === 'frozen' && { backgroundColor: '#eff6ff' },      // ← Thêm
+                      status === 'protected' && { backgroundColor: '#fffbeb' },
+                      status === 'revive' && { backgroundColor: '#ecfdf5' },
                     ]}
                   >
                     <View style={{ flex: 1 }}>
@@ -2274,32 +2430,40 @@ export default function FlowStateHabits() {
 
                   {/* Action row habit thường */}
                   {!isCountHabit && activeRow === habit.id && (
-                    <View style={styles.actionRow}>
-                      <TouchableOpacity
-                        onPress={() => openDetail(habit, 'Xong')}
-                        style={[styles.actionButton, styles.actionButtonBlueSoft]}
-                      >
-                        <Eye size={14} color="#1e40af" />
-                        <Text style={styles.actionButtonBlueText}>Đánh dấu</Text>
-                      </TouchableOpacity>
+                  <View style={styles.actionRow}>
+                    <TouchableOpacity
+                      onPress={() => openDetail(habit, 'create')}
+                      style={[styles.actionButton, styles.actionButtonBlueSoft]}
+                    >
+                      <Eye size={14} color="#1e40af" />
+                      <Text style={styles.actionButtonBlueText}>Đánh dấu</Text>
+                    </TouchableOpacity>
 
-                      <TouchableOpacity
-                        onPress={() => openDetail(habit, 'Lưu')}
-                        style={[styles.actionButton, styles.actionButtonAmberSoft]}
-                      >
-                        <Pencil size={14} color="#b45309" />
-                        <Text style={styles.actionButtonAmberText}>Sửa</Text>
-                      </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => handleEditTracking(habit.id)}
+                      style={[styles.actionButton, styles.actionButtonAmberSoft]}
+                    >
+                      <Pencil size={14} color="#b45309" />
+                      <Text style={styles.actionButtonAmberText}>Sửa</Text>
+                    </TouchableOpacity>
 
-                      <TouchableOpacity
-                        onPress={() => askDelete(habit.id, habit.title)}
+                    <TouchableOpacity
+                        onPress={() => {
+                          const bid = n2b[habit.id];
+                          const trackingId = trackingIds[habit.id];
+                          console.log('bid:', bid, 'trackingId:', trackingId);
+                          if (trackingId) {
+                            deleteTrackingForDay(habit.id);
+                          } else {
+                            showToast('Chưa có tracking', 'warning');
+                          }
+                        }}
                         style={[styles.actionButton, styles.actionButtonRedSoft]}
                       >
-                        <Trash2 size={14} color="#dc2626" />
-                        <Text style={styles.actionButtonRedText}>Xóa</Text>
+                        <Text style={{color: '#dc2626', fontWeight: 'bold'}}> XÓA</Text>
                       </TouchableOpacity>
-                    </View>
-                  )}
+                  </View>
+                )}
 
                   {/* Flyout menu */}
                   {activeMenu === habit.id && (
@@ -2477,8 +2641,11 @@ export default function FlowStateHabits() {
                           {(
                             [
                               { key: 'success', label: 'Hoàn thành', color: '#16a34a' },
-                              { key: 'skip', label: 'Bỏ qua', color: '#d97706' },
+
                               { key: 'fail', label: 'Thất bại', color: '#dc2626' },
+                              // { key: 'frozen', label: '❄️ Đóng băng', color: '#2563eb', icon: null },      
+                              // { key: 'protected', label: '🛡️ Bảo vệ', color: '#d97706', icon: null },
+                              // { key: 'revive', label: '♻️ Hồi sinh', color: '#059669' }, 
                             ] as const
                           ).map((opt) => {
                             const selected = status === opt.key;
@@ -2555,21 +2722,30 @@ export default function FlowStateHabits() {
 
                     {/* Buttons */}
                     <View style={styles.modalButtonsRow}>
-                      <TouchableOpacity onPress={closeDetail} style={styles.formCancelButton}>
-                        <Text style={styles.formCancelText}>Hủy</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        onPress={() => {
-                          const metaLocal = unitMap[h.id];
-                          if (metaLocal) saveCountModal(h.id);
-                          else syncHabitMeta(h.id);
-                          closeDetail();
-                        }}
-                        style={styles.formSaveButton}
-                      >
-                        <Text style={styles.formSaveText}>{typeForm}</Text>
-                      </TouchableOpacity>
-                    </View>
+                        <TouchableOpacity onPress={closeDetail} style={styles.formCancelButton}>
+                          <Text style={styles.formCancelText}>Hủy</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={() => {
+                              const metaLocal = unitMap[h.id];
+                              if (metaLocal) {
+                                // Count mode
+                                saveCountModal(h.id);
+                              } else {
+                                // Check mode
+                                if (typeForm === 'Xong') {
+                                  createNewTracking(h.id); // Tạo mới
+                                } else {
+                                  updateExistingTracking(h.id); // Cập nhật
+                                }
+                              }
+                              closeDetail();
+                            }}
+                            style={styles.formSaveButton}
+                          >
+                            <Text style={styles.formSaveText}>{typeForm}</Text>
+                          </TouchableOpacity>
+                      </View>
                   </>
                 );
               })()}

@@ -97,8 +97,9 @@ const useShield = asyncHandler(async (req, res) => {
             userId: req.user.id,
             habitId: habitId,
             date: targetDate,
-            status: 'failed',
+            status: 'protected',
             isProtected: true, //  Đánh dấu được shield
+            protectionType: 'shield',
             notes: 'Protected by shield'
         });
     } else {
@@ -118,6 +119,7 @@ const useShield = asyncHandler(async (req, res) => {
         }
 
         tracking.isProtected = true; //  Đánh dấu được shield
+        tracking.protectionType = 'shield';
     }
 
     await tracking.save();
@@ -444,45 +446,52 @@ const useReviveToken = asyncHandler(async (req, res) => {
         date: targetDate
     });
 
-    // Nếu chưa có record → TẠO MỚI với status = failed
+    // ✅ SỬA: Nếu chưa có record → TẠO MỚI với status = 'failed' (KHÔNG phải 'revive')
     if (!tracking) {
         tracking = new HabitTracking({
             userId: req.user.id,
             habitId,
             date: targetDate,
-            status: 'failed',
+            status: 'failed',        // ✅ Tạo với 'failed'
+            isProtected: false,      // ✅ Chưa protected
+            protectionType: null,    // ✅ Chưa có type
             completedCount: 0,
             targetCount: 1
         });
+    } else {
+        // ✅ Nếu đã có tracking, kiểm tra điều kiện
+        
+        // Validate: chỉ hồi sinh failed hoặc skipped
+        if (tracking.status !== 'failed' && tracking.status !== 'skipped') {
+            return res.status(400).json({
+                success: false,
+                message: `Không thể hồi sinh ngày này (status: ${tracking.status})`
+            });
+        }
+
+        // Validate: ngày đó chưa được bảo vệ
+        if (tracking.isProtected) {
+            return res.status(400).json({
+                success: false,
+                message: 'Ngày này đã được bảo vệ rồi'
+            });
+        }
     }
 
-    // Validate: chỉ hồi sinh failed hoặc skipped
-    if (tracking.status !== 'failed' && tracking.status !== 'skipped') {
-        return res.status(400).json({
-            success: false,
-            message: `Không thể hồi sinh ngày này (status: ${tracking.status})`
-        });
-    }
-
-    // Validate: ngày đó chưa được bảo vệ
-    if (tracking.isProtected) {
-        return res.status(400).json({
-            success: false,
-            message: 'Ngày này đã được bảo vệ rồi'
-        });
-    }
-
-    // ĐÁNH DẤU NGÀY ĐÓ ĐƯỢC BẢO VỆ
-    tracking.isProtected = true;
-tracking.notes = tracking.notes 
+    // ✅ ĐÁNH DẤU NGÀY ĐÓ ĐƯỢC BẢO VỆ VỚI REVIVE
+    tracking.status = 'revive';           // ✅ Set status = 'revive'
+    tracking.isProtected = true;          // ✅ Đánh dấu protected
+    tracking.protectionType = 'revive';   // ✅ Type = revive
+    tracking.notes = tracking.notes 
         ? `${tracking.notes} (Hồi sinh bằng Revive Token)`
         : 'Hồi sinh bằng Revive Token';
+    
     await tracking.save();
 
     // CẬP NHẬT STREAK
     await updateHabitStats(habitId, req.user.id);
 
-    // TRỪ TOKEN VÀ LƯU LỊCH SỬ - SỬA TẠI ĐÂY
+    // TRỪ TOKEN VÀ LƯU LỊCH SỬ
     const updatedUser = await User.findByIdAndUpdate(
         req.user.id,
         {
@@ -490,7 +499,7 @@ tracking.notes = tracking.notes
             $push: {
                 itemUsageHistory: {
                     itemType: 'reviveToken',
-                    habitId: habit._id, // SỬA: Dùng habit._id thay vì habitId
+                    habitId: habit._id,
                     usedAt: new Date(),
                     autoUsed: false,
                     protectedDate: targetDate
@@ -505,7 +514,7 @@ tracking.notes = tracking.notes
 
     res.json({
         success: true,
-        message: `Đã hồi sinh streak! Ngày ${date} được bảo vệ`,
+        message: `♻️ Đã hồi sinh streak! Ngày ${date} được bảo vệ`,
         protectedDate: date,
         inventory: updatedUser.inventory
     });

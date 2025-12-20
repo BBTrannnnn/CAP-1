@@ -25,7 +25,7 @@ import Notification from './ToastMessage';
 const sx = (...styles: Array<StyleProp<ViewStyle | TextStyle | ImageStyle>>) =>
   StyleSheet.flatten(styles.filter(Boolean));
 
-type Status = 'completed' | 'failed' | 'skipped' | 'none';
+type Status = 'completed' | 'failed' | 'skipped' | 'none' | 'frozen' | 'revive' | 'protected';
 
 type HabitChip = {
   id: string | number;
@@ -147,8 +147,14 @@ export default function HabitStreak() {
         return '#ef4444';
       case 'skipped':
         return '#f59e0b';
+      case 'frozen':
+      return '#3b82f6';
+      case 'protected':        // ← Thêm
+      return '#f59e0b';
+      case 'revive':           // ← Thêm
+      return '#059669';
       default:
-        return '#f3f4f6';
+      return '#f3f4f6';
     }
   };
 
@@ -160,6 +166,13 @@ export default function HabitStreak() {
         return '✗';
       case 'skipped':
         return '–';
+      case 'frozen':
+      return '❄';
+      case 'protected':        // ← Thêm
+      return '🛡️';
+      case 'revive':           // ← Thêm
+      return '♻️';
+
       default:
         return '';
     }
@@ -296,6 +309,12 @@ export default function HabitStreak() {
               st = 'failed';
             else if (statusStr === 'skipped' || statusStr === 'skip')
               st = 'skipped';
+            else if (statusStr === 'frozen' || statusStr === 'freeze')
+              st = 'frozen';
+            else if (statusStr === 'protected' || statusStr === 'protect')  // ← Thêm
+            st = 'protected';
+            else if (statusStr === 'revive' || statusStr === 'revived')     // ← Thêm
+            st = 'revive';
 
             if (day >= 1 && day <= daysInMonth) {
               map[day] = st;
@@ -435,12 +454,6 @@ export default function HabitStreak() {
                 </Text>
               </View>
               <View style={styles.statBox}>
-                <Text style={styles.statLabel}>Bỏ Qua</Text>
-                <Text style={sx(styles.statValue, { color: '#f59e0b' })}>
-                  {stats.skipped}
-                </Text>
-              </View>
-              <View style={styles.statBox}>
                 <Text style={styles.statLabel}>Tổng</Text>
                 <Text style={sx(styles.statValue, { color: '#6b7280' })}>
                   {stats.total}
@@ -524,20 +537,26 @@ export default function HabitStreak() {
 
             {/* Legend */}
             <View style={styles.legend}>
-              <Text style={sx(styles.legendText, { color: '#10b981' })}>
-                ✓ = Hoàn thành
-              </Text>
-              <Text style={sx(styles.legendText, { color: '#ef4444' })}>
-                ✗ = Thất bại
-              </Text>
-              <Text style={sx(styles.legendText, { color: '#f59e0b' })}>
-                – = Bỏ qua
-              </Text>
-              <Text style={sx(styles.legendText, { color: '#6b7280' })}>
-                Trắng = Chưa ghi nhận
-              </Text>
+                <Text style={sx(styles.legendText, { color: '#10b981' })}>
+                  ✓ = Hoàn thành
+                </Text>
+                <Text style={sx(styles.legendText, { color: '#ef4444' })}>
+                  ✗ = Thất bại
+                </Text>
+                <Text style={sx(styles.legendText, { color: '#3b82f6' })}>
+                  ❄ = Đóng băng
+                </Text>
+                <Text style={sx(styles.legendText, { color: '#f59e0b' })}>
+                  🛡️ = Bảo vệ
+                </Text>
+                <Text style={sx(styles.legendText, { color: '#059669' })}>
+                  ♻️ = Hồi sinh
+                </Text>
+                <Text style={sx(styles.legendText, { color: '#6b7280' })}>
+                  Trắng = Chưa ghi nhận
+                </Text>
             </View>
-          </View>
+            </View>
 
           {/* Summary */}
           <View style={sx(styles.card, styles.section)}>
