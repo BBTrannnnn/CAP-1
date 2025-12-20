@@ -2,6 +2,7 @@
 //  USER API CLIENT (MERGED)
 // ==========================
 
+import axios from 'axios';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -10,12 +11,16 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Thay đổi IP này thành IP LAN của máy bạn đang chạy backend (ví dụ 192.168.1.x)
 export let BASE_URL = 'http://192.168.1.7:5000';
 
+export const client = axios.create({
+  baseURL: BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
 
 export function setBaseUrl(url) {
   BASE_URL = url;
-  ////console.log.log('[API BASE]', BASE_URL);
-  BASE_URL = url;
-  ////console.log.log('[API BASE]', BASE_URL);
+  console.log('[API BASE]', BASE_URL);
 }
 
 export function getFullImageUrl(path) {
@@ -52,19 +57,24 @@ export function getFullImageUrl(path) {
 // TOKEN STORAGE
 // =======================================
 export async function getToken() {
-  const t = await AsyncStorage.getItem('accessToken');
-  if (t) return t;
-  return AsyncStorage.getItem('auth_token');
+  const keys = ['accessToken', 'auth_token', 'authToken'];
+  for (const key of keys) {
+    const t = await AsyncStorage.getItem(key);
+    if (t) return t;
+  }
+  return null;
 }
 
 export async function setToken(token) {
   await AsyncStorage.setItem('accessToken', token);
   await AsyncStorage.setItem('auth_token', token);
+  await AsyncStorage.setItem('authToken', token);
 }
 
 export async function clearToken() {
   await AsyncStorage.removeItem('accessToken');
   await AsyncStorage.removeItem('auth_token');
+  await AsyncStorage.removeItem('authToken');
 }
 
 
@@ -145,6 +155,24 @@ export async function apiRequest(path, { method = 'GET', body, auth = false } = 
       const msg =
         (json && (json.message || json.error)) ||
         `Request failed with status ${res.status}`;
+
+      // Tự động kiểm tra nếu bị ban
+      const isBannedError = res.status === 403 ||
+        (msg && (msg.toLowerCase().includes('banned') || msg.toLowerCase().includes('bị khóa')));
+
+      if (isBannedError) {
+        // Cố gắng cập nhật trạng thái bị ban vào store nếu có thể nạp store
+        try {
+          const { useAuth } = require('../stores/auth');
+          const { user, setUser } = useAuth.getState();
+          if (user && !user.isBanned) {
+            setUser({ ...user, isBanned: true, bannedReason: msg });
+          }
+        } catch (e) {
+          console.warn('[apiRequest] Failed to update ban status in store:', e);
+        }
+      }
+
       throw new Error(msg);
     }
 
@@ -611,7 +639,8 @@ export async function getCurrentUser() {
     method: 'GET',
     auth: true,
   });
-  return res.data; // tùy BE, nếu BE trả { success, data } thì data là profile
+  // BE có thể trả về { user: ... } hoặc { data: { user: ... } } hoặc { data: ... }
+  return res?.user || res?.data?.user || res?.data || res;
 }
 // Lấy trang cá nhân cộng đồng của 1 user
 // GET /api/social/profile/:userId
@@ -620,4 +649,19 @@ export async function getCommunityProfile(userId) {
   // Backend không có route /api/social/profile/:userId
   // Dùng tạm /api/users/public/:userId
   return getPublicProfile(userId);
+}
+
+// --- ACHIEVEMENTS ---
+
+export async function getMyAchievements() {
+  return apiRequest('/api/achievements', { auth: true });
+}
+
+export async function getAvailableAchievements(habitId = '') {
+  const query = habitId ? `?habitId=${habitId}` : '';
+  return apiRequest(`/api/achievements/available${query}`, { auth: true });
+}
+
+export async function getHabitAchievements(habitId) {
+  return apiRequest(`/api/achievements/habit/${habitId}`, { auth: true });
 }
