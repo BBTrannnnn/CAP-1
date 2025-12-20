@@ -4,15 +4,20 @@ const UserAchievementSchema = new mongoose.Schema({
   userId: { 
     type: mongoose.Schema.Types.ObjectId, 
     ref: 'User', 
-    required: true 
+    required: true,
+    index: true
   },
   achievementId: { 
     type: String, 
-    required: true 
+    required: true,
+    index: true
   },
   habitId: { 
     type: mongoose.Schema.Types.ObjectId, 
-    ref: 'Habit' 
+    ref: 'Habit',
+    required: true
+    // ⚠️ Lưu habitId để biết achievement được unlock từ habit nào
+    // NHƯNG KHÔNG dùng trong unique index
   },
   
   title: { type: String, required: true },
@@ -34,9 +39,14 @@ const UserAchievementSchema = new mongoose.Schema({
   
 }, { timestamps: true });
 
-// Index để tránh duplicate
-UserAchievementSchema.index({ userId: 1, achievementId: 1, habitId: 1 }, { unique: true });
+UserAchievementSchema.index(
+  { userId: 1, achievementId: 1 }, 
+  { unique: true }
+);
+
+UserAchievementSchema.index({ habitId: 1 });
+UserAchievementSchema.index({ unlockedAt: -1 });
 
 const UserAchievement = mongoose.model('UserAchievement', UserAchievementSchema);
 
-export default  UserAchievement;
+export default UserAchievement;

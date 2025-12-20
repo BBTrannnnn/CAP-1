@@ -34,7 +34,7 @@ class StreakProtectionScheduler {
       timezone: "Asia/Ho_Chi_Minh"
     });
     
-    console.log('✅ Streak Protection Scheduler started');
+    console.log(' Streak Protection Scheduler started');
     console.log('   - Streak check: daily at 21:00');
     console.log('   - Unfreeze check: daily at 00:01');
     

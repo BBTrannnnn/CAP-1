@@ -80,9 +80,9 @@ YÊU CẦU:
 🎯 QUAN TRỌNG - PHÂN BIỆT trackingMode:
 
 MODE "check" - Dùng khi:
-✅ Thói quen CHỈ CẦN XÁC NHẬN đã làm hay chưa (1 lần/ngày)
-✅ Không cần đếm số lượng chi tiết
-✅ Ví dụ:
+ Thói quen CHỈ CẦN XÁC NHẬN đã làm hay chưa (1 lần/ngày)
+ Không cần đếm số lượng chi tiết
+ Ví dụ:
    - Dậy sớm lúc 6h → trackingMode: "check", targetCount: 1, unit: "lần"
    - Thiền 15 phút → trackingMode: "check", targetCount: 1, unit: "lần"
    - Tập yoga buổi sáng → trackingMode: "check", targetCount: 1, unit: "lần"
@@ -92,9 +92,9 @@ MODE "check" - Dùng khi:
    - Ăn sáng đầy đủ → trackingMode: "check", targetCount: 1, unit: "lần"
 
 MODE "count" - Dùng khi:
-✅ Đếm số lượng CỤ THỂ trong ngày
-✅ Có thể tracking nhiều lần và cộng dồn
-✅ Ví dụ:
+ Đếm số lượng CỤ THỂ trong ngày
+ Có thể tracking nhiều lần và cộng dồn
+ Ví dụ:
    - Đọc 30 trang sách → trackingMode: "count", targetCount: 30, unit: "trang"
    - Chạy bộ 5 km → trackingMode: "count", targetCount: 5, unit: "km"
    - Uống 8 ly nước → trackingMode: "count", targetCount: 8, unit: "ly"
@@ -103,7 +103,7 @@ MODE "count" - Dùng khi:
    - Đi bộ 10,000 bước → trackingMode: "count", targetCount: 10000, unit: "bước"
    - Tiết kiệm 50k/ngày → trackingMode: "count", targetCount: 50, unit: "k"
 
-⚠️ NGUYÊN TẮC:
+ NGUYÊN TẮC:
 1. Nếu có ĐƠN VỊ ĐẾM CỤ THỂ (trang, km, ly, cái, từ, bước, k...) → dùng "count"
 2. Nếu chỉ cần XÁC NHẬN đã làm (dù có thời gian như "30 phút") → dùng "check"
 3. "Đọc sách 30 phút" ≠ "Đọc 30 trang":
@@ -200,9 +200,9 @@ const main = async () => {
     
     if (templates.length > 0) {
       allTemplates.push(...templates);
-      console.log(`  ✅ Đã tạo ${templates.length} templates\n`);
+      console.log(`   Đã tạo ${templates.length} templates\n`);
     } else {
-      console.log(`  ⚠️  Không tạo được templates\n`);
+      console.log(`    Không tạo được templates\n`);
     }
     
     await new Promise(resolve => setTimeout(resolve, 7000));
@@ -212,9 +212,9 @@ const main = async () => {
   fs.writeFileSync(outputPath, JSON.stringify(allTemplates, null, 2));
 
   console.log('='.repeat(60));
-  console.log('✅ HOÀN TẤT TẠO MẪU THÓI QUEN!');
-  console.log(`💡 Tổng: ${allTemplates.length} templates`);
-  console.log(`💾 Đã lưu vào: ${outputPath}`);
+  console.log(' HOÀN TẤT TẠO MẪU THÓI QUEN!');
+  console.log(` Tổng: ${allTemplates.length} templates`);
+  console.log(` Đã lưu vào: ${outputPath}`);
 };
 
 main();

@@ -1,6 +1,3 @@
-// services/pushNotificationService.js
-// ✅ HỖ TRỢ CẢ 2: Expo Push Token + Native FCM Token
-// 🔧 FIX: Improved error handling và logging
 
 import fetch from 'node-fetch';
 import admin from '../config/firebase.js';
@@ -24,7 +21,7 @@ class PushNotificationService {
         .map(t => t?.token)
         .filter(t => typeof t === 'string' && t.length > 0);
 
-      // ✅ PHÂN LOẠI TOKENS
+      //  PHÂN LOẠI TOKENS
       const expoTokens = allTokens.filter(
         t => t.startsWith('ExponentPushToken[') && t.endsWith(']')
       );
@@ -37,7 +34,7 @@ class PushNotificationService {
       console.log(`   - Expo tokens: ${expoTokens.length}`);
       console.log(`   - Native FCM tokens: ${nativeTokens.length}`);
 
-      // ✅ GỬI QUA CẢ 2 KÊNH
+      //  GỬI QUA CẢ 2 KÊNH
       const [expoResult, fcmResult] = await Promise.all([
         this.sendViaExpoPush(expoTokens, notification),
         this.sendViaFirebase(nativeTokens, notification)
@@ -48,7 +45,7 @@ class PushNotificationService {
 
       console.log(`✅ Notification sent to user ${userId}: ${totalSuccess}/${allTokens.length} devices`);
 
-      // ✅ Xóa tokens lỗi
+      //  Xóa tokens lỗi
       const failedTokens = [...expoResult.failedTokens, ...fcmResult.failedTokens];
       if (failedTokens.length > 0) {
         await this.cleanupInvalidTokens(userId, failedTokens);
@@ -69,7 +66,7 @@ class PushNotificationService {
 
   /**
    * Gửi qua EXPO PUSH API
-   * ✅ FIX: Cải thiện error handling và logging
+   *  FIX: Cải thiện error handling và logging
    */
   async sendViaExpoPush(tokens, notification) {
     if (tokens.length === 0) {
@@ -79,7 +76,7 @@ class PushNotificationService {
     try {
       console.log(`   📱 Sending via Expo Push API...`);
 
-      // ✅ Validate Expo tokens
+      //  Validate Expo tokens
       const validTokens = tokens.filter(token => {
         const isValid = token.startsWith('ExponentPushToken[') && token.endsWith(']');
         if (!isValid) {
@@ -99,7 +96,7 @@ class PushNotificationService {
 
       console.log(`   📨 Sending to ${validTokens.length} Expo tokens (one by one)...`);
 
-      // ✅ GỬI TỪNG TOKEN RIÊNG để tránh lỗi multiple projects
+      //  GỬI TỪNG TOKEN RIÊNG để tránh lỗi multiple projects
       let successCount = 0;
       let failureCount = 0;
       const failedTokens = [];
@@ -177,7 +174,7 @@ class PushNotificationService {
           // Kiểm tra receipt
           if (!receipt) {
             console.warn(`   ⚠️ Token ${i + 1}: Cannot parse receipt from response`);
-            // ✅ NHƯNG VẪN CÓ THỂ GỬI THÀNH CÔNG - đánh dấu success
+            //  NHƯNG VẪN CÓ THỂ GỬI THÀNH CÔNG - đánh dấu success
             successCount++;
             console.log(`   ✅ Token ${i + 1}/${validTokens.length}: Assuming success (receipt parsing failed)`);
             continue;

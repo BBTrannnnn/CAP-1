@@ -205,9 +205,9 @@ VÍ DỤ CỤ THỂ VỀ PHÂN LOẠI:
 🎯 TRACKINGMODE - QUAN TRỌNG:
 
 MODE "check" - Dùng khi:
-✅ Thói quen CHỈ CẦN XÁC NHẬN đã làm hay chưa (1 lần/ngày)
-✅ Không cần đếm số lượng chi tiết
-✅ Ví dụ:
+ Thói quen CHỈ CẦN XÁC NHẬN đã làm hay chưa (1 lần/ngày)
+ Không cần đếm số lượng chi tiết
+ Ví dụ:
    - Dậy sớm lúc 6h → trackingMode: "check", targetCount: 1, unit: "lần"
    - Thiền 15 phút → trackingMode: "check", targetCount: 1, unit: "lần"
    - Tập yoga buổi sáng → trackingMode: "check", targetCount: 1, unit: "lần"
@@ -218,9 +218,9 @@ MODE "check" - Dùng khi:
    - Ngủ đủ 8 tiếng → trackingMode: "check", targetCount: 1, unit: "lần"
 
 MODE "count" - Dùng khi:
-✅ Đếm số lượng CỤ THỂ trong ngày
-✅ Có thể tracking nhiều lần và cộng dồn
-✅ Ví dụ:
+ Đếm số lượng CỤ THỂ trong ngày
+ Có thể tracking nhiều lần và cộng dồn
+ Ví dụ:
    - Đọc 30 trang sách → trackingMode: "count", targetCount: 30, unit: "trang"
    - Chạy bộ 5 km → trackingMode: "count", targetCount: 5, unit: "km"
    - Uống 8 ly nước → trackingMode: "count", targetCount: 8, unit: "ly"
@@ -326,9 +326,9 @@ const main = async () => {
     
     if (suggestions.length > 0) {
       allSuggestions.push(...suggestions);
-      console.log(`  ✅ Đã tạo ${suggestions.length} suggestions\n`);
+      console.log(`   Đã tạo ${suggestions.length} suggestions\n`);
     } else {
-      console.log(`  ⚠️  Không tạo được suggestions\n`);
+      console.log(`   Không tạo được suggestions\n`);
     }
     
     await new Promise(resolve => setTimeout(resolve, 7000));
@@ -338,9 +338,9 @@ const main = async () => {
   fs.writeFileSync(outputPath, JSON.stringify(allSuggestions, null, 2));
 
   console.log('='.repeat(60));
-  console.log('✅ HOÀN TẤT TẠO GỢI Ý THÓI QUEN!');
-  console.log(`✨ Tổng: ${allSuggestions.length} suggestions`);
-  console.log(`💾 Đã lưu vào: ${outputPath}`);
+  console.log(' HOÀN TẤT TẠO GỢI Ý THÓI QUEN!');
+  console.log(` Tổng: ${allSuggestions.length} suggestions`);
+  console.log(` Đã lưu vào: ${outputPath}`);
 };
 
 main();

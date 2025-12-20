@@ -54,7 +54,7 @@ const useShield = asyncHandler(async (req, res) => {
         });
     }
 
-    // 3. ✅ Parse date (default = today)
+    // 3.  Parse date (default = today)
     let targetDate;
     if (date) {
         const parts = date.split('-');
@@ -74,7 +74,7 @@ const useShield = asyncHandler(async (req, res) => {
         ));
     }
 
-    // 4. ✅ Kiểm tra không được shield ngày tương lai
+    // 4.  Kiểm tra không được shield ngày tương lai
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
     if (targetDate > today) {
@@ -84,21 +84,21 @@ const useShield = asyncHandler(async (req, res) => {
         });
     }
 
-    // 5. ✅ Tìm tracking của ngày đó
+    // 5.  Tìm tracking của ngày đó
     let tracking = await HabitTracking.findOne({
         userId: req.user.id,
         habitId: habitId,
         date: targetDate
     });
 
-    // 6. ✅ Nếu chưa có tracking, tạo mới với status failed
+    // 6.  Nếu chưa có tracking, tạo mới với status failed
     if (!tracking) {
         tracking = new HabitTracking({
             userId: req.user.id,
             habitId: habitId,
             date: targetDate,
             status: 'failed',
-            isProtected: true, // ✅ Đánh dấu được shield
+            isProtected: true, //  Đánh dấu được shield
             notes: 'Protected by shield'
         });
     } else {
@@ -117,12 +117,12 @@ const useShield = asyncHandler(async (req, res) => {
             });
         }
 
-        tracking.isProtected = true; // ✅ Đánh dấu được shield
+        tracking.isProtected = true; //  Đánh dấu được shield
     }
 
     await tracking.save();
 
-    // 8. ✅ Trừ shield từ user
+    // 8.  Trừ shield từ user
     const updatedUser = await User.findByIdAndUpdate(
         req.user.id,
         {
@@ -133,7 +133,7 @@ const useShield = asyncHandler(async (req, res) => {
                     habitId: habitId,
                     usedAt: new Date(),
                     autoUsed: false,
-                    protectedDate: targetDate // ✅ Lưu ngày được bảo vệ
+                    protectedDate: targetDate //  Lưu ngày được bảo vệ
                 }
             }
         },
@@ -143,7 +143,7 @@ const useShield = asyncHandler(async (req, res) => {
         }
     );
 
-    // 9. ✅ Cập nhật habit protection status
+    // 9.  Cập nhật habit protection status
     const tomorrow = new Date(targetDate);
     tomorrow.setDate(tomorrow.getDate() + 1);
     tomorrow.setHours(23, 59, 59, 999);
@@ -155,7 +155,7 @@ const useShield = asyncHandler(async (req, res) => {
     habit.streakProtection.warningSent = false;
     await habit.save();
 
-    // 10. ✅ Tính lại streak
+    // 10.  Tính lại streak
     const newAchievements = await updateHabitStats(habitId, req.user.id);
 
     res.json({
@@ -275,7 +275,7 @@ const useFreezeToken = asyncHandler(async (req, res) => {
         });
     }
     
-    // ✅ SỬA: Tạo danh sách các ngày cần freeze
+    //  SỬA: Tạo danh sách các ngày cần freeze
     const freezeDates = [];
     for (let i = 0; i < days; i++) {
         const freezeDate = new Date(freezeStartDate);
@@ -286,7 +286,7 @@ const useFreezeToken = asyncHandler(async (req, res) => {
         }
     }
 
-    // ✅ SỬA: Kiểm tra các ngày đã có tracking
+    //  SỬA: Kiểm tra các ngày đã có tracking
     const existingTrackings = await HabitTracking.find({
         userId: req.user.id,
         habitId,
@@ -298,7 +298,7 @@ const useFreezeToken = asyncHandler(async (req, res) => {
         existingTrackings.map(t => t.date.toISOString().split('T')[0])
     );
 
-    // ✅ SỬA: CHỈ tạo frozen cho ngày CHƯA CÓ tracking
+    //  SỬA: CHỈ tạo frozen cho ngày CHƯA CÓ tracking
     const freezePromises = [];
     let actualFrozenDays = 0;
 
@@ -322,7 +322,7 @@ const useFreezeToken = asyncHandler(async (req, res) => {
         }
     }
     
-    // ✅ SỬA: Thông báo nếu không có ngày nào được freeze
+    //  SỬA: Thông báo nếu không có ngày nào được freeze
     if (freezePromises.length === 0) {
         return res.status(400).json({
             success: false,
@@ -345,7 +345,7 @@ const useFreezeToken = asyncHandler(async (req, res) => {
                     habitId: habit._id,
                     usedAt: new Date(),
                     autoUsed: false,
-                    freezeDays: actualFrozenDays, // ✅ Số ngày thực sự bị freeze
+                    freezeDays: actualFrozenDays, //  Số ngày thực sự bị freeze
                     cost,
                     startDate: freezeStartDate
                 }
@@ -566,7 +566,7 @@ const testAllItems = asyncHandler(async (req, res) => {
         },
         {
             new: true,
-            runValidators: false  // ✅ Bỏ qua validation
+            runValidators: false  //  Bỏ qua validation
         }
     );
 

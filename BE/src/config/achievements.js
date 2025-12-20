@@ -1,5 +1,4 @@
 export const ACHIEVEMENTS = {
-  // ===== STREAK ACHIEVEMENTS =====
   streak_7: {
     id: 'streak_7',
     title: 'Week Warrior',
@@ -33,15 +32,15 @@ export const ACHIEVEMENTS = {
   streak_60: {
     id: 'streak_60',
     title: 'Streak Champion',
-    description: 'Duy trì streak 50 ngày',
+    description: 'Duy trì streak 60 ngày',
     icon: '👑',
     rarity: 'rare',
     check: (habit) => habit.currentStreak >= 60,
     rewards: { streakShields: 2, freezeTokens: 2 }
   },
   
-  streak_120: {
-    id: 'streak_120',
+  streak_100: {
+    id: 'streak_100',
     title: 'Century Legend',
     description: 'Duy trì streak 100 ngày',
     icon: '💎',
@@ -108,6 +107,6 @@ export const ACHIEVEMENTS = {
     icon: '👑',
     rarity: 'legendary',
     check: (habit) => habit.totalCompletions >= 1000,
-    rewards: { streakShields: 4, freezeTokens: 3, reviveTokens: 2  }
+    rewards: { streakShields: 4, freezeTokens: 3, reviveTokens: 2 }
   }
 };

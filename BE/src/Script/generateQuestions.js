@@ -121,9 +121,9 @@ const main = async () => {
     
     if (questions.length > 0) {
       allQuestions.push(...questions);
-      console.log(`  ✅ Đã tạo ${questions.length} câu hỏi\n`);
+      console.log(`   Đã tạo ${questions.length} câu hỏi\n`);
     } else {
-      console.log(`  ⚠️  Không tạo được câu hỏi\n`);
+      console.log(`   Không tạo được câu hỏi\n`);
     }
     
     // Đợi 7s giữa mỗi request để tránh rate limit
@@ -135,9 +135,9 @@ const main = async () => {
   fs.writeFileSync(outputPath, JSON.stringify(allQuestions, null, 2));
 
   console.log('='.repeat(60));
-  console.log('✅ HOÀN TẤT TẠO CÂU HỎI KHẢO SÁT!');
-  console.log(`📋 Tổng: ${allQuestions.length} câu hỏi`);
-  console.log(`💾 Đã lưu vào: ${outputPath}`);
+  console.log(' HOÀN TẤT TẠO CÂU HỎI KHẢO SÁT!');
+  console.log(` Tổng: ${allQuestions.length} câu hỏi`);
+  console.log(` Đã lưu vào: ${outputPath}`);
 };
 
 main();

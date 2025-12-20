@@ -90,14 +90,14 @@ const userSchema = new mongoose.Schema({
         },
     }],
 
-    // ✅ THÊM MỚI: Inventory
+    //  THÊM MỚI: Inventory
   inventory: {
     streakShields: { type: Number, default: 0, min: 0 },
     freezeTokens: { type: Number, default: 0, min: 0 },
     reviveTokens: { type: Number, default: 0, min: 0 }
   },
   
-  // ✅ THÊM MỚI: Lịch sử dùng items
+  //  THÊM MỚI: Lịch sử dùng items
   itemUsageHistory: [{
     itemType: { type: String, required: true },
     habitId: { type: mongoose.Schema.Types.ObjectId, ref: 'Habit' },
@@ -107,7 +107,7 @@ const userSchema = new mongoose.Schema({
     protectedDate: Date
   }],
   
-  // ✅ THÊM MỚI: Settings streak protection
+  //  THÊM MỚI: Settings streak protection
   streakProtectionSettings: {
     enabled: { type: Boolean, default: true },
     notificationTime: { type: String, default: '21:00' }
