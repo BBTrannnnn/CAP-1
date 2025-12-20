@@ -13,13 +13,9 @@ export let BASE_URL = 'http://192.168.1.7:5000';
 
 export function setBaseUrl(url) {
   BASE_URL = url;
-<<<<<<< HEAD
-  console.log('[API BASE]', BASE_URL);
-=======
   ////console.log.log('[API BASE]', BASE_URL);
   BASE_URL = url;
   ////console.log.log('[API BASE]', BASE_URL);
->>>>>>> recover-work
 }
 
 export function getFullImageUrl(path) {

@@ -117,7 +117,7 @@ const habitTrackingSchema = new mongoose.Schema({
     date: { type: Date, required: true },
     status: {
         type: String,
-        enum: ['pending', 'in-progress', 'completed', 'skipped', 'failed'],
+        enum: ['pending', 'in-progress', 'completed', 'skipped', 'failed','frozen'],
         default: 'pending'
     },
     isProtected: { 

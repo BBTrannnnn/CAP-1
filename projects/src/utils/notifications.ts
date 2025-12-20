@@ -4,9 +4,7 @@ import Constants from 'expo-constants';
 import { Platform, Alert } from 'react-native';
 import { registerFCMToken, unregisterFCMToken } from '../server/notifi.js';
 
-/* -------------------------------------------------------------------------- */
-/*                         GLOBAL NOTIFICATION HANDLER                         */
-/* -------------------------------------------------------------------------- */
+
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -18,14 +16,6 @@ Notifications.setNotificationHandler({
   }),
 });
 
-/* -------------------------------------------------------------------------- */
-/*                               FCM / PUSH TOKEN                              */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Đăng ký Expo / FCM Push Token + gửi backend
- * ✅ Backend tự động lấy authToken từ AsyncStorage (auth: true)
- */
 export async function registerForPushNotifications(): Promise<string | null> {
   // Android channel (push)
   if (Platform.OS === 'android') {

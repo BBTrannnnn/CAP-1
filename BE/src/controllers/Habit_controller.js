@@ -188,7 +188,7 @@ const updateHabit = asyncHandler(async (req, res) => {
   if (!habit) {
     return res.status(404).json({
       success: false,
-      message: 'Habit not found'
+      message: 'Không tìm thấy thói quen'
     });
   }
 
@@ -196,7 +196,8 @@ const updateHabit = asyncHandler(async (req, res) => {
     'name', 'description', 'icon', 'color',
     'frequency', 'customFrequency',
     'category', 'habitType',
-    'trackingMode', 'targetCount', 'unit',
+    // 'trackingMode', // ❌ Không cho sửa trackingMode
+    'targetCount', 'unit',
     'startDate', 'endDate',
     'isActive',
   ];
@@ -209,35 +210,45 @@ const updateHabit = asyncHandler(async (req, res) => {
     }
   });
 
-  // Determine resulting trackingMode after update
-  const resultingTrackingMode = updates.trackingMode || habit.trackingMode || 'check';
-  if (!['check', 'count'].includes(resultingTrackingMode)) {
+  // ✅ Kiểm tra nếu user cố đổi trackingMode
+  if (body.trackingMode !== undefined && body.trackingMode !== habit.trackingMode) {
     return res.status(400).json({
       success: false,
-      message: 'trackingMode must be "check" or "count"'
+      message: 'Không thể thay đổi chế độ theo dõi sau khi tạo thói quen',
+      currentMode: habit.trackingMode === 'check' ? 'Đánh dấu' : 'Đếm số lần',
+      hint: 'Chế độ theo dõi đã bị khóa để tránh xung đột dữ liệu. Vui lòng tạo thói quen mới nếu cần chế độ khác.'
     });
   }
+
+  // ✅ Sử dụng trackingMode hiện tại
+  const trackingMode = habit.trackingMode || 'check';
 
   // Frequency/customFrequency consistency
   if (updates.frequency) {
     const freq = updates.frequency;
     if (!['daily', 'weekly', 'monthly', 'custom'].includes(freq)) {
-      return res.status(400).json({ success: false, message: 'frequency must be one of daily, weekly, monthly, custom' });
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Tần suất phải là daily, weekly, monthly hoặc custom' 
+      });
     }
     if (freq !== 'custom') {
-      // Clear customFrequency if switching away from custom
       updates.customFrequency = undefined;
     } else {
-      // Require customFrequency when using custom
       if (body.customFrequency === undefined && habit.customFrequency === undefined) {
-        return res.status(400).json({ success: false, message: 'customFrequency is required when frequency is custom' });
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Cần nhập tần suất tùy chỉnh khi chọn chế độ custom' 
+        });
       }
     }
   } else if (updates.customFrequency !== undefined) {
-    // If client sends customFrequency without setting frequency to custom, ensure current or updated is custom
     const effFreq = updates.frequency || habit.frequency;
     if (effFreq !== 'custom') {
-      return res.status(400).json({ success: false, message: 'customFrequency can only be set when frequency is custom' });
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Chỉ có thể đặt tần suất tùy chỉnh khi chế độ là custom' 
+      });
     }
   }
 
@@ -246,44 +257,55 @@ const updateHabit = asyncHandler(async (req, res) => {
     const s = new Date(updates.startDate);
     const e = new Date(updates.endDate);
     if (!isNaN(s) && !isNaN(e) && s > e) {
-      return res.status(400).json({ success: false, message: 'startDate must be before or equal to endDate' });
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Ngày bắt đầu phải trước hoặc bằng ngày kết thúc' 
+      });
     }
   }
 
-  // Enforce rules based on trackingMode
-  if (resultingTrackingMode === 'check') {
-    // Disallow targetCount/unit when in check mode
+  // ✅ Enforce rules dựa trên trackingMode
+  if (trackingMode === 'check') {
+    // ❌ Không cho sửa targetCount/unit khi ở mode check
     if (body.targetCount !== undefined || body.unit !== undefined) {
       return res.status(400).json({
         success: false,
-        message: 'targetCount and unit are not allowed for check trackingMode'
+        message: 'Không thể cập nhật số lần mục tiêu hoặc đơn vị cho chế độ đánh dấu',
+        hint: 'Thói quen này sử dụng chế độ đánh dấu đơn giản. Số lần mục tiêu và đơn vị không áp dụng.'
       });
     }
-    // Normalize: ensure DB fields are reset for check mode
+    // Đảm bảo giá trị mặc định
     updates.targetCount = 1;
     updates.unit = '';
-  } else if (resultingTrackingMode === 'count') {
-    // Require positive targetCount if changing to or already in count mode and client tries to set it
-    const tc = body.targetCount !== undefined ? body.targetCount : habit.targetCount;
-    if (tc === undefined || tc === null || Number(tc) <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'targetCount must be a positive number for count trackingMode'
-      });
-    }
-    updates.targetCount = Number(tc);
 
-    // Validate unit (allow some common values but keep flexible)
-    const allowedUnits = ['times', 'reps', 'pages', 'ml', 'km', 'minute', 'phút', 'lần', 'custom', ''];
-    const effUnit = body.unit !== undefined ? String(body.unit) : (habit.unit || '');
-    if (effUnit === '') {
-      // unit is optional; keep empty allowed but client can provide
-      updates.unit = '';
-    } else {
-      updates.unit = effUnit;
-      // If you want strict list, uncomment below:
-      // if (!allowedUnits.includes(effUnit)) {
-      //   return res.status(400).json({ success: false, message: `unit must be one of: ${allowedUnits.join(', ')}` });
+  } else if (trackingMode === 'count') {
+    // ✅ Cho phép sửa targetCount/unit khi ở mode count
+    
+    // Nếu có cố gắng sửa targetCount
+    if (body.targetCount !== undefined) {
+      const tc = Number(body.targetCount);
+      if (isNaN(tc) || tc <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Số lần mục tiêu phải là số dương cho chế độ đếm số lần'
+        });
+      }
+      updates.targetCount = tc;
+    }
+
+    // Nếu có cố gắng sửa unit
+    if (body.unit !== undefined) {
+      const allowedUnits = ['times', 'reps', 'pages', 'ml', 'km', 'minute', 'phút', 'lần', 'trang', 'ly', 'custom', ''];
+      const unitValue = String(body.unit).trim();
+      
+      updates.unit = unitValue;
+      
+      // Nếu muốn kiểm tra strict, bỏ comment dòng dưới:
+      // if (unitValue !== '' && !allowedUnits.includes(unitValue)) {
+      //   return res.status(400).json({ 
+      //     success: false, 
+      //     message: `Đơn vị phải là một trong: ${allowedUnits.join(', ')}` 
+      //   });
       // }
     }
   }
@@ -297,7 +319,7 @@ const updateHabit = asyncHandler(async (req, res) => {
 
   res.json({
     success: true,
-    message: 'Habit updated successfully',
+    message: 'Cập nhật thói quen thành công',
     habit: updatedHabit
   });
 });
@@ -1077,7 +1099,7 @@ const addHabitSubTracking = async (req, res) => {
       });
     }
 
-    // ✅ SỬA: Parse date ĐÚNG - tạo UTC date giống trackHabit
+    // ✅ Parse date - giữ UTC cho consistency với DB
     let trackingDate;
     if (date) {
       const parts = date.split('-');
@@ -1097,7 +1119,7 @@ const addHabitSubTracking = async (req, res) => {
       ));
     }
 
-    // ✅ SỬA: So sánh date phải cùng format UTC
+    // Validate date
     if (date) {
       const today = new Date();
       const todayUTC = new Date(Date.UTC(
@@ -1124,20 +1146,77 @@ const addHabitSubTracking = async (req, res) => {
       }
     }
 
-    // ✅ Parse time và tạo timestamp UTC
+    // ✅ FIX: Parse startTime - User nhập theo LOCAL time
     const [startH, startM] = startTime.split(':').map(Number);
-    const actualStartTime = new Date(trackingDate);
-    actualStartTime.setUTCHours(startH, startM, 0, 0); // ✅ Dùng setUTCHours thay vì setHours
+    
+    // Tạo local time từ input của user
+    const localStartTime = new Date(trackingDate);
+    localStartTime.setUTCHours(startH, startM, 0, 0);
+    
+    // Chuyển sang local datetime để so sánh với now
+    const localYear = localStartTime.getUTCFullYear();
+    const localMonth = localStartTime.getUTCMonth();
+    const localDay = localStartTime.getUTCDate();
+    const actualStartTime = new Date(localYear, localMonth, localDay, startH, startM, 0, 0);
 
     const now = new Date();
 
+    // ✅ So sánh local time với local time
     if (actualStartTime > now) {
       return res.status(400).json({
         success: false,
-        message: 'Cannot track future time'
+        message: 'Cannot track future time',
+        debug: {
+          yourInput: startTime,
+          parsedTime: actualStartTime.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }),
+          currentTime: now.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })
+        }
       });
     }
 
+    // ✅ THÊM: Kiểm tra lần tracking trước đó
+    // Query theo range của ngày trong DB (UTC)
+    const lastSubTracking = await HabitSubTracking.findOne({
+      habitId,
+      userId,
+      startTime: { 
+        $gte: trackingDate,
+        $lt: new Date(trackingDate.getTime() + 24 * 60 * 60 * 1000)
+      }
+    }).sort({ startTime: -1 });
+
+    if (lastSubTracking) {
+      const lastEndTime = lastSubTracking.endTime || lastSubTracking.startTime;
+      
+      // So sánh với actualStartTime (đã chuyển về local)
+      if (actualStartTime <= lastEndTime) {
+        return res.status(400).json({
+          success: false,
+          message: 'Start time must be after the previous tracking session',
+          previousTracking: {
+            startTime: lastSubTracking.startTime.toLocaleString('vi-VN', { 
+              hour: '2-digit', 
+              minute: '2-digit',
+              timeZone: 'Asia/Ho_Chi_Minh'
+            }),
+            endTime: lastSubTracking.endTime 
+              ? lastSubTracking.endTime.toLocaleString('vi-VN', { 
+                  hour: '2-digit', 
+                  minute: '2-digit',
+                  timeZone: 'Asia/Ho_Chi_Minh'
+                })
+              : null,
+            suggestion: `Your new start time must be after ${lastEndTime.toLocaleString('vi-VN', { 
+              hour: '2-digit', 
+              minute: '2-digit',
+              timeZone: 'Asia/Ho_Chi_Minh'
+            })}`
+          }
+        });
+      }
+    }
+
+    // ✅ FIX: Parse endTime - User nhập theo LOCAL time
     let actualEndTime = null;
     if (endTime) {
       if (!timeRegex.test(endTime)) {
@@ -1148,8 +1227,15 @@ const addHabitSubTracking = async (req, res) => {
       }
 
       const [endH, endM] = endTime.split(':').map(Number);
-      actualEndTime = new Date(trackingDate);
-      actualEndTime.setUTCHours(endH, endM, 0, 0); // ✅ Dùng setUTCHours
+      
+      // Tạo local end time
+      const localEndTimeBase = new Date(trackingDate);
+      localEndTimeBase.setUTCHours(endH, endM, 0, 0);
+      
+      const endYear = localEndTimeBase.getUTCFullYear();
+      const endMonth = localEndTimeBase.getUTCMonth();
+      const endDay = localEndTimeBase.getUTCDate();
+      actualEndTime = new Date(endYear, endMonth, endDay, endH, endM, 0, 0);
 
       if (actualEndTime <= actualStartTime) {
         return res.status(400).json({
@@ -1175,6 +1261,7 @@ const addHabitSubTracking = async (req, res) => {
       }
     }
 
+    // Query HabitTracking theo date (UTC)
     let habitTracking = await HabitTracking.findOne({
       habitId,
       userId,
@@ -1201,12 +1288,13 @@ const addHabitSubTracking = async (req, res) => {
       });
     }
 
+    // ✅ Lưu vào DB - MongoDB sẽ tự động convert local time sang UTC
     const sub = await HabitSubTracking.create({
       habitTrackingId: habitTracking._id,
       habitId,
       userId,
-      startTime: actualStartTime,
-      endTime: actualEndTime,
+      startTime: actualStartTime, // Local time, MongoDB sẽ lưu dưới dạng UTC
+      endTime: actualEndTime,      // Local time, MongoDB sẽ lưu dưới dạng UTC
       quantity,
       note,
       mood
@@ -1238,7 +1326,6 @@ const addHabitSubTracking = async (req, res) => {
     const unitLabel = habit.unit ? habit.unit : 'lần';
     const progress = `${habitTracking.completedCount}/${habitTracking.targetCount}`;
 
-    // ✅ Check isToday với UTC
     const today = new Date();
     const todayUTC = new Date(Date.UTC(
       today.getFullYear(),
@@ -1248,18 +1335,28 @@ const addHabitSubTracking = async (req, res) => {
     ));
     const isToday = trackingDate.getTime() === todayUTC.getTime();
 
-    // ✅ Format response giống như getHabitSubTrackings
     const duration = actualEndTime
       ? Math.round((actualEndTime - actualStartTime) / 60000)
       : null;
 
+    // ✅ Response với format đẹp cho user
     res.status(201).json({
       success: true,
-      message: `Đã ghi nhận ${quantity} ${unitLabel}${!isToday ? ' cho ngày ' + new Date(trackingDate).toISOString().split('T')[0] : ''}`,
+      message: `Đã ghi nhận ${quantity} ${unitLabel}${!isToday ? ' cho ngày ' + trackingDate.toISOString().split('T')[0] : ''}`,
       tracking: {
-        date: new Date(trackingDate).toISOString().split('T')[0],
-        startTime: new Date(actualStartTime).toISOString().slice(11, 16),
-        endTime: actualEndTime ? new Date(actualEndTime).toISOString().slice(11, 16) : null,
+        date: trackingDate.toISOString().split('T')[0],
+        startTime: actualStartTime.toLocaleTimeString('vi-VN', { 
+          hour: '2-digit', 
+          minute: '2-digit',
+          hour12: false 
+        }),
+        endTime: actualEndTime 
+          ? actualEndTime.toLocaleTimeString('vi-VN', { 
+              hour: '2-digit', 
+              minute: '2-digit',
+              hour12: false 
+            })
+          : null,
         duration: duration ? `${duration} phút` : null,
         isToday,
         progress,
@@ -1723,6 +1820,8 @@ export async function updateHabitStats(habitId, userId) {
       .sort({ date: -1 })
       .lean();
 
+    console.log('📊 Total trackings:', trackings.length);
+
     if (trackings.length === 0) {
       habit.currentStreak = 0;
       habit.longestStreak = 0;
@@ -1748,15 +1847,14 @@ export async function updateHabitStats(habitId, userId) {
       trackingMap.set(key, t);
     });
 
-    // ❌ ĐÃ BỎ: Kiểm tra isProtectedToday vì không còn auto-protect
-    // Freeze vẫn giữ để tính streak đúng
-    const isFrozen =
-      habit.streakProtection?.isFrozen &&
-      habit.streakProtection?.frozenEndDate > new Date();
-
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
     const todayKey = today.toISOString().split('T')[0];
+
+    // Frozen period check
+    const isFrozen =
+      habit.streakProtection?.isFrozen &&
+      habit.streakProtection?.frozenEndDate > new Date();
 
     // ✅ Tính streak: Bắt đầu từ hôm nay, đếm ngược về trước
     let currentStreak = 0;
@@ -1766,11 +1864,8 @@ export async function updateHabitStats(habitId, userId) {
     for (let i = 0; i < 365; i++) {
       const dateKey = checkDate.toISOString().split('T')[0];
       const tracking = trackingMap.get(dateKey);
-
       const isCompleted = tracking && tracking.status === 'completed';
       const isFrozenDay = tracking && tracking.status === 'frozen';
-      
-      // ✅ CHỈ CÒN: Shield được dùng thủ công (isProtected = true trong tracking)
       const isShieldProtected = tracking && 
                                 tracking.status === 'failed' && 
                                 tracking.isProtected === true;
@@ -1782,29 +1877,31 @@ export async function updateHabitStats(habitId, userId) {
         checkDate >= habit.streakProtection.frozenStartDate &&
         checkDate <= habit.streakProtection.frozenEndDate;
 
-      // ✅ ĐIỀU KIỆN ĐẾM STREAK: completed HOẶC shield protected
       const countAsCompleted = isCompleted || isShieldProtected;
 
       if (countAsCompleted) {
         currentStreak++;
         hasStartedStreak = true;
+        console.log(`✅ Count: ${currentStreak}`);
         checkDate.setDate(checkDate.getDate() - 1);
         continue;
       }
 
-      // Nếu gặp frozen, skip qua (không đếm, không break)
+      // Nếu gặp frozen, skip qua
       if (isFrozenDay || isInFrozenPeriod) {
         if (hasStartedStreak) {
+          console.log(`⏭️ Skip frozen day`);
           checkDate.setDate(checkDate.getDate() - 1);
           continue;
         } else {
-          // Chưa bắt đầu streak thì break
           break;
         }
       }
 
-      // Gặp failed không protected → break
-      break;
+      // Gặp ngày không có tracking hoặc failed không protected
+      if (!tracking || (tracking.status === 'failed' && !tracking.isProtected)) {
+        break;
+      }
     }
 
     habit.currentStreak = currentStreak;
@@ -1833,7 +1930,7 @@ export async function updateHabitStats(habitId, userId) {
     return newAchievements;
 
   } catch (error) {
-    console.error('❌ Update stats error:', error);
+    console.error(error);
     return [];
   }
 }

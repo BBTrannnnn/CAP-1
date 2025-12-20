@@ -173,7 +173,7 @@ export default function ItemsBagScreen() {
           );
           return;
         }
-        response = await useFreeze({ habitId, date, days });
+        response = await useFreeze({ habitId, startDate: date, days });
       }
 
       if (response && response.success) {
@@ -270,18 +270,16 @@ export default function ItemsBagScreen() {
 
             <Text style={{ marginTop: 4 }}>
               {h.itemType === 'streakShield' &&
-                `Sử dụng Shield cho ngày ${
-                  h.protectedDate
-                    ? new Date(h.protectedDate).toLocaleDateString('vi-VN')
-                    : ''
+                `Sử dụng Shield cho ngày ${h.protectedDate
+                  ? new Date(h.protectedDate).toLocaleDateString('vi-VN')
+                  : ''
                 }`}
               {h.itemType === 'freezeToken' &&
                 `Đóng băng habit ${h.freezeDays || ''} ngày`}
               {h.itemType === 'reviveToken' &&
-                `Hồi sinh streak cho ngày ${
-                  h.protectedDate
-                    ? new Date(h.protectedDate).toLocaleDateString('vi-VN')
-                    : ''
+                `Hồi sinh streak cho ngày ${h.protectedDate
+                  ? new Date(h.protectedDate).toLocaleDateString('vi-VN')
+                  : ''
                 }`}
             </Text>
           </View>

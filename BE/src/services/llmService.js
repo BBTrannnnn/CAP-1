@@ -54,7 +54,13 @@ export async function chat(messages, opts = {}) {
         continue; // Retry
       }
       
-      // Otherwise, throw error
+      // Otherwise, log chi tiết lỗi để debug
+      console.error('[LLM][ERROR]', {
+        message: e?.message,
+        status: e?.status,
+        data: e?.response?.data,
+        full: e
+      });
       const err = new Error(e?.message || 'LLM chat error');
       err.statusCode = e?.status || 500;
       throw err;
