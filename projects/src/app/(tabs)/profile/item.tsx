@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   ScrollView,
   Modal,
-  Alert,
   ActivityIndicator,
   TextInput,
 } from 'react-native';
@@ -21,6 +20,7 @@ import {
 } from '../../../server/inventory';
 import { getHabits } from '../../../server/habits';
 import { Habit } from '../../../../types/habit';
+import { notifyError, notifySuccess, notifyConfirm } from '../../../utils/notify';
 
 const COLORS = {
   background: '#F6F8FB',
@@ -121,7 +121,7 @@ export default function ItemsBagScreen() {
       }
     } catch (err: any) {
       setError(err.message || 'Đã có lỗi xảy ra.');
-      Alert.alert('Lỗi', err.message || 'Không thể kết nối tới server.');
+      notifyError('Lỗi', err.message || 'Không thể kết nối tới server.');
     } finally {
       setLoading(false);
     }
@@ -146,12 +146,12 @@ export default function ItemsBagScreen() {
 
   const handleConfirmUse = async () => {
     if (!selectedItem || !selectedHabitId) {
-      Alert.alert('Thiếu thông tin', 'Hãy chọn một Habit.');
+      notifyError('Thiếu thông tin', 'Hãy chọn một Habit.');
       return;
     }
 
     if (!selectedDate) {
-      Alert.alert('Thiếu thông tin', 'Hãy chọn ngày.');
+      notifyError('Thiếu thông tin', 'Hãy chọn ngày.');
       return;
     }
 
@@ -167,7 +167,7 @@ export default function ItemsBagScreen() {
       } else if (selectedItem === 'freezeToken') {
         const days = parseInt(freezeDays, 10);
         if (isNaN(days) || days < 1 || days > 30) {
-          Alert.alert(
+          notifyError(
             'Số ngày không hợp lệ',
             'Số ngày đóng băng phải là một số từ 1 đến 30.'
           );
@@ -177,7 +177,7 @@ export default function ItemsBagScreen() {
       }
 
       if (response && response.success) {
-        Alert.alert('Thành công', response.message || 'Đã sử dụng vật phẩm!');
+        notifySuccess('Thành công', response.message || 'Đã sử dụng vật phẩm!');
         await fetchAllData(); // Refresh data
         setModalVisible(false);
         resetSelection();
@@ -186,7 +186,7 @@ export default function ItemsBagScreen() {
         throw new Error(response?.message || 'Sử dụng vật phẩm thất bại.');
       }
     } catch (err: any) {
-      Alert.alert('Lỗi', err.message || 'Không thể thực hiện thao tác.');
+      notifyError('Lỗi', err.message || 'Không thể thực hiện thao tác.');
     }
   };
 
