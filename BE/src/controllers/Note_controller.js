@@ -1,3 +1,22 @@
+// Lấy note theo ngày
+export const getNoteByDate = async (req, res, next) => {
+  try {
+    const userId = toObjectId(getUserId(req));
+    if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
+    const { date } = req.query;
+    if (!date) return res.status(400).json({ success: false, message: "Thiếu ngày" });
+    // Xử lý mốc ngày theo múi giờ Việt Nam (UTC+7)
+    const d = new Date(date);
+    if (isNaN(d)) return res.status(400).json({ success: false, message: "Ngày không hợp lệ" });
+    // Lấy mốc 0h và 24h của ngày đó theo UTC+7
+    const tzOffset = -7 * 60; // phút
+    const start = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0) - tzOffset * 60 * 1000);
+    const end = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999) - tzOffset * 60 * 1000);
+    const note = await Note.findOne({ userId, date: { $gte: start, $lte: end } }).lean();
+    if (!note) return res.status(404).json({ success: false, message: "Không tìm thấy note cho ngày này" });
+    res.json({ success: true, data: note });
+  } catch (e) { next(e); }
+};
 import Note from "../models/Note.js";
 import mongoose from "mongoose";
 
