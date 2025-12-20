@@ -1,3 +1,49 @@
+// Đánh giá giấc ngủ riêng cho từng ngày
+export const evaluateSleepByDate = async (req, res, next) => {
+  try {
+    const userId = toObjectId(getUserId(req));
+    if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
+    const { date } = req.query;
+    if (!date) return res.status(400).json({ success: false, message: "Thiếu ngày" });
+    // Tìm sleep log của ngày đó
+    const d = new Date(date);
+    if (isNaN(d)) return res.status(400).json({ success: false, message: "Ngày không hợp lệ" });
+    const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+    const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+    const log = await SleepLog.findOne({ userId, sleepAt: { $gte: start, $lte: end } }).lean();
+    if (!log) return res.status(404).json({ success: false, message: "Không có sleep log cho ngày này" });
+    // Lấy thông tin user
+    const user = await User.findById(userId).lean();
+    let gender = user?.gender || null;
+    let dateOfBirth = user?.dateOfBirth || null;
+    let age = null;
+    if (dateOfBirth) {
+      const dob = new Date(dateOfBirth);
+      age = d.getFullYear() - dob.getFullYear();
+      const m = d.getMonth() - dob.getMonth();
+      if (m < 0 || (m === 0 && d.getDate() < dob.getDate())) age--;
+    }
+    // Chuẩn khuyến nghị chi tiết theo tuổi
+    let recommendedMin = 420, recommendedMax = 540, group = "Người trưởng thành";
+    if (age !== null) {
+      if (age < 13) { recommendedMin = 540; recommendedMax = 660; group = "Trẻ em đi học"; }
+      else if (age < 18) { recommendedMin = 480; recommendedMax = 600; group = "Thanh thiếu niên"; }
+      else if (age < 65) { recommendedMin = 420; recommendedMax = 540; group = "Người trưởng thành"; }
+      else { recommendedMin = 420; recommendedMax = 480; group = "Người cao tuổi"; }
+    }
+    const durationMin = log.durationMin;
+    let quality = "Tốt";
+    let message = `Bạn ngủ ${Math.floor(durationMin/60)} giờ ${durationMin%60} phút. Nhóm tuổi: ${group}. Khuyến nghị: ${Math.floor(recommendedMin/60)}-${Math.floor(recommendedMax/60)} giờ/ngày.`;
+    if (durationMin < recommendedMin) {
+      quality = "Thiếu ngủ";
+      message = `Bạn ngủ ${Math.floor(durationMin/60)} giờ ${durationMin%60} phút (< ${Math.floor(recommendedMin/60)}h). Nhóm tuổi: ${group}. Khuyến nghị: ${Math.floor(recommendedMin/60)}-${Math.floor(recommendedMax/60)} giờ/ngày. Nên ngủ đủ để đảm bảo sức khỏe.`;
+    } else if (durationMin > recommendedMax) {
+      quality = "Ngủ quá nhiều";
+      message = `Bạn ngủ ${Math.floor(durationMin/60)} giờ ${durationMin%60} phút (> ${Math.floor(recommendedMax/60)}h). Nhóm tuổi: ${group}. Khuyến nghị: ${Math.floor(recommendedMin/60)}-${Math.floor(recommendedMax/60)} giờ/ngày. Nên cân đối thời gian ngủ.`;
+    }
+    res.json({ success: true, data: { log, gender, age, recommendedMin, recommendedMax, group, quality, message } });
+  } catch (e) { next(e); }
+};
 import SleepLog from "../models/SleepLog.js";
 import mongoose from "mongoose";
 import User from "../models/User.js";
