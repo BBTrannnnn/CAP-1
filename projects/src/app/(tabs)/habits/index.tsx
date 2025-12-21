@@ -1705,44 +1705,75 @@ const deleteTrackingForDay = async (habitId: number) => {
   };
 
   const saveEntry = (habitId: number, entryId: number) => {
-    (async () => {
-      try {
-        const bid = n2b[habitId];
-        const en = (countEntries[habitId] ?? []).find((x) => x.id === entryId);
-        if (!bid || !en) return setEditingEntry(null);
-
-        const dateStr = getCurrentDateStr();
-
-        if (en.beId) {
-          const body: any = {};
-          if (en.start !== undefined) body.startTime = en.start;
-          if (en.end !== undefined) body.endTime = en.end || null;
-          if (en.qty !== undefined) body.quantity = en.qty;
-          if (en.note !== undefined) body.note = en.note;
-          if (en.mood !== undefined) body.mood = en.mood === 'neutral' ? 'okay' : en.mood;
-          body.date = dateStr;
-          await apiUpdateHabitSubTracking(bid, en.beId, body);
-        } else {
-          const body: any = {
-            quantity: en.qty || 1,
-            date: dateStr,
-            startTime: en.start || hhmmNow(),
-          };
-          if (en.end) body.endTime = en.end;
-          if (en.note) body.note = en.note;
-          if (en.mood) body.mood = en.mood === 'neutral' ? 'okay' : en.mood;
-          await apiAddHabitSubTracking(bid, body);
-        }
-        refreshAll();
-        showToast('Đã lưu thay đổi thành công', 'success');
-      } catch (error) {
-        console.error('[FlowStateHabits] saveEntry error:', error);
-        showToast('Không thể lưu thay đổi', 'error');
-      } finally {
+  (async () => {
+    try {
+      const bid = n2b[habitId];
+      const en = (countEntries[habitId] ?? []).find((x) => x.id === entryId);
+      
+      if (!bid || !en) {
+        showToast('Không tìm thấy dữ liệu để cập nhật', 'error');
         setEditingEntry(null);
+        return;
       }
-    })();
-  };
+
+      if (!en.beId) {
+        showToast('Entry chưa có ID từ server', 'error');
+        setEditingEntry(null);
+        return;
+      }
+
+      // ✅ FIX: Sử dụng selectedDate để đảm bảo đúng ngày
+      const dateStr = getCurrentDateStr();
+
+      // Validate start time
+      if (!en.start || !en.start.trim()) {
+        showToast('Thời gian bắt đầu là bắt buộc', 'error');
+        return;
+      }
+
+      // Build payload with ALL required fields
+      const body: any = {
+        quantity: Math.max(1, en.qty || 1),
+        date: dateStr, // ✅ Thêm date
+        startTime: en.start.trim(),
+      };
+      
+      // Add optional fields
+      if (en.end && en.end.trim()) {
+        body.endTime = en.end.trim();
+      }
+      
+      if (en.note && en.note.trim()) {
+        body.note = en.note.trim();
+      }
+      
+      if (en.mood) {
+        body.mood = en.mood === 'neutral' ? 'okay' : en.mood;
+      }
+
+      // Call update API
+      await apiUpdateHabitSubTracking(bid, en.beId, body);
+      
+      refreshAll();
+      showToast('Đã cập nhật thành công', 'success');
+      setEditingEntry(null);
+      
+    } catch (error: any) {
+      console.error('=== SAVE ENTRY ERROR ===');
+      console.error('Error:', error);
+      
+      let msg = 'Không thể lưu thay đổi';
+      if (error?.response?.data?.message) {
+        msg = error.response.data.message;
+      } else if (error?.message) {
+        msg = error.message;
+      }
+      
+      showToast(msg, 'error');
+      setEditingEntry(null);
+    }
+  })();
+};
 
   const toggleCountView = (habitId: number) => {
     setCountViewOpen((prev) => ({
@@ -2129,14 +2160,6 @@ const deleteTrackingForDay = async (habitId: number) => {
                       >
                         <Plus size={14} color="#047857" />
                         <Text style={styles.actionButtonGreenText}>Thêm lần</Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        onPress={() => clearCountDay(habit.id)}
-                        style={[styles.actionButton, styles.actionButtonRedSoft]}
-                      >
-                        <Trash2 size={14} color="#dc2626" />
-                        <Text style={styles.actionButtonRedText}>Xóa ngày</Text>
                       </TouchableOpacity>
                     </View>
                   )}

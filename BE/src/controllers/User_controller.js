@@ -117,6 +117,15 @@ const register = asyncHandler(async (req, res) => {
     });
   }
 
+
+  const specialCharRegex = /[!@#$%^&*(),.?":{}|<>]/;
+  if (!specialCharRegex.test(password)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Password must contain at least one special character (!@#$%^&*(),.?":{}|<>)'
+    });
+  }
+
   // Validate dateOfBirth nếu có
   let dob;
   if (dateOfBirth) {
