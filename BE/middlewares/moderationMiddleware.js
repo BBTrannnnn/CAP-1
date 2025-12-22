@@ -22,8 +22,8 @@ import Comment from '../src/models/Comment.js';
 // ========== RATE LIMITING ==========
 
 export const postRateLimit = rateLimit({
-    windowMs: 60 * 1000,
-    max: async (req) => Math.ceil(getUserModerationPolicy(req.user).maxPostsPerDay / (24 * 60)),
+    windowMs: 5 * 1000,
+    max: async (req) => Math.ceil(getUserModerationPolicy(req.user).maxPostsPerDay / (24 * 60 * 12)),
     message: 'Bạn đang đăng bài quá nhanh. Vui lòng chờ một chút.',
     standardHeaders: true,
     legacyHeaders: false,
@@ -55,39 +55,58 @@ export const moderatePost = async (req, res, next) => {
 
         const policy = getUserModerationPolicy(user);
 
-        if (images && images.length > 0) {
-            if (!policy.canUploadImages) {
-                return res.status(403).json({ success: false, message: 'Chưa đủ uy tín đăng ảnh' });
-            }
-        }
+        // BỎ kiểm tra policy.canUploadImages, ai cũng đăng được ảnh
+        // if (images && images.length > 0) {
+        //     if (!policy.canUploadImages) {
+        //         return res.status(403).json({ success: false, message: 'Chưa đủ uy tín đăng ảnh' });
+        //     }
+        // }
 
         // === LAYER 1: INSTANT CHECKS ===
 
         // 1. Text Check (SỬ DỤNG AWAIT CHO API)
         const textCheck = await checkTextProfanity(content);
-        
         if (textCheck.blocked) {
             await updateTrustScore(user._id, 'violation_severe', {
                 content: content.substring(0, 100),
                 score: textCheck.score,
                 moderationAction: 'auto_rejected'
             });
-
-            await ModerationLog.create({
-                userId: user._id,
-                contentType: 'post',
-                action: 'auto_rejected',
-                reason: textCheck.reason,
-                scores: { profanity: textCheck.score },
-                detectedIssues: textCheck.matches,
-                trustScoreChange: -15
-            });
-
             return res.status(400).json({
                 success: false,
                 message: textCheck.reason,
                 details: { type: 'profanity', matches: textCheck.matches }
             });
+        }
+
+        // 1.5. Image Check (ĐỒNG BỘ, reject ngay nếu vi phạm)
+        if (images && images.length > 0) {
+            const imageUrls = images.map(img => img.url || img);
+            const imageCheck = await checkImagesNSFW(imageUrls);
+            if (imageCheck.blocked) {
+                // Nếu vi phạm rõ ràng (reason có từ khóa nhạy cảm, bạo lực, khỏa thân, vũ khí, xúc phạm...)
+                if (imageCheck.reason && (
+                    imageCheck.reason.includes('nhạy cảm') ||
+                    imageCheck.reason.includes('khỏa thân') ||
+                    imageCheck.reason.includes('vũ khí') ||
+                    imageCheck.reason.includes('chất cấm') ||
+                    imageCheck.reason.includes('xúc phạm') ||
+                    imageCheck.reason.includes('bạo lực')
+                )) {
+                    return res.status(400).json({
+                        success: false,
+                        message: imageCheck.reason,
+                        details: { type: 'image', results: imageCheck.results }
+                    });
+                } else {
+                    // Nếu nghi ngờ (50/50), chuyển cho mod duyệt
+                    req.moderationResults = {
+                        textCheck,
+                        imageCheck,
+                        needsReview: true
+                    };
+                }
+            }
         }
 
         // 2. Check URLs
